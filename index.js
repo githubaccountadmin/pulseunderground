@@ -2,7 +2,25 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log("DOM fully loaded and parsed");
 
     let provider;
-    let web3;
+    let signer;
+    let account;
+
+    async function connectWallet() {
+        console.log("Connecting to wallet...");
+        try {
+            if (window.ethereum) {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                account = await signer.getAddress();
+                console.log("Connected account:", account);
+            } else {
+                console.error("No Ethereum provider found. Install MetaMask or another wallet.");
+            }
+        } catch (e) {
+            console.error("Could not connect to wallet:", e);
+        }
+    }
 
     async function loadNewsFeed() {
         console.log("Loading news feed...");
@@ -15,20 +33,41 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
-            // Initialize web3 if provider is available
-            if (window.ethereum && !web3) {
-                web3 = new Web3(window.ethereum);
-            }
-
+            const contractABI = [
+                {
+                    "inputs": [
+                        {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                        {"internalType": "bytes", "name": "_value", "type": "bytes"},
+                        {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                        {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
+                    ],
+                    "name": "submitValue",
+                    "outputs": [],
+                    "stateMutability": "nonpayable",
+                    "type": "function"
+                },
+                {
+                    "inputs": [
+                        {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
+                    ],
+                    "name": "getNewValueCountbyQueryId",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "", "type": "uint256"}
+                    ],
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ];
+            
             data.items.forEach(tx => {
                 if (tx.input.startsWith('0x')) {
                     console.log("Decoding transaction input:", tx.input);
-                    const decodedInput = web3.eth.abi.decodeParameters(
+                    const decodedInput = ethers.utils.defaultAbiCoder.decode(
                         ['bytes32', 'bytes', 'uint256', 'bytes'],
-                        tx.input.slice(10)
+                        '0x' + tx.input.slice(10)
                     );
                     console.log("Decoded input:", decodedInput);
-                    const newsContent = web3.eth.abi.decodeParameter('string', decodedInput[1]);
+                    const newsContent = ethers.utils.defaultAbiCoder.decode(['string'], decodedInput[1]);
                     console.log("Decoded news content:", newsContent);
                     const newsFeed = document.getElementById('newsFeed');
                     const article = document.createElement('article');
@@ -44,35 +83,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    async function connectWallet() {
-        console.log("Connect Wallet button clicked.");
-        try {
-            if (typeof ethers !== 'undefined' && window.ethereum) {
-                provider = new ethers.providers.Web3Provider(window.ethereum);
-                await provider.send("eth_requestAccounts", []);
-                const signer = provider.getSigner();
-                const account = await signer.getAddress();
-                console.log("Connected account:", account);
-                web3 = new Web3(window.ethereum); // Initialize web3 with the provider
-            } else {
-                console.error("MetaMask not installed or ethers.js is not loaded.");
-            }
-        } catch (e) {
-            console.error("Could not connect to wallet:", e);
-        }
-    }
-
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    console.log("Event listener added to Connect Wallet button.");
-    
-    document.getElementById('publishStory').addEventListener('click', async function() {
+    async function submitStory() {
         console.log("Submitting story...");
         const title = document.getElementById('title').value;
         const summary = document.getElementById('summary').value;
         const fullArticle = document.getElementById('fullArticle').value;
         const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
         console.log("News content:", newsContent);
-
+        
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
         const contractABI = [
             {
@@ -99,41 +117,38 @@ document.addEventListener('DOMContentLoaded', async function() {
                 "type": "function"
             }
         ];
-        const contract = new web3.eth.Contract(contractABI, contractAddress);
+        const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-        const encodedData = web3.eth.abi.encodeParameter('string', newsContent);
-        const queryData = web3.eth.abi.encodeParameters(['string', 'bytes'], ["StringQuery", encodedData]);
-        const queryID = web3.utils.keccak256(queryData);
+        const encodedData = ethers.utils.defaultAbiCoder.encode(['string'], [newsContent]);
+        const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", encodedData]);
+        const queryID = ethers.utils.keccak256(queryData);
         console.log("Query ID:", queryID);
 
-        const nonce = await contract.methods.getNewValueCountbyQueryId(queryID).call();
-        console.log("Nonce:", nonce);
+        const nonce = await contract.getNewValueCountbyQueryId(queryID);
+        console.log("Nonce:", nonce.toString());
 
-        const newsPrefix = web3.eth.abi.encodeParameter('string', "NEWS");
-        const value = web3.eth.abi.encodeParameters(['string', 'bytes'], [newsPrefix, encodedData]);
+        const newsPrefix = ethers.utils.defaultAbiCoder.encode(['string'], ["NEWS"]);
+        const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], [newsPrefix, encodedData]);
 
         console.log("Transaction Parameters:", {
             queryID,
             value,
-            nonce,
+            nonce: nonce.toString(),
             queryData
         });
 
-        const transactionParameters = {
-            to: contractAddress,
-            from: account,
-            data: contract.methods.submitValue(queryID, value, nonce, queryData).encodeABI(),
-            gas: '2000000',
-            gasPrice: web3.utils.toWei('30', 'gwei'),
-        };
-
         try {
-            const txHash = await web3.eth.sendTransaction(transactionParameters);
-            console.log("Transaction hash:", txHash);
+            const tx = await contract.submitValue(queryID, value, nonce, queryData, { gasLimit: 2000000 });
+            console.log("Transaction hash:", tx.hash);
         } catch (error) {
             console.error("Transaction failed:", error);
         }
-    });
+    }
+
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    console.log("Event listener added to Connect Wallet button.");
+
+    document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
     loadNewsFeed();
