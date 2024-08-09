@@ -1,106 +1,55 @@
-// Connect to PulseChain
+// Initialize Web3Modal
+let web3Modal;
+let provider;
 let web3;
 let account;
-const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
-const contractABI = [
-    {
-        "inputs": [
-            {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-            {"internalType": "bytes", "name": "_value", "type": "bytes"},
-            {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
-            {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
-        ],
-        "name": "submitValue",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "anonymous": False,
-        "inputs": [
-            {"indexed": True, "internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-            {"indexed": True, "internalType": "uint256", "name": "_time", "type": "uint256"},
-            {"indexed": False, "internalType": "bytes", "name": "_value", "type": "bytes"},
-            {"indexed": False, "internalType": "uint256", "name": "_nonce", "type": "uint256"},
-            {"indexed": False, "internalType": "bytes", "name": "_queryData", "type": "bytes"},
-            {"indexed": True, "internalType": "address", "name": "_reporter", "type": "address"}
-        ],
-        "name": "NewReport",
-        "type": "event"
-    },
-    {
-        "inputs": [
-            {"internalType": "address", "name": "_reporter", "type": "address"}
-        ],
-        "name": "getReporterLastTimestamp",
-        "outputs": [
-            {"internalType": "uint256", "name": "", "type": "uint256"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "reportingLock",
-        "outputs": [
-            {"internalType": "uint256", "name": "", "type": "uint256"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {"internalType": "address", "name": "_reporter", "type": "address"}
-        ],
-        "name": "getStakeAmount",
-        "outputs": [
-            {"internalType": "uint256", "name": "", "type": "uint256"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "requiredStakeAmount",
-        "outputs": [
-            {"internalType": "uint256", "name": "", "type": "uint256"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
-        ],
-        "name": "getNewValueCountbyQueryId",
-        "outputs": [
-            {"internalType": "uint256", "name": "", "type": "uint256"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    }
-];
 
-async function connectWallet() {
-    if (window.ethereum) {
-        web3 = new Web3(window.ethereum);
-        await window.ethereum.enable();
+async function init() {
+    const providerOptions = {
+        /* Provider options can be added here, like WalletConnect, Coinbase Wallet, etc. */
+    };
+
+    web3Modal = new Web3Modal({
+        cacheProvider: false, // optional
+        providerOptions, // required
+    });
+
+    document.getElementById('connectWallet').addEventListener('click', onConnect);
+}
+
+async function onConnect() {
+    try {
+        provider = await web3Modal.connect();
+        web3 = new Web3(provider);
+
         const accounts = await web3.eth.getAccounts();
         account = accounts[0];
         console.log("Connected account:", account);
-    } else {
-        alert("Please install MetaMask!");
+    } catch (e) {
+        console.log("Could not get a wallet connection", e);
     }
 }
 
-document.getElementById('connectWallet').addEventListener('click', connectWallet);
+// Handle wallet disconnection
+async function onDisconnect() {
+    if (provider && provider.close) {
+        await provider.close();
+        await web3Modal.clearCachedProvider();
+        provider = null;
+    }
+    account = null;
+    web3 = null;
+}
 
+// Submit the story
 async function submitStory() {
     const title = document.getElementById('title').value;
     const summary = document.getElementById('summary').value;
     const fullArticle = document.getElementById('fullArticle').value;
     const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
     
+    const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
+    const contractABI = [/* ABI from your Python script goes here */];
     const contract = new web3.eth.Contract(contractABI, contractAddress);
 
     // Encode the StringQuery data
@@ -136,7 +85,8 @@ document.getElementById('publishStory').addEventListener('click', submitStory);
 
 // Fetch and display news stories
 async function loadNewsFeed() {
-    // Fetch and decode stories to populate the #newsFeed section
+    const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
+    const contractABI = [/* ABI from your Python script goes here */];
     const contract = new web3.eth.Contract(contractABI, contractAddress);
     const latestBlock = await web3.eth.getBlockNumber();
 
@@ -172,4 +122,7 @@ async function loadNewsFeed() {
     }
 }
 
-loadNewsFeed();  // Load news on page load
+window.addEventListener('load', async () => {
+    init();
+    loadNewsFeed();  // Load news on page load
+});
