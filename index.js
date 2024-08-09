@@ -3,9 +3,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     const endpoint = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
 
-    // Function to fetch and display the news feed
     async function loadNewsFeed() {
         console.log("Loading news feed...");
+
+        if (typeof window.Web3 === 'undefined') {
+            console.error("Web3 is not defined. Ensure Web3.js is properly loaded.");
+            return;
+        }
+
         try {
             const response = await fetch(endpoint);
             const data = await response.json();
@@ -38,9 +43,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Function to decode the input data of submitValue transactions
     function decodeSubmitValue(input) {
-        const web3 = new Web3();  // Use Web3 to decode
+        const web3 = new Web3();  // Initialize Web3 to decode
         const methodId = input.slice(0, 10);  // Method ID for submitValue
         const params = input.slice(10);  // Remaining part is parameters
 
