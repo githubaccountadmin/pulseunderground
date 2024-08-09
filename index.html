@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEWS on Pulse</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Include Web3.js, Web3Modal, and WalletConnect -->
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.3/dist/web3.min.js"></script>
-    <script src="https://unpkg.com/web3modal@1.9.5/dist/index.js"></script>
-    <script src="https://unpkg.com/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
 </head>
 <body>
     <header>
@@ -29,9 +25,9 @@
         </section>
 
         <section id="submitStory">
-            <h2>Submit Your Story</h2>
+            <h2>Submit a Story</h2>
             <input type="text" id="title" placeholder="Title">
-            <textarea id="summary" placeholder="Summary"></textarea>
+            <input type="text" id="summary" placeholder="Summary">
             <textarea id="fullArticle" placeholder="Full Article"></textarea>
             <button id="publishStory">Publish Story</button>
         </section>
