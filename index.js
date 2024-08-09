@@ -2,24 +2,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log("DOM fully loaded and parsed");
 
     let provider;
-    let signer;
-    let account;
+    let web3;
 
-    // Initialize wallet connection
-    async function connectWallet() {
-        console.log("Connecting to wallet...");
-        if (typeof window.ethereum !== 'undefined') {
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            await provider.send("eth_requestAccounts", []);
-            signer = provider.getSigner();
-            account = await signer.getAddress();
-            console.log("Connected wallet:", account);
-        } else {
-            console.error("MetaMask is not installed.");
-        }
-    }
-
-    // Load news feed
     async function loadNewsFeed() {
         console.log("Loading news feed...");
 
@@ -31,20 +15,20 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
-            if (!provider) {
-                console.warn("Provider is not initialized, skipping transaction decoding.");
-                return;
+            // Initialize web3 if provider is available
+            if (window.ethereum && !web3) {
+                web3 = new Web3(window.ethereum);
             }
 
-            data.transactions.forEach(tx => {
+            data.items.forEach(tx => {
                 if (tx.input.startsWith('0x')) { // Filter out transactions that are not contract interactions
                     console.log("Decoding transaction input:", tx.input);
-                    const decodedInput = ethers.utils.defaultAbiCoder.decode(
+                    const decodedInput = web3.eth.abi.decodeParameters(
                         ['bytes32', 'bytes', 'uint256', 'bytes'],
-                        ethers.utils.hexDataSlice(tx.input, 4)
+                        tx.input.slice(10)
                     );
                     console.log("Decoded input:", decodedInput);
-                    const newsContent = ethers.utils.defaultAbiCoder.decode(['string'], decodedInput[1]);
+                    const newsContent = web3.eth.abi.decodeParameter('string', decodedInput[1]);
                     console.log("Decoded news content:", newsContent);
                     const newsFeed = document.getElementById('newsFeed');
                     const article = document.createElement('article');
@@ -60,15 +44,35 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Submit story
-    async function submitStory() {
+    async function connectWallet() {
+        console.log("Connect Wallet button clicked.");
+        try {
+            if (window.ethereum) {
+                provider = window.ethereum;
+                await provider.request({ method: 'eth_requestAccounts' });
+                web3 = new Web3(provider);
+                const accounts = await web3.eth.getAccounts();
+                const account = accounts[0];
+                console.log("Connected account:", account);
+            } else {
+                console.error("MetaMask not installed.");
+            }
+        } catch (e) {
+            console.error("Could not connect to wallet:", e);
+        }
+    }
+
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    console.log("Event listener added to Connect Wallet button.");
+    
+    document.getElementById('publishStory').addEventListener('click', async function() {
         console.log("Submitting story...");
         const title = document.getElementById('title').value;
         const summary = document.getElementById('summary').value;
         const fullArticle = document.getElementById('fullArticle').value;
         const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
         console.log("News content:", newsContent);
-        
+
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
         const contractABI = [
             {
@@ -95,18 +99,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 "type": "function"
             }
         ];
-        const contract = new ethers.Contract(contractAddress, contractABI, signer);
+        const contract = new web3.eth.Contract(contractABI, contractAddress);
 
-        const encodedData = ethers.utils.defaultAbiCoder.encode(['string'], [newsContent]);
-        const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", encodedData]);
-        const queryID = ethers.utils.keccak256(queryData);
+        const encodedData = web3.eth.abi.encodeParameter('string', newsContent);
+        const queryData = web3.eth.abi.encodeParameters(['string', 'bytes'], ["StringQuery", encodedData]);
+        const queryID = web3.utils.keccak256(queryData);
         console.log("Query ID:", queryID);
 
-        const nonce = await contract.getNewValueCountbyQueryId(queryID);
+        const nonce = await contract.methods.getNewValueCountbyQueryId(queryID).call();
         console.log("Nonce:", nonce);
 
-        const newsPrefix = ethers.utils.defaultAbiCoder.encode(['string'], ["NEWS"]);
-        const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], [newsPrefix, encodedData]);
+        const newsPrefix = web3.eth.abi.encodeParameter('string', "NEWS");
+        const value = web3.eth.abi.encodeParameters(['string', 'bytes'], [newsPrefix, encodedData]);
 
         console.log("Transaction Parameters:", {
             queryID,
@@ -115,23 +119,21 @@ document.addEventListener('DOMContentLoaded', async function() {
             queryData
         });
 
+        const transactionParameters = {
+            to: contractAddress,
+            from: account,
+            data: contract.methods.submitValue(queryID, value, nonce, queryData).encodeABI(),
+            gas: '2000000',
+            gasPrice: web3.utils.toWei('333333', 'gwei'),
+        };
+
         try {
-            const tx = await signer.sendTransaction({
-                to: contractAddress,
-                data: contract.interface.encodeFunctionData("submitValue", [queryID, value, nonce, queryData]),
-                gasLimit: 2000000,
-                gasPrice: ethers.utils.parseUnits('30', 'gwei')
-            });
-            console.log("Transaction hash:", tx.hash);
+            const txHash = await web3.eth.sendTransaction(transactionParameters);
+            console.log("Transaction hash:", txHash);
         } catch (error) {
             console.error("Transaction failed:", error);
         }
-    }
-
-    // Event listeners
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    console.log("Event listener added to Connect Wallet button.");
-    document.getElementById('publishStory').addEventListener('click', submitStory);
+    });
     console.log("Event listener added to Publish Story button.");
 
     loadNewsFeed();
