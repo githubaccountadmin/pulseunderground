@@ -33,9 +33,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 cacheProvider: false,
                 providerOptions,
             });
-            console.log("Web3Modal initialized.");
+            console.log("Web3Modal initialized successfully.");
         } catch (e) {
-            console.error("Web3Modal initialization failed:", e);
+            console.error("Web3Modal initialization failed. Error details:", e);
             return;
         }
 
