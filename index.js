@@ -61,35 +61,39 @@ document.addEventListener('DOMContentLoaded', async function() {
             for (let tx of data.items) {
                 console.log("Checking transaction:", tx);
 
-                let inputData = tx.input || (tx.decoded_input && tx.decoded_input.raw_input);
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
-                if (inputData && inputData.startsWith(submitValueFunctionHash)) {
-                    console.log("Processing transaction with submitValue function:", inputData);
+                if (decodedParams) {
+                    console.log("Processing transaction with submitValue function:", tx);
 
-                    if (decodedParams) {
-                        try {
-                            const valueParam = decodedParams.find(param => param.name === '_value');
-                            const newsContent = ethers.utils.toUtf8String(valueParam.value);
-                            console.log("Decoded news content:", newsContent);
+                    try {
+                        const queryIdParam = decodedParams.find(param => param.name === '_queryId').value;
+                        const valueParam = decodedParams.find(param => param.name === '_value').value;
+                        const nonceParam = decodedParams.find(param => param.name === '_nonce').value;
+                        const queryDataParam = decodedParams.find(param => param.name === '_queryData').value;
 
-                            const newsFeed = document.getElementById('newsFeed');
-                            const article = document.createElement('article');
-                            article.innerHTML = `
-                                <h3>News</h3>
-                                <p>${newsContent}</p>
-                            `;
-                            newsFeed.appendChild(article);
+                        console.log("Decoded _queryId:", queryIdParam);
+                        console.log("Decoded _value:", ethers.utils.toUtf8String(valueParam));
+                        console.log("Decoded _nonce:", nonceParam.toString());
+                        console.log("Decoded _queryData:", ethers.utils.toUtf8String(queryDataParam));
 
-                            foundValidTransaction = true;
-                        } catch (error) {
-                            console.error("Error decoding parameters:", error);
-                        }
-                    } else {
-                        console.log("No decoded parameters found.");
+                        const newsContent = ethers.utils.toUtf8String(valueParam);
+                        console.log("Decoded news content:", newsContent);
+
+                        const newsFeed = document.getElementById('newsFeed');
+                        const article = document.createElement('article');
+                        article.innerHTML = `
+                            <h3>News</h3>
+                            <p>${newsContent}</p>
+                        `;
+                        newsFeed.appendChild(article);
+
+                        foundValidTransaction = true;
+                    } catch (error) {
+                        console.error("Error decoding parameters:", error);
                     }
                 } else {
-                    console.log("Transaction has no input data:", tx);
+                    console.log("Transaction has no decoded input data:", tx);
                 }
             }
 
