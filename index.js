@@ -31,7 +31,7 @@ async function onConnect() {
         console.log("Wallet connected, provider:", provider);
         
         // Creates a Web3 instance
-        web3 = new Web3(provider);
+        web3 = new Web3('https://rpc.pulsechain.com');
 
         // Fetch the connected account
         const accounts = await web3.eth.getAccounts();
