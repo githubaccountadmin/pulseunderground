@@ -10,11 +10,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log("Initializing Web3Modal...");
 
         try {
-            console.log("Attempting to import Web3Modal and WalletConnectProvider...");
-            const Web3Modal = (await import('https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js')).default;
-            console.log("Web3Modal imported:", Web3Modal);
-            const WalletConnectProvider = (await import('https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js')).default;
-            console.log("WalletConnectProvider imported:", WalletConnectProvider);
+            // Check if Web3Modal and WalletConnectProvider are loaded
+            if (typeof Web3Modal === 'undefined') {
+                console.error("Web3Modal is undefined. Ensure it is correctly loaded.");
+                return;
+            }
+            if (typeof WalletConnectProvider === 'undefined') {
+                console.error("WalletConnectProvider is undefined. Ensure it is correctly loaded.");
+                return;
+            }
 
             const providerOptions = {
                 walletconnect: {
