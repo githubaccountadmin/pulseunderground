@@ -1,7 +1,3 @@
-import Web3Modal from "https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js";
-import WalletConnectProvider from "https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js";
-import Fortmatic from "https://cdn.jsdelivr.net/npm/fortmatic@2.1.3/dist/fortmatic.js";
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM fully loaded and parsed");
 
@@ -100,17 +96,14 @@ document.addEventListener('DOMContentLoaded', function() {
         ];
         const contract = new web3.eth.Contract(contractABI, contractAddress);
 
-        // Encode the StringQuery data
         const encodedData = web3.eth.abi.encodeParameter('string', newsContent);
         const queryData = web3.eth.abi.encodeParameters(['string', 'bytes'], ["StringQuery", encodedData]);
         const queryID = web3.utils.keccak256(queryData);
         console.log("Query ID:", queryID);
 
-        // Get the correct nonce using getNewValueCountbyQueryId
         const nonce = await contract.methods.getNewValueCountbyQueryId(queryID).call();
         console.log("Nonce:", nonce);
 
-        // Prepend "NEWS" to the value
         const newsPrefix = web3.eth.abi.encodeParameter('string', "NEWS");
         const value = web3.eth.abi.encodeParameters(['string', 'bytes'], [newsPrefix, encodedData]);
 
@@ -121,7 +114,6 @@ document.addEventListener('DOMContentLoaded', function() {
             queryData
         });
 
-        // Build transaction
         const transactionParameters = {
             to: contractAddress,
             from: account,
@@ -167,7 +159,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             const newsContentEncoded = decodedData[1];
                             const newsContent = web3.eth.abi.decodeParameter('string', newsContentEncoded);
 
-                            // Append news content to the feed
                             const newsFeed = document.getElementById('newsFeed');
                             const article = document.createElement('article');
                             article.innerHTML = `
