@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const providerOptions = {
             walletconnect: {
-                package: WalletConnectProvider, 
+                package: window.WalletConnectProvider.default, 
                 options: {
                     rpc: {
                         369: "https://rpc.pulsechain.com" // PulseChain RPC
@@ -36,11 +36,16 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("Connect Wallet Button:", connectWalletButton);
 
         if (connectWalletButton) {
-            connectWalletButton.addEventListener('click', onConnect);
+            connectWalletButton.addEventListener('click', async () => {
+                await onConnect();
+            });
             console.log("Event listener added to Connect Wallet button.");
         } else {
             console.error("Connect Wallet button not found.");
         }
+
+        // Load the news feed regardless of wallet connection
+        loadNewsFeed();
     }
 
     async function onConnect() {
@@ -59,6 +64,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function submitStory() {
         console.log("Submitting story...");
+        if (!web3 || !account) {
+            console.error("Wallet not connected. Cannot submit story.");
+            return;
+        }
+
         const title = document.getElementById('title').value;
         const summary = document.getElementById('summary').value;
         const fullArticle = document.getElementById('fullArticle').value;
@@ -132,11 +142,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadNewsFeed() {
         console.log("Loading news feed...");
-        if (!web3) {
-            console.error("Web3 not initialized. Cannot load news feed.");
-            return;
-        }
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
+        const contractABI = [
+            {
+                "inputs": [
+                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                    {"internalType": "bytes", "name": "_value", "type": "bytes"},
+                    {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                    {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
+                ],
+                "name": "submitValue",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
         const contract = new web3.eth.Contract(contractABI, contractAddress);
         const latestBlock = await web3.eth.getBlockNumber();
         console.log("Latest block number:", latestBlock);
@@ -173,5 +193,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     init(); 
-    loadNewsFeed();  
 });
