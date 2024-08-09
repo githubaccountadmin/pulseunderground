@@ -72,38 +72,25 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const nonceParam = decodedParams[2].value;
                         const queryDataParam = decodedParams[3].value;
 
-                        console.log("Decoded _queryId:", queryIdParam);
-                        
-                        // Attempt to decode _value as a string if possible
-                        let decodedValue;
-                        try {
-                            decodedValue = ethers.utils.toUtf8String(valueParam);
-                            console.log("Decoded _value as string:", decodedValue);
-                        } catch (error) {
-                            decodedValue = ethers.BigNumber.from(valueParam).toString();
-                            console.log("Decoded _value as BigNumber:", decodedValue);
-                        }
-
                         // Decode the query data
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded _queryData:", decodedQueryData);
 
-                        // Further decode the bytes in the second element of the array if it's a string
+                        // Only display StringQuery type
                         if (decodedQueryData[0] === "StringQuery") {
-                            decodedQueryData[1] = ethers.utils.toUtf8String(decodedQueryData[1]);
-                        } else if (decodedQueryData[0] === "SpotPrice") {
-                            // Handle SpotPrice differently if needed
+                            const decodedString = ethers.utils.toUtf8String(decodedQueryData[1]);
+                            console.log("Decoded StringQuery data:", decodedString);
+
+                            const newsFeed = document.getElementById('newsFeed');
+                            const article = document.createElement('article');
+                            article.innerHTML = `
+                                <h3>News</h3>
+                                <p>${decodedString}</p>
+                            `;
+                            newsFeed.appendChild(article);
+
+                            foundValidTransaction = true;
                         }
-
-                        const newsFeed = document.getElementById('newsFeed');
-                        const article = document.createElement('article');
-                        article.innerHTML = `
-                            <h3>News</h3>
-                            <p>${decodedQueryData[0]}: ${decodedQueryData[1]} - Value: ${decodedValue}</p>
-                        `;
-                        newsFeed.appendChild(article);
-
-                        foundValidTransaction = true;
                     } catch (error) {
                         console.error("Error decoding parameters:", error);
                     }
