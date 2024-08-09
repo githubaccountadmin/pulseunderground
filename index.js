@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log(typeof ethers !== 'undefined' ? 'Ethers is loaded' : 'Ethers is not loaded');
     console.log("DOM fully loaded and parsed");
+
+    console.log("Ethers object: ", typeof ethers !== 'undefined' ? "Loaded" : "Not loaded");
 
     let provider;
     let signer;
@@ -35,12 +36,31 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
+            const submitValueFunctionHash = ethers.utils.id("submitValue(bytes32,bytes,uint256,bytes)").slice(0, 10);
+            console.log("submitValue function hash:", submitValueFunctionHash);
+
             for (let tx of data.items) {
-                if (tx.method === 'submitValue' && tx.decoded_input) {
-                    console.log("Processing transaction with submitValue function:", tx.decoded_input);
+                if (tx.input && tx.input.startsWith(submitValueFunctionHash)) {
+                    console.log("Processing transaction with submitValue function:", tx.input);
 
                     try {
-                        const newsContent = ethers.utils.toUtf8String(tx.decoded_input.parameters[1].value);
+                        const iface = new ethers.utils.Interface([{
+                            "inputs": [
+                                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                                {"internalType": "bytes", "name": "_value", "type": "bytes"},
+                                {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                                {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
+                            ],
+                            "name": "submitValue",
+                            "outputs": [],
+                            "stateMutability": "nonpayable",
+                            "type": "function"
+                        }]);
+
+                        const decoded = iface.decodeFunctionData('submitValue', tx.input);
+                        console.log("Decoded transaction data:", decoded);
+
+                        const newsContent = ethers.utils.toUtf8String(decoded._value);
                         console.log("Decoded news content:", newsContent);
 
                         const newsFeed = document.getElementById('newsFeed');
@@ -51,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         `;
                         newsFeed.appendChild(article);
                     } catch (error) {
-                        console.error("Error processing transaction input:", error);
+                        console.error("Error decoding transaction input:", error);
                     }
                 } else {
                     console.log("Skipping transaction, not related to submitValue function.");
