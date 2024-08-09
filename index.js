@@ -78,18 +78,22 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const decodedValue = ethers.BigNumber.from(valueParam).toString();
                         console.log("Decoded _value:", decodedValue);
                         
-                        // Decode the query data based on your contract's structure
-                        const decodedQueryData = ethers.utils.defaultAbiCoder.decode(
-                            ['string', 'string', 'string'], 
-                            queryDataParam
-                        );
+                        // Decode the query data
+                        let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded _queryData:", decodedQueryData);
+
+                        // Further decode the bytes in the second element of the array if it's a string
+                        if (decodedQueryData[0] === "StringQuery") {
+                            decodedQueryData[1] = ethers.utils.toUtf8String(decodedQueryData[1]);
+                        } else if (decodedQueryData[0] === "SpotPrice") {
+                            // Handle SpotPrice differently if needed
+                        }
 
                         const newsFeed = document.getElementById('newsFeed');
                         const article = document.createElement('article');
                         article.innerHTML = `
                             <h3>News</h3>
-                            <p>${decodedQueryData[0]}: ${decodedValue}</p>
+                            <p>${decodedQueryData[0]}: ${decodedQueryData[1]} - Value: ${decodedValue}</p>
                         `;
                         newsFeed.appendChild(article);
 
