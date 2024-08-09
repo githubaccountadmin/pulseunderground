@@ -7,18 +7,18 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     async function connectWallet() {
         console.log("Connecting to wallet...");
-        try {
-            if (window.ethereum) {
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
                 provider = new ethers.providers.Web3Provider(window.ethereum);
-                await provider.send("eth_requestAccounts", []);
                 signer = provider.getSigner();
                 account = await signer.getAddress();
-                console.log("Connected account:", account);
-            } else {
-                console.error("No Ethereum provider found. Install MetaMask or another wallet.");
+                console.log("Wallet connected. Account:", account);
+            } catch (error) {
+                console.error("Failed to connect wallet:", error);
             }
-        } catch (e) {
-            console.error("Could not connect to wallet:", e);
+        } else {
+            console.error("MetaMask not found. Please install it.");
         }
     }
 
@@ -26,13 +26,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log("Loading news feed...");
 
         const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
-        
+
         try {
             console.log("Fetching data from API:", apiUrl);
             const response = await fetch(apiUrl);
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
+            const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
             const contractABI = [
                 {
                     "inputs": [
@@ -58,16 +59,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                     "type": "function"
                 }
             ];
-            
+
             data.items.forEach(tx => {
                 if (tx.input.startsWith('0x')) {
                     console.log("Decoding transaction input:", tx.input);
-                    const decodedInput = ethers.utils.defaultAbiCoder.decode(
-                        ['bytes32', 'bytes', 'uint256', 'bytes'],
-                        '0x' + tx.input.slice(10)
-                    );
-                    console.log("Decoded input:", decodedInput);
-                    const newsContent = ethers.utils.defaultAbiCoder.decode(['string'], decodedInput[1]);
+                    const iface = new ethers.utils.Interface(contractABI);
+                    const decodedInput = iface.decodeFunctionData('submitValue', tx.input);
+                    const newsContent = ethers.utils.toUtf8String(decodedInput[1]);
                     console.log("Decoded news content:", newsContent);
                     const newsFeed = document.getElementById('newsFeed');
                     const article = document.createElement('article');
@@ -90,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const fullArticle = document.getElementById('fullArticle').value;
         const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
         console.log("News content:", newsContent);
-        
+
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
         const contractABI = [
             {
@@ -117,6 +115,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 "type": "function"
             }
         ];
+
         const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
         const encodedData = ethers.utils.defaultAbiCoder.encode(['string'], [newsContent]);
@@ -133,12 +132,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log("Transaction Parameters:", {
             queryID,
             value,
-            nonce: nonce.toString(),
+            nonce,
             queryData
         });
 
         try {
-            const tx = await contract.submitValue(queryID, value, nonce, queryData, { gasLimit: 2000000 });
+            const tx = await contract.submitValue(queryID, value, nonce, queryData);
             console.log("Transaction hash:", tx.hash);
         } catch (error) {
             console.error("Transaction failed:", error);
