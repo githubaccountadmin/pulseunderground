@@ -53,9 +53,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
-            const submitValueFunctionHash = ethers.utils.id("submitValue(bytes32,bytes,uint256,bytes)").slice(0, 10);
-            console.log("submitValue function hash:", submitValueFunctionHash);
-
             let foundValidTransaction = false;
 
             for (let tx of data.items) {
@@ -75,8 +72,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                         // Only process if it's a StringQuery
                         if (decodedQueryData[0] === "StringQuery") {
-                            // Convert the hex to a string
-                            const decodedString = ethers.utils.toUtf8String(decodedQueryData[1]);
+                            // Handle BigNumber conversion to string
+                            const bigNumberValue = decodedParams[1].value;
+                            const decodedString = ethers.utils.toUtf8String(ethers.BigNumber.from(bigNumberValue).toHexString());
                             console.log("Decoded StringQuery data:", decodedString);
 
                             const newsFeed = document.getElementById('newsFeed');
