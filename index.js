@@ -139,6 +139,15 @@ document.addEventListener('DOMContentLoaded', async function() {
             const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(newsContent)]);
             console.log("Encoded value:", value);
 
+            // Check if we are in the reporter time lock
+            const timeLockDuration = 14400; // example value, you might need to fetch this from your contract
+            const lastReportedTime = await contract.getLastReportedTime(queryId); // example function, adjust based on your contract
+            const currentTime = Math.floor(Date.now() / 1000);
+            if (currentTime < lastReportedTime + timeLockDuration) {
+                console.log("Still in reporter time lock. Please wait before submitting again.");
+                return;
+            }
+
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
             console.log("Estimated gas:", gasEstimate.toString());
 
@@ -148,7 +157,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.log("Transaction sent, hash:", tx.hash);
 
         } catch (error) {
-            console.error("Error submitting story:", error);
+            if (error.code === ethers.errors.UNPREDICTABLE_GAS_LIMIT) {
+                console.error("Gas estimation failed, likely due to reporter time lock or other issues. Error message:", error.message);
+            } else {
+                console.error("Error submitting story:", error);
+            }
         }
     }
 
