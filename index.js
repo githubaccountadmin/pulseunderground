@@ -18,10 +18,25 @@ document.addEventListener('DOMContentLoaded', async function() {
             await provider.send("eth_requestAccounts", []);
             signer = provider.getSigner();
             console.log("Wallet connected, signer:", signer);
+
+            // Save the connection status in localStorage
+            localStorage.setItem('walletConnected', 'true');
+            displayStatusMessage('Wallet connected.', false);
         } catch (e) {
             console.error("Could not connect to wallet:", e);
+            displayStatusMessage('Could not connect to wallet.', true);
         }
     }
+
+    function checkWalletConnection() {
+        const walletConnected = localStorage.getItem('walletConnected');
+        if (walletConnected === 'true') {
+            connectWallet();
+        }
+    }
+
+    // Check wallet connection on page load
+    checkWalletConnection();
 
     async function loadNewsFeed() {
         console.log("Loading news feed...");
