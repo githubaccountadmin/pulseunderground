@@ -1,3 +1,7 @@
+import Web3Modal from "https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js";
+import WalletConnectProvider from "https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js";
+import Fortmatic from "https://cdn.jsdelivr.net/npm/fortmatic@2.1.3/dist/fortmatic.js";
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM fully loaded and parsed");
 
@@ -9,7 +13,20 @@ document.addEventListener('DOMContentLoaded', function() {
     async function init() {
         console.log("Initializing Web3Modal...");
         
-        const providerOptions = {};
+        const providerOptions = {
+            walletconnect: {
+                package: WalletConnectProvider, 
+                options: {
+                    infuraId: "INFURA_ID"
+                }
+            },
+            fortmatic: {
+                package: Fortmatic, 
+                options: {
+                    key: "FORTMATIC_KEY"
+                }
+            }
+        };
 
         try {
             web3Modal = new Web3Modal({
@@ -67,59 +84,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 "name": "submitValue",
                 "outputs": [],
                 "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "anonymous": False,
-                "inputs": [
-                    {"indexed": True, "internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-                    {"indexed": True, "internalType": "uint256", "name": "_time", "type": "uint256"},
-                    {"indexed": False, "internalType": "bytes", "name": "_value", "type": "bytes"},
-                    {"indexed": False, "internalType": "uint256", "name": "_nonce", "type": "uint256"},
-                    {"indexed": False, "internalType": "bytes", "name": "_queryData", "type": "bytes"},
-                    {"indexed": True, "internalType": "address", "name": "_reporter", "type": "address"}
-                ],
-                "name": "NewReport",
-                "type": "event"
-            },
-            {
-                "inputs": [
-                    {"internalType": "address", "name": "_reporter", "type": "address"}
-                ],
-                "name": "getReporterLastTimestamp",
-                "outputs": [
-                    {"internalType": "uint256", "name": "", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "reportingLock",
-                "outputs": [
-                    {"internalType": "uint256", "name": "", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "address", "name": "_reporter", "type": "address"}
-                ],
-                "name": "getStakeAmount",
-                "outputs": [
-                    {"internalType": "uint256", "name": "", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "requiredStakeAmount",
-                "outputs": [
-                    {"internalType": "uint256", "name": "", "type": "uint256"}
-                ],
-                "stateMutability": "view",
                 "type": "function"
             },
             {
@@ -220,6 +184,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    init(); // Initialize the Web3Modal and event listeners
-    loadNewsFeed();  // Load news on page load
+    init(); 
+    loadNewsFeed();  
 });
