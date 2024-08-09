@@ -45,7 +45,15 @@
         <p>&copy; 2024 NEWS on Pulse. All rights reserved.</p>
     </footer>
 
-    <!-- Load your custom script after the content -->
+    <script>
+        if (typeof ethers !== 'undefined') {
+            console.log('Ethers object:', ethers);
+        } else {
+            console.log('Ethers object: Not loaded');
+        }
+    </script>
+
+    <!-- Ensure this script runs after ethers.js -->
     <script src="index.js" defer></script>
 </body>
 </html>
