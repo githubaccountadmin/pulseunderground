@@ -73,18 +73,20 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const queryDataParam = decodedParams[3].value;
 
                         console.log("Decoded _queryId:", queryIdParam);
-                        console.log("Decoded _value:", ethers.utils.toUtf8String(valueParam));
-                        console.log("Decoded _nonce:", nonceParam.toString());
-                        console.log("Decoded _queryData:", ethers.utils.toUtf8String(queryDataParam));
-
-                        const newsContent = ethers.utils.toUtf8String(valueParam);
-                        console.log("Decoded news content:", newsContent);
+                        
+                        // Convert hexadecimal string to BigNumber or another appropriate format
+                        const decodedValue = ethers.BigNumber.from(valueParam).toString();
+                        console.log("Decoded _value:", decodedValue);
+                        
+                        // Decode the query data based on your contract's structure
+                        const decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
+                        console.log("Decoded _queryData:", decodedQueryData);
 
                         const newsFeed = document.getElementById('newsFeed');
                         const article = document.createElement('article');
                         article.innerHTML = `
                             <h3>News</h3>
-                            <p>${newsContent}</p>
+                            <p>${decodedQueryData[0]}: ${decodedValue}</p>
                         `;
                         newsFeed.appendChild(article);
 
