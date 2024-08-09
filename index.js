@@ -8,35 +8,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function init() {
         console.log("Initializing Web3Modal...");
-        const providerOptions = {
-            /* Add provider options here, if needed */
-        };
+        
+        const providerOptions = {};
 
-        web3Modal = new Web3Modal({
-            cacheProvider: false,
-            providerOptions,
-        });
-
-        console.log("Web3Modal initialized.");
+        try {
+            web3Modal = new Web3Modal({
+                cacheProvider: false,
+                providerOptions,
+            });
+            console.log("Web3Modal initialized.");
+        } catch (e) {
+            console.error("Web3Modal initialization failed:", e);
+            return;
+        }
 
         const connectWalletButton = document.getElementById('connectWallet');
         console.log("Connect Wallet Button:", connectWalletButton);
-
-        const publishStoryButton = document.getElementById('publishStory');
-        console.log("Publish Story Button exists:", !!publishStoryButton);
 
         if (connectWalletButton) {
             connectWalletButton.addEventListener('click', onConnect);
             console.log("Event listener added to Connect Wallet button.");
         } else {
             console.error("Connect Wallet button not found.");
-        }
-
-        if (publishStoryButton) {
-            publishStoryButton.addEventListener('click', submitStory);
-            console.log("Event listener added to Publish Story button.");
-        } else {
-            console.error("Publish Story button not found.");
         }
     }
 
@@ -45,9 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             provider = await web3Modal.connect();
             console.log("Wallet connected, provider:", provider);
-
             web3 = new Web3(provider);
-
             const accounts = await web3.eth.getAccounts();
             account = accounts[0];
             console.log("Connected account:", account);
@@ -57,18 +48,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function submitStory() {
-        if (!web3 || !account) {
-            console.error("Web3 or account not initialized");
-            return;
-        }
         console.log("Submitting story...");
-
         const title = document.getElementById('title').value;
         const summary = document.getElementById('summary').value;
         const fullArticle = document.getElementById('fullArticle').value;
         const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
         console.log("News content:", newsContent);
-
+        
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
         const contractABI = [
             {
@@ -150,14 +136,17 @@ document.addEventListener('DOMContentLoaded', function() {
         ];
         const contract = new web3.eth.Contract(contractABI, contractAddress);
 
+        // Encode the StringQuery data
         const encodedData = web3.eth.abi.encodeParameter('string', newsContent);
         const queryData = web3.eth.abi.encodeParameters(['string', 'bytes'], ["StringQuery", encodedData]);
         const queryID = web3.utils.keccak256(queryData);
         console.log("Query ID:", queryID);
 
+        // Get the correct nonce using getNewValueCountbyQueryId
         const nonce = await contract.methods.getNewValueCountbyQueryId(queryID).call();
         console.log("Nonce:", nonce);
 
+        // Prepend "NEWS" to the value
         const newsPrefix = web3.eth.abi.encodeParameter('string', "NEWS");
         const value = web3.eth.abi.encodeParameters(['string', 'bytes'], [newsPrefix, encodedData]);
 
@@ -168,6 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
             queryData
         });
 
+        // Build transaction
         const transactionParameters = {
             to: contractAddress,
             from: account,
@@ -184,20 +174,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    document.getElementById('publishStory').addEventListener('click', submitStory);
+    console.log("Event listener added to Publish Story button.");
+
     async function loadNewsFeed() {
         console.log("Loading news feed...");
         if (!web3) {
             console.error("Web3 not initialized. Cannot load news feed.");
             return;
         }
-
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
-        const contractABI = [/* Your ABI here */];
         const contract = new web3.eth.Contract(contractABI, contractAddress);
         const latestBlock = await web3.eth.getBlockNumber();
         console.log("Latest block number:", latestBlock);
 
-        for (let i = latestBlock; i > latestBlock - 100; i--) {
+        for (let i = latestBlock; i > latestBlock - 100; i--) {  // Fetch last 100 blocks
             const block = await web3.eth.getBlock(i, true);
             for (let tx of block.transactions) {
                 if (tx.to === contractAddress) {
@@ -212,6 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const newsContentEncoded = decodedData[1];
                             const newsContent = web3.eth.abi.decodeParameter('string', newsContentEncoded);
 
+                            // Append news content to the feed
                             const newsFeed = document.getElementById('newsFeed');
                             const article = document.createElement('article');
                             article.innerHTML = `
@@ -228,6 +220,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    init();
-    loadNewsFeed();
+    init(); // Initialize the Web3Modal and event listeners
+    loadNewsFeed();  // Load news on page load
 });
