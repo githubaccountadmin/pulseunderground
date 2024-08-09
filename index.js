@@ -21,11 +21,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log("Loading news feed...");
 
         const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
-        
+
         try {
             console.log("Fetching data from API:", apiUrl);
             const response = await fetch(apiUrl);
-            
+
             if (!response.ok) {
                 console.error("Error fetching data, status:", response.status);
                 throw new Error(`API Error: ${response.statusText}`);
@@ -34,10 +34,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
+            const submitValueFunctionHash = ethers.utils.id("submitValue(bytes32,bytes,uint256,bytes)").slice(0, 10);
+            console.log("submitValue function hash:", submitValueFunctionHash);
+
             for (let tx of data.items) {
-                if (tx.input && tx.input.startsWith('0x')) {
-                    console.log("Processing transaction with input:", tx.input);
-                    
+                if (tx.input && tx.input.startsWith(submitValueFunctionHash)) {
+                    console.log("Processing transaction with submitValue function:", tx.input);
+
                     try {
                         const iface = new ethers.utils.Interface([{
                             "inputs": [
@@ -69,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         console.error("Error decoding transaction input:", error);
                     }
                 } else {
-                    console.log("Skipping transaction, no valid input or does not match submitValue function.");
+                    console.log("Skipping transaction, not related to submitValue function.");
                 }
             }
         } catch (error) {
@@ -84,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const fullArticle = document.getElementById('fullArticle').value;
         const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
         console.log("News content to be submitted:", newsContent);
-        
+
         if (!signer) {
             console.error("Wallet not connected. Cannot submit story.");
             return;
