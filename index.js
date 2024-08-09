@@ -67,17 +67,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                     console.log("Found decoded parameters:", decodedParams);
 
                     try {
-                        const queryIdParam = decodedParams[0].value;
-                        const valueParam = decodedParams[1].value;
-                        const nonceParam = decodedParams[2].value;
                         const queryDataParam = decodedParams[3].value;
 
                         // Decode the query data
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded _queryData:", decodedQueryData);
 
-                        // Only display StringQuery type
+                        // Only process if it's a StringQuery
                         if (decodedQueryData[0] === "StringQuery") {
+                            // Convert the hex to a string
                             const decodedString = ethers.utils.toUtf8String(decodedQueryData[1]);
                             console.log("Decoded StringQuery data:", decodedString);
 
