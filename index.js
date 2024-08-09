@@ -1,17 +1,67 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log("DOM fully loaded and parsed");
 
-    let web3Modal;
-    let provider;
-    let web3;
-    let account;
+    const endpoint = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
+
+    // Function to fetch and display the news feed
+    async function loadNewsFeed() {
+        console.log("Loading news feed...");
+        try {
+            const response = await fetch(endpoint);
+            const data = await response.json();
+
+            if (data && data.items && data.items.length > 0) {
+                const newsFeed = document.getElementById('newsFeed');
+                newsFeed.innerHTML = '';  // Clear existing news
+
+                data.items.forEach(tx => {
+                    const input = tx.input;
+
+                    // Filter out non-submitValue transactions
+                    if (input.startsWith('0x') && input.includes('submitValue')) {
+                        const decodedData = decodeSubmitValue(input);
+                        const article = document.createElement('article');
+                        article.innerHTML = `
+                            <h3>${decodedData.queryID}</h3>
+                            <p>${decodedData.value}</p>
+                            <p>Nonce: ${decodedData.nonce}</p>
+                            <p>Data: ${decodedData.queryData}</p>
+                        `;
+                        newsFeed.appendChild(article);
+                    }
+                });
+            } else {
+                console.log("No transactions found.");
+            }
+        } catch (error) {
+            console.error("Error loading news feed:", error);
+        }
+    }
+
+    // Function to decode the input data of submitValue transactions
+    function decodeSubmitValue(input) {
+        const web3 = new Web3();  // Use Web3 to decode
+        const methodId = input.slice(0, 10);  // Method ID for submitValue
+        const params = input.slice(10);  // Remaining part is parameters
+
+        const decodedParams = web3.eth.abi.decodeParameters([
+            'bytes32', 'bytes', 'uint256', 'bytes'
+        ], params);
+
+        return {
+            queryID: decodedParams[0],
+            value: web3.utils.hexToUtf8(decodedParams[1]),
+            nonce: decodedParams[2],
+            queryData: web3.utils.hexToUtf8(decodedParams[3])
+        };
+    }
 
     async function init() {
         console.log("Initializing Web3Modal...");
-
+        
         const providerOptions = {
             walletconnect: {
-                package: window.WalletConnectProvider.default, 
+                package: WalletConnectProvider, 
                 options: {
                     rpc: {
                         369: "https://rpc.pulsechain.com" // PulseChain RPC
@@ -22,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            web3Modal = new window.Web3Modal.default({
+            web3Modal = new Web3Modal({
                 cacheProvider: false,
                 providerOptions,
             });
@@ -36,16 +86,11 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("Connect Wallet Button:", connectWalletButton);
 
         if (connectWalletButton) {
-            connectWalletButton.addEventListener('click', async () => {
-                await onConnect();
-                loadNewsFeed(); // Reload the news feed after wallet connection
-            });
+            connectWalletButton.addEventListener('click', onConnect);
             console.log("Event listener added to Connect Wallet button.");
         } else {
             console.error("Connect Wallet button not found.");
         }
-
-        loadNewsFeed(); // Load the news feed initially
     }
 
     async function onConnect() {
@@ -64,11 +109,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function submitStory() {
         console.log("Submitting story...");
-        if (!web3 || !account) {
-            console.error("Wallet not connected. Cannot submit story.");
-            return;
-        }
-
         const title = document.getElementById('title').value;
         const summary = document.getElementById('summary').value;
         const fullArticle = document.getElementById('fullArticle').value;
@@ -140,62 +180,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
-    async function loadNewsFeed() {
-        console.log("Loading news feed...");
-        if (!web3) {
-            console.error("Web3 not initialized. Cannot load news feed.");
-            return;
-        }
-
-        const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
-        const contractABI = [
-            {
-                "inputs": [
-                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-                    {"internalType": "bytes", "name": "_value", "type": "bytes"},
-                    {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
-                    {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
-                ],
-                "name": "submitValue",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            }
-        ];
-        const contract = new web3.eth.Contract(contractABI, contractAddress);
-        const latestBlock = await web3.eth.getBlockNumber();
-        console.log("Latest block number:", latestBlock);
-
-        for (let i = latestBlock; i > latestBlock - 100; i--) {  // Fetch last 100 blocks
-            const block = await web3.eth.getBlock(i, true);
-            for (let tx of block.transactions) {
-                if (tx.to === contractAddress) {
-                    try {
-                        const txReceipt = await web3.eth.getTransactionReceipt(tx.hash);
-                        const logs = contract.events.NewReport().processReceipt(txReceipt);
-
-                        for (let log of logs) {
-                            const queryData = log.returnValues._queryData;
-                            const decodedData = web3.eth.abi.decodeParameters(['string', 'bytes'], queryData);
-                            const newsPrefix = decodedData[0];
-                            const newsContentEncoded = decodedData[1];
-                            const newsContent = web3.eth.abi.decodeParameter('string', newsContentEncoded);
-
-                            const newsFeed = document.getElementById('newsFeed');
-                            const article = document.createElement('article');
-                            article.innerHTML = `
-                                <h3>${newsPrefix}</h3>
-                                <p>${newsContent}</p>
-                            `;
-                            newsFeed.appendChild(article);
-                        }
-                    } catch (error) {
-                        console.error(`Error processing transaction ${tx.hash}:`, error);
-                    }
-                }
-            }
-        }
-    }
-
     init(); 
+    loadNewsFeed();  
 });
