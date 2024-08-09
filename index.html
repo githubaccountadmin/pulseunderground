@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 
     <!-- Load Ethers.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.4.7/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
 </head>
 <body>
     <header>
@@ -45,15 +45,6 @@
         <p>&copy; 2024 NEWS on Pulse. All rights reserved.</p>
     </footer>
 
-    <script>
-        if (typeof ethers !== 'undefined') {
-            console.log('Ethers object loaded:', ethers);
-        } else {
-            console.log('Ethers object: Not loaded');
-        }
-    </script>
-
-    <!-- Ensure this script runs after ethers.js -->
-    <script src="index.js" defer></script>
+    <script src="index.js"></script>
 </body>
 </html>
