@@ -5,10 +5,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     let signer;
     let contract;
 
-    if (typeof ethers !== 'undefined') {
-        console.log("Ethers object: ", "Loaded");
-    } else {
-        console.log("Ethers object: ", "Not loaded");
+    function displayStatusMessage(message, isError = false) {
+        const statusMessage = document.getElementById('statusMessage');
+        statusMessage.textContent = message;
+        statusMessage.style.color = isError ? 'red' : 'green';
+        statusMessage.style.display = 'block';
     }
 
     async function connectWallet() {
@@ -19,12 +20,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             signer = provider.getSigner();
             console.log("Wallet connected, signer:", signer);
 
-            // Save the connection status in localStorage
             localStorage.setItem('walletConnected', 'true');
-            displayStatusMessage('Wallet connected.', false);
+            displayStatusMessage('Wallet connected.');
         } catch (e) {
-            console.error("Could not connect to wallet:", e);
-            displayStatusMessage('Could not connect to wallet.', true);
+            displayStatusMessage('Could not connect to wallet: ' + e.message, true);
         }
     }
 
@@ -35,7 +34,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Check wallet connection on page load
     checkWalletConnection();
 
     async function loadNewsFeed() {
@@ -57,6 +55,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             const submitValueFunctionHash = ethers.utils.id("submitValue(bytes32,bytes,uint256,bytes)").slice(0, 10);
             console.log("submitValue function hash:", submitValueFunctionHash);
+
+            let foundValidTransaction = false;
 
             for (let tx of data.items) {
                 if (tx.input && tx.input.startsWith(submitValueFunctionHash)) {
@@ -89,15 +89,22 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <p>${newsContent}</p>
                         `;
                         newsFeed.appendChild(article);
+
+                        foundValidTransaction = true;
                     } catch (error) {
                         console.error("Error decoding transaction input:", error);
                     }
                 } else {
-                    console.log("Skipping transaction, not related to submitValue function.");
+                    console.log("Skipping transaction, not related to submitValue function. Transaction input: ", tx.input);
                 }
+            }
+
+            if (!foundValidTransaction) {
+                displayStatusMessage("No valid news stories found.", true);
             }
         } catch (error) {
             console.error("Error loading news feed:", error);
+            displayStatusMessage('Error loading news feed: ' + error.message, true);
         }
     }
 
@@ -109,11 +116,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
         console.log("News content to be submitted:", newsContent);
 
-        const statusMessage = document.getElementById('statusMessage');
-
         if (!signer) {
             console.error("Wallet not connected. Cannot submit story.");
-            statusMessage.textContent = "Error: Wallet not connected.";
             return;
         }
 
@@ -141,17 +145,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 ],
                 "stateMutability": "view",
                 "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
-                ],
-                "name": "isInReporterLock",
-                "outputs": [
-                    {"internalType": "bool", "name": "", "type": "bool"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
             }
         ];
 
@@ -168,30 +161,20 @@ document.addEventListener('DOMContentLoaded', async function() {
             const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(newsContent)]);
             console.log("Encoded value:", value);
 
-            const isLocked = await contract.isInReporterLock(queryId);
-            if (isLocked) {
-                console.log("Still in reporter lock. Cannot submit at this time.");
-                statusMessage.textContent = "Error: Still in reporter lock. Please try again later.";
-                return;
-            }
-
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
             console.log("Estimated gas:", gasEstimate.toString());
 
-            const tx = await contract.submitValue(queryId, value, nonce, queryData, {
-                gasLimit: gasEstimate
-            });
-            console.log("Transaction sent, hash:", tx.hash);
-            statusMessage.textContent = "Story submitted successfully! Transaction hash: " + tx.hash;
+            try {
+                const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
+                displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
+            } catch (error) {
+                console.error("Error submitting story:", error);
+                displayStatusMessage('Error submitting story: ' + error.message, true);
+            }
 
         } catch (error) {
-            if (error.code === ethers.errors.UNPREDICTABLE_GAS_LIMIT) {
-                console.error("Gas estimation failed, likely due to reporter time lock or other issues. Error message:", error.message);
-                statusMessage.textContent = "Error: Gas estimation failed. " + error.message;
-            } else {
-                console.error("Error submitting story:", error);
-                statusMessage.textContent = "Error: Could not submit story. " + error.message;
-            }
+            console.error("Error during story submission process:", error);
+            displayStatusMessage('Error during story submission process: ' + error.message, true);
         }
     }
 
