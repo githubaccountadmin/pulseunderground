@@ -8,7 +8,65 @@
 </head>
 <body>
     <header>
+        <h1>NEWS on Pulse</h1<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEWS on Pulse</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Load Web3.js -->
+    <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.5.0/dist/web3.min.js"></script>
+
+    <!-- Load Web3Modal -->
+    <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js"></script>
+
+    <!-- Load WalletConnectProvider -->
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js"></script>
+
+    <!-- Load Fortmatic -->
+    <script src="https://cdn.jsdelivr.net/npm/fortmatic@2.1.3/dist/fortmatic.js"></script>
+</head>
+<body>
+    <header>
         <h1>NEWS on Pulse</h1>
+        <button id="connectWallet">Connect Wallet</button>
+    </header>
+
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Submit Story</a>
+        <a href="#">About</a>
+    </nav>
+
+    <main>
+        <section id="newsFeed">
+            <h2>Latest News</h2>
+            <!-- News stories will be populated here -->
+        </section>
+
+        <section id="submitStory">
+            <h2>Submit a Story</h2>
+            <input type="text" id="title" placeholder="Title">
+            <input type="text" id="summary" placeholder="Summary">
+            <textarea id="fullArticle" placeholder="Full Article"></textarea>
+            <button id="publishStory">Publish Story</button>
+        </section>
+
+        <aside>
+            <h3>Categories</h3>
+            <!-- Categories and recent stories -->
+        </aside>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 NEWS on Pulse. All rights reserved.</p>
+    </footer>
+
+    <script src="index.js"></script>
+</body>
+</html>
         <button id="connectWallet">Connect Wallet</button>
     </header>
 
