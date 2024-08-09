@@ -10,8 +10,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log("Initializing Web3Modal...");
 
         try {
+            console.log("Attempting to import Web3Modal and WalletConnectProvider...");
             const Web3Modal = (await import('https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js')).default;
+            console.log("Web3Modal imported:", Web3Modal);
             const WalletConnectProvider = (await import('https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js')).default;
+            console.log("WalletConnectProvider imported:", WalletConnectProvider);
 
             const providerOptions = {
                 walletconnect: {
@@ -25,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             };
 
+            console.log("Initializing Web3Modal with provider options...");
             web3Modal = new Web3Modal({
                 cacheProvider: false,
                 providerOptions,
@@ -51,6 +55,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function onConnect() {
         console.log("Connect Wallet button clicked.");
         try {
+            console.log("Connecting to wallet...");
             provider = await web3Modal.connect();
             console.log("Wallet connected, provider:", provider);
             web3 = new Web3(provider);
@@ -68,16 +73,26 @@ document.addEventListener('DOMContentLoaded', async function() {
         const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
         
         try {
+            console.log("Fetching data from API:", apiUrl);
             const response = await fetch(apiUrl);
             const data = await response.json();
+            console.log("Data fetched from API:", data);
+
+            if (!web3) {
+                console.warn("Web3 is not initialized, skipping transaction decoding.");
+                return;
+            }
 
             data.transactions.forEach(tx => {
                 if (tx.input.startsWith('0x')) { // Filter out transactions that are not contract interactions
+                    console.log("Decoding transaction input:", tx.input);
                     const decodedInput = web3.eth.abi.decodeParameters(
                         ['bytes32', 'bytes', 'uint256', 'bytes'],
                         tx.input.slice(10)
                     );
+                    console.log("Decoded input:", decodedInput);
                     const newsContent = web3.eth.abi.decodeParameter('string', decodedInput[1]);
+                    console.log("Decoded news content:", newsContent);
                     const newsFeed = document.getElementById('newsFeed');
                     const article = document.createElement('article');
                     article.innerHTML = `
