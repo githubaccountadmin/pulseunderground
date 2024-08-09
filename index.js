@@ -79,7 +79,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                         console.log("Decoded _value:", decodedValue);
                         
                         // Decode the query data based on your contract's structure
-                        const decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
+                        const decodedQueryData = ethers.utils.defaultAbiCoder.decode(
+                            ['string', 'string', 'string'], 
+                            queryDataParam
+                        );
                         console.log("Decoded _queryData:", decodedQueryData);
 
                         const newsFeed = document.getElementById('newsFeed');
