@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             data.items.forEach(tx => {
-                if (tx.input.startsWith('0x')) { // Filter out transactions that are not contract interactions
+                if (tx.input.startsWith('0x')) {
                     console.log("Decoding transaction input:", tx.input);
                     const decodedInput = web3.eth.abi.decodeParameters(
                         ['bytes32', 'bytes', 'uint256', 'bytes'],
@@ -47,15 +47,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function connectWallet() {
         console.log("Connect Wallet button clicked.");
         try {
-            if (window.ethereum) {
-                provider = window.ethereum;
-                await provider.request({ method: 'eth_requestAccounts' });
-                web3 = new Web3(provider);
-                const accounts = await web3.eth.getAccounts();
-                const account = accounts[0];
+            if (typeof ethers !== 'undefined' && window.ethereum) {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                const signer = provider.getSigner();
+                const account = await signer.getAddress();
                 console.log("Connected account:", account);
+                web3 = new Web3(window.ethereum); // Initialize web3 with the provider
             } else {
-                console.error("MetaMask not installed.");
+                console.error("MetaMask not installed or ethers.js is not loaded.");
             }
         } catch (e) {
             console.error("Could not connect to wallet:", e);
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             from: account,
             data: contract.methods.submitValue(queryID, value, nonce, queryData).encodeABI(),
             gas: '2000000',
-            gasPrice: web3.utils.toWei('333333', 'gwei'),
+            gasPrice: web3.utils.toWei('30', 'gwei'),
         };
 
         try {
