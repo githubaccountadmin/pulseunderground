@@ -1,76 +1,25 @@
 document.addEventListener('DOMContentLoaded', async function() {
     console.log("DOM fully loaded and parsed");
 
-    let web3Modal;
     let provider;
-    let web3;
+    let signer;
     let account;
 
-    async function init() {
-        console.log("Initializing Web3Modal...");
-
-        try {
-            // Check if Web3Modal and WalletConnectProvider are loaded
-            if (typeof Web3Modal === 'undefined') {
-                console.error("Web3Modal is undefined. Ensure it is correctly loaded.");
-                return;
-            }
-            if (typeof WalletConnectProvider === 'undefined') {
-                console.error("WalletConnectProvider is undefined. Ensure it is correctly loaded.");
-                return;
-            }
-
-            const providerOptions = {
-                walletconnect: {
-                    package: WalletConnectProvider,
-                    options: {
-                        rpc: {
-                            369: "https://rpc.pulsechain.com"
-                        },
-                        chainId: 369
-                    }
-                }
-            };
-
-            console.log("Initializing Web3Modal with provider options...");
-            web3Modal = new Web3Modal({
-                cacheProvider: false,
-                providerOptions,
-            });
-            console.log("Web3Modal initialized successfully.");
-        } catch (e) {
-            console.error("Web3Modal initialization failed. Error details:", e);
-            return;
-        }
-
-        const connectWalletButton = document.getElementById('connectWallet');
-        console.log("Connect Wallet Button:", connectWalletButton);
-
-        if (connectWalletButton) {
-            connectWalletButton.addEventListener('click', onConnect);
-            console.log("Event listener added to Connect Wallet button.");
+    // Initialize wallet connection
+    async function connectWallet() {
+        console.log("Connecting to wallet...");
+        if (typeof window.ethereum !== 'undefined') {
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            signer = provider.getSigner();
+            account = await signer.getAddress();
+            console.log("Connected wallet:", account);
         } else {
-            console.error("Connect Wallet button not found.");
-        }
-
-        loadNewsFeed();
-    }
-
-    async function onConnect() {
-        console.log("Connect Wallet button clicked.");
-        try {
-            console.log("Connecting to wallet...");
-            provider = await web3Modal.connect();
-            console.log("Wallet connected, provider:", provider);
-            web3 = new Web3(provider);
-            const accounts = await web3.eth.getAccounts();
-            account = accounts[0];
-            console.log("Connected account:", account);
-        } catch (e) {
-            console.error("Could not get a wallet connection", e);
+            console.error("MetaMask is not installed.");
         }
     }
 
+    // Load news feed
     async function loadNewsFeed() {
         console.log("Loading news feed...");
 
@@ -82,20 +31,20 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
-            if (!web3) {
-                console.warn("Web3 is not initialized, skipping transaction decoding.");
+            if (!provider) {
+                console.warn("Provider is not initialized, skipping transaction decoding.");
                 return;
             }
 
             data.transactions.forEach(tx => {
                 if (tx.input.startsWith('0x')) { // Filter out transactions that are not contract interactions
                     console.log("Decoding transaction input:", tx.input);
-                    const decodedInput = web3.eth.abi.decodeParameters(
+                    const decodedInput = ethers.utils.defaultAbiCoder.decode(
                         ['bytes32', 'bytes', 'uint256', 'bytes'],
-                        tx.input.slice(10)
+                        ethers.utils.hexDataSlice(tx.input, 4)
                     );
                     console.log("Decoded input:", decodedInput);
-                    const newsContent = web3.eth.abi.decodeParameter('string', decodedInput[1]);
+                    const newsContent = ethers.utils.defaultAbiCoder.decode(['string'], decodedInput[1]);
                     console.log("Decoded news content:", newsContent);
                     const newsFeed = document.getElementById('newsFeed');
                     const article = document.createElement('article');
@@ -111,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    // Submit story
     async function submitStory() {
         console.log("Submitting story...");
         const title = document.getElementById('title').value;
@@ -145,18 +95,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 "type": "function"
             }
         ];
-        const contract = new web3.eth.Contract(contractABI, contractAddress);
+        const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-        const encodedData = web3.eth.abi.encodeParameter('string', newsContent);
-        const queryData = web3.eth.abi.encodeParameters(['string', 'bytes'], ["StringQuery", encodedData]);
-        const queryID = web3.utils.keccak256(queryData);
+        const encodedData = ethers.utils.defaultAbiCoder.encode(['string'], [newsContent]);
+        const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", encodedData]);
+        const queryID = ethers.utils.keccak256(queryData);
         console.log("Query ID:", queryID);
 
-        const nonce = await contract.methods.getNewValueCountbyQueryId(queryID).call();
+        const nonce = await contract.getNewValueCountbyQueryId(queryID);
         console.log("Nonce:", nonce);
 
-        const newsPrefix = web3.eth.abi.encodeParameter('string', "NEWS");
-        const value = web3.eth.abi.encodeParameters(['string', 'bytes'], [newsPrefix, encodedData]);
+        const newsPrefix = ethers.utils.defaultAbiCoder.encode(['string'], ["NEWS"]);
+        const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], [newsPrefix, encodedData]);
 
         console.log("Transaction Parameters:", {
             queryID,
@@ -165,24 +115,24 @@ document.addEventListener('DOMContentLoaded', async function() {
             queryData
         });
 
-        const transactionParameters = {
-            to: contractAddress,
-            from: account,
-            data: contract.methods.submitValue(queryID, value, nonce, queryData).encodeABI(),
-            gas: '2000000',
-            gasPrice: web3.utils.toWei('30', 'gwei'),
-        };
-
         try {
-            const txHash = await web3.eth.sendTransaction(transactionParameters);
-            console.log("Transaction hash:", txHash);
+            const tx = await signer.sendTransaction({
+                to: contractAddress,
+                data: contract.interface.encodeFunctionData("submitValue", [queryID, value, nonce, queryData]),
+                gasLimit: 2000000,
+                gasPrice: ethers.utils.parseUnits('30', 'gwei')
+            });
+            console.log("Transaction hash:", tx.hash);
         } catch (error) {
             console.error("Transaction failed:", error);
         }
     }
 
+    // Event listeners
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    console.log("Event listener added to Connect Wallet button.");
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
-    init();
+    loadNewsFeed();
 });
