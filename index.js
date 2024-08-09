@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             ];
 
             data.items.forEach(tx => {
-                if (tx.input.startsWith('0x')) {
+                if (tx.input && tx.input.startsWith('0x')) { // Ensure 'input' field exists and starts with '0x'
                     console.log("Decoding transaction input:", tx.input);
                     const iface = new ethers.utils.Interface(contractABI);
                     const decodedInput = iface.decodeFunctionData('submitValue', tx.input);
@@ -62,6 +62,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <p>${newsContent}</p>
                     `;
                     newsFeed.appendChild(article);
+                } else {
+                    console.log("Skipping transaction without input field:", tx.hash);
                 }
             });
         } catch (error) {
