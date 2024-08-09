@@ -40,25 +40,34 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             data.items.forEach((tx, index) => {
                 console.log(`Processing transaction ${index + 1}:`, tx);
-                if (tx.input && tx.input.startsWith(submitValueMethodId)) {
-                    console.log(`Transaction ${index + 1} matches submitValue method.`);
-                    console.log("Decoding submitValue transaction input:", tx.input);
-                    const decodedInput = ethers.utils.defaultAbiCoder.decode(
-                        ['bytes32', 'bytes', 'uint256', 'bytes'],
-                        ethers.utils.hexDataSlice(tx.input, 4)
-                    );
-                    console.log("Decoded input for transaction", index + 1, ":", decodedInput);
-                    const newsContent = ethers.utils.defaultAbiCoder.decode(['string'], decodedInput[1]);
-                    console.log("Decoded news content for transaction", index + 1, ":", newsContent);
-                    const newsFeed = document.getElementById('newsFeed');
-                    const article = document.createElement('article');
-                    article.innerHTML = `
-                        <h3>News</h3>
-                        <p>${newsContent}</p>
-                    `;
-                    newsFeed.appendChild(article);
+                if (tx.input) {
+                    console.log(`Transaction ${index + 1} input:`, tx.input);
+                    if (tx.input.startsWith(submitValueMethodId)) {
+                        console.log(`Transaction ${index + 1} matches submitValue method.`);
+                        console.log("Decoding submitValue transaction input:", tx.input);
+                        try {
+                            const decodedInput = ethers.utils.defaultAbiCoder.decode(
+                                ['bytes32', 'bytes', 'uint256', 'bytes'],
+                                ethers.utils.hexDataSlice(tx.input, 4)
+                            );
+                            console.log("Decoded input for transaction", index + 1, ":", decodedInput);
+                            const newsContent = ethers.utils.defaultAbiCoder.decode(['string'], decodedInput[1]);
+                            console.log("Decoded news content for transaction", index + 1, ":", newsContent);
+                            const newsFeed = document.getElementById('newsFeed');
+                            const article = document.createElement('article');
+                            article.innerHTML = `
+                                <h3>News</h3>
+                                <p>${newsContent}</p>
+                            `;
+                            newsFeed.appendChild(article);
+                        } catch (decodeError) {
+                            console.error("Error decoding transaction input:", decodeError);
+                        }
+                    } else {
+                        console.log(`Transaction ${index + 1} does not match submitValue method.`);
+                    }
                 } else {
-                    console.log(`Transaction ${index + 1} does not match submitValue method.`);
+                    console.log(`Transaction ${index + 1} has no input field.`);
                 }
             });
         } catch (error) {
