@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function init() {
         console.log("Initializing Web3Modal...");
-        
+
         const providerOptions = {
             walletconnect: {
                 package: window.WalletConnectProvider.default, 
@@ -142,8 +142,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadNewsFeed() {
         console.log("Loading news feed...");
-        if (!window.Web3) {
-            console.error("Web3 not available. Cannot load news feed.");
+        if (!web3) {
+            console.error("Web3 not initialized. Cannot load news feed.");
             return;
         }
 
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 "type": "function"
             }
         ];
-        const contract = new window.Web3.eth.Contract(contractABI, contractAddress);
+        const contract = new web3.eth.Contract(contractABI, contractAddress);
         const latestBlock = await web3.eth.getBlockNumber();
         console.log("Latest block number:", latestBlock);
 
