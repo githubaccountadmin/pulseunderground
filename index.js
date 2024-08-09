@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log(typeof ethers !== 'undefined' ? 'Ethers is loaded' : 'Ethers is not loaded');
     console.log("DOM fully loaded and parsed");
 
     let provider;
