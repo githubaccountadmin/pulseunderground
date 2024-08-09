@@ -1,3 +1,6 @@
+import Web3Modal from "https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js";
+import WalletConnectProvider from "https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js";
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM fully loaded and parsed");
 
@@ -13,13 +16,10 @@ document.addEventListener('DOMContentLoaded', function() {
             walletconnect: {
                 package: WalletConnectProvider, 
                 options: {
-                    infuraId: "INFURA_ID"
-                }
-            },
-            fortmatic: {
-                package: Fortmatic, 
-                options: {
-                    key: "FORTMATIC_KEY"
+                    rpc: {
+                        369: "https://rpc.pulsechain.com" // PulseChain RPC
+                    },
+                    chainId: 369
                 }
             }
         };
