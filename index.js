@@ -38,14 +38,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (connectWalletButton) {
             connectWalletButton.addEventListener('click', async () => {
                 await onConnect();
+                loadNewsFeed(); // Reload the news feed after wallet connection
             });
             console.log("Event listener added to Connect Wallet button.");
         } else {
             console.error("Connect Wallet button not found.");
         }
 
-        // Load the news feed regardless of wallet connection
-        loadNewsFeed();
+        loadNewsFeed(); // Load the news feed initially
     }
 
     async function onConnect() {
@@ -142,6 +142,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadNewsFeed() {
         console.log("Loading news feed...");
+        if (!window.Web3) {
+            console.error("Web3 not available. Cannot load news feed.");
+            return;
+        }
+
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
         const contractABI = [
             {
@@ -157,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 "type": "function"
             }
         ];
-        const contract = new web3.eth.Contract(contractABI, contractAddress);
+        const contract = new window.Web3.eth.Contract(contractABI, contractAddress);
         const latestBlock = await web3.eth.getBlockNumber();
         console.log("Latest block number:", latestBlock);
 
