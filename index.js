@@ -94,8 +94,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
         console.log("News content to be submitted:", newsContent);
 
+        const statusMessage = document.getElementById('statusMessage');
+
         if (!signer) {
             console.error("Wallet not connected. Cannot submit story.");
+            statusMessage.textContent = "Error: Wallet not connected.";
             return;
         }
 
@@ -153,6 +156,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             const isLocked = await contract.isInReporterLock(queryId);
             if (isLocked) {
                 console.log("Still in reporter lock. Cannot submit at this time.");
+                statusMessage.textContent = "Error: Still in reporter lock. Please try again later.";
                 return;
             }
 
@@ -163,12 +167,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 gasLimit: gasEstimate
             });
             console.log("Transaction sent, hash:", tx.hash);
+            statusMessage.textContent = "Story submitted successfully! Transaction hash: " + tx.hash;
 
         } catch (error) {
             if (error.code === ethers.errors.UNPREDICTABLE_GAS_LIMIT) {
                 console.error("Gas estimation failed, likely due to reporter time lock or other issues. Error message:", error.message);
+                statusMessage.textContent = "Error: Gas estimation failed. " + error.message;
             } else {
                 console.error("Error submitting story:", error);
+                statusMessage.textContent = "Error: Could not submit story. " + error.message;
             }
         }
     }
