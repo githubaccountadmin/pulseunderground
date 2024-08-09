@@ -59,43 +59,50 @@ document.addEventListener('DOMContentLoaded', async function() {
             let foundValidTransaction = false;
 
             for (let tx of data.items) {
-                if (tx.input && tx.input.startsWith(submitValueFunctionHash)) {
-                    console.log("Processing transaction with submitValue function:", tx.input);
+                console.log("Checking transaction:", tx);
 
-                    try {
-                        const iface = new ethers.utils.Interface([{
-                            "inputs": [
-                                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-                                {"internalType": "bytes", "name": "_value", "type": "bytes"},
-                                {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
-                                {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
-                            ],
-                            "name": "submitValue",
-                            "outputs": [],
-                            "stateMutability": "nonpayable",
-                            "type": "function"
-                        }]);
+                if (tx.input) {
+                    console.log("Transaction input exists:", tx.input);
+                    if (tx.input.startsWith(submitValueFunctionHash)) {
+                        console.log("Processing transaction with submitValue function:", tx.input);
 
-                        const decoded = iface.decodeFunctionData('submitValue', tx.input);
-                        console.log("Decoded transaction data:", decoded);
+                        try {
+                            const iface = new ethers.utils.Interface([{
+                                "inputs": [
+                                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                                    {"internalType": "bytes", "name": "_value", "type": "bytes"},
+                                    {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                                    {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
+                                ],
+                                "name": "submitValue",
+                                "outputs": [],
+                                "stateMutability": "nonpayable",
+                                "type": "function"
+                            }]);
 
-                        const newsContent = ethers.utils.toUtf8String(decoded._value);
-                        console.log("Decoded news content:", newsContent);
+                            const decoded = iface.decodeFunctionData('submitValue', tx.input);
+                            console.log("Decoded transaction data:", decoded);
 
-                        const newsFeed = document.getElementById('newsFeed');
-                        const article = document.createElement('article');
-                        article.innerHTML = `
-                            <h3>News</h3>
-                            <p>${newsContent}</p>
-                        `;
-                        newsFeed.appendChild(article);
+                            const newsContent = ethers.utils.toUtf8String(decoded._value);
+                            console.log("Decoded news content:", newsContent);
 
-                        foundValidTransaction = true;
-                    } catch (error) {
-                        console.error("Error decoding transaction input:", error);
+                            const newsFeed = document.getElementById('newsFeed');
+                            const article = document.createElement('article');
+                            article.innerHTML = `
+                                <h3>News</h3>
+                                <p>${newsContent}</p>
+                            `;
+                            newsFeed.appendChild(article);
+
+                            foundValidTransaction = true;
+                        } catch (error) {
+                            console.error("Error decoding transaction input:", error);
+                        }
+                    } else {
+                        console.log("Skipping transaction, not related to submitValue function. Transaction input: ", tx.input);
                     }
                 } else {
-                    console.log("Skipping transaction, not related to submitValue function. Transaction input: ", tx.input);
+                    console.log("Transaction has no input data:", tx);
                 }
             }
 
