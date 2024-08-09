@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 
     <!-- Load Ethers.js -->
-    <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.4.7/ethers.umd.min.js"></script>
 </head>
 <body>
     <header>
@@ -47,7 +47,7 @@
 
     <script>
         if (typeof ethers !== 'undefined') {
-            console.log('Ethers object:', ethers);
+            console.log('Ethers object loaded:', ethers);
         } else {
             console.log('Ethers object: Not loaded');
         }
