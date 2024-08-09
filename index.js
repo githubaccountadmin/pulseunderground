@@ -36,17 +36,20 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.log("Data fetched from API:", data);
 
             const submitValueMethodId = ethers.utils.id("submitValue(bytes32,bytes,uint256,bytes)").slice(0, 10);
+            console.log("submitValue method ID:", submitValueMethodId);
 
-            data.items.forEach(tx => {
-                if (tx.input && tx.input.startsWith(submitValueMethodId)) { // Filter transactions with submitValue function
+            data.items.forEach((tx, index) => {
+                console.log(`Processing transaction ${index + 1}:`, tx);
+                if (tx.input && tx.input.startsWith(submitValueMethodId)) {
+                    console.log(`Transaction ${index + 1} matches submitValue method.`);
                     console.log("Decoding submitValue transaction input:", tx.input);
                     const decodedInput = ethers.utils.defaultAbiCoder.decode(
                         ['bytes32', 'bytes', 'uint256', 'bytes'],
                         ethers.utils.hexDataSlice(tx.input, 4)
                     );
-                    console.log("Decoded input:", decodedInput);
+                    console.log("Decoded input for transaction", index + 1, ":", decodedInput);
                     const newsContent = ethers.utils.defaultAbiCoder.decode(['string'], decodedInput[1]);
-                    console.log("Decoded news content:", newsContent);
+                    console.log("Decoded news content for transaction", index + 1, ":", newsContent);
                     const newsFeed = document.getElementById('newsFeed');
                     const article = document.createElement('article');
                     article.innerHTML = `
@@ -54,6 +57,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <p>${newsContent}</p>
                     `;
                     newsFeed.appendChild(article);
+                } else {
+                    console.log(`Transaction ${index + 1} does not match submitValue method.`);
                 }
             });
         } catch (error) {
