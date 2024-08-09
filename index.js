@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add event listener for the "Connect Wallet" button
         const connectWalletButton = document.getElementById('connectWallet');
+        console.log("Connect Wallet Button:", connectWalletButton);
+
         if (connectWalletButton) {
             connectWalletButton.addEventListener('click', onConnect);
             console.log("Event listener added to Connect Wallet button.");
@@ -163,6 +165,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Prepend "NEWS" to the value
         const newsPrefix = web3.eth.abi.encodeParameter('string', "NEWS");
         const value = web3.eth.abi.encodeParameters(['string', 'bytes'], [newsPrefix, encodedData]);
+
+        console.log("Transaction Parameters:", {
+            queryID,
+            value,
+            nonce,
+            queryData
+        });
 
         // Build transaction
         const transactionParameters = {
