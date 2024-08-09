@@ -1,15 +1,15 @@
 document.addEventListener('DOMContentLoaded', async function() {
     console.log("DOM fully loaded and parsed");
 
+    let provider;
+    let signer;
+    let contract;
+
     if (typeof ethers !== 'undefined') {
         console.log("Ethers object: ", "Loaded");
     } else {
         console.log("Ethers object: ", "Not loaded");
     }
-
-    let provider;
-    let signer;
-    let contract;
 
     async function connectWallet() {
         console.log("Connect Wallet button clicked.");
@@ -44,8 +44,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.log("submitValue function hash:", submitValueFunctionHash);
 
             for (let tx of data.items) {
-                console.log("Transaction data:", tx);
-
                 if (tx.input && tx.input.startsWith(submitValueFunctionHash)) {
                     console.log("Processing transaction with submitValue function:", tx.input);
 
@@ -66,16 +64,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const decoded = iface.decodeFunctionData('submitValue', tx.input);
                         console.log("Decoded transaction data:", decoded);
 
-                        // Log details of the decoded fields
-                        console.log("Decoded _queryId:", decoded._queryId);
-                        console.log("Decoded _value:", decoded._value);
-                        console.log("Decoded _nonce:", decoded._nonce);
-                        console.log("Decoded _queryData:", decoded._queryData);
-
                         const newsContent = ethers.utils.toUtf8String(decoded._value);
                         console.log("Decoded news content:", newsContent);
 
-                        // Display the news story
                         const newsFeed = document.getElementById('newsFeed');
                         const article = document.createElement('article');
                         article.innerHTML = `
@@ -87,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         console.error("Error decoding transaction input:", error);
                     }
                 } else {
-                    console.log("Skipping transaction, not related to submitValue function. Transaction input:", tx.input);
+                    console.log("Skipping transaction, not related to submitValue function.");
                 }
             }
         } catch (error) {
@@ -148,7 +139,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(newsContent)]);
             console.log("Encoded value:", value);
 
-            const tx = await contract.submitValue(queryId, value, nonce, queryData);
+            const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
+            console.log("Estimated gas:", gasEstimate.toString());
+
+            const tx = await contract.submitValue(queryId, value, nonce, queryData, {
+                gasLimit: gasEstimate
+            });
             console.log("Transaction sent, hash:", tx.hash);
 
         } catch (error) {
