@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let account;
 
     async function connectWallet() {
-        console.log("Connecting to wallet...");
+        console.log("Connect Wallet button clicked.");
         if (typeof window.ethereum !== 'undefined') {
             try {
                 await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 account = await signer.getAddress();
                 console.log("Wallet connected. Account:", account);
             } catch (error) {
-                console.error("Failed to connect wallet:", error);
+                console.error("Could not connect to wallet:", error);
             }
         } else {
             console.error("MetaMask not found. Please install it.");
@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
-            const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
             const contractABI = [
                 {
                     "inputs": [
@@ -45,17 +44,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     "name": "submitValue",
                     "outputs": [],
                     "stateMutability": "nonpayable",
-                    "type": "function"
-                },
-                {
-                    "inputs": [
-                        {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
-                    ],
-                    "name": "getNewValueCountbyQueryId",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "", "type": "uint256"}
-                    ],
-                    "stateMutability": "view",
                     "type": "function"
                 }
             ];
@@ -97,24 +85,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                     {"internalType": "bytes", "name": "_value", "type": "bytes"},
                     {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
                     {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
-                ],
+                    ],
                 "name": "submitValue",
                 "outputs": [],
                 "stateMutability": "nonpayable",
                 "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
-                ],
-                "name": "getNewValueCountbyQueryId",
-                "outputs": [
-                    {"internalType": "uint256", "name": "", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ];
+                }
+            ];
 
         const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
