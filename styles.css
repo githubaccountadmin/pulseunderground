@@ -46,3 +46,28 @@ footer {
     padding: 10px 0;
     margin-top: 20px;
 }
+
+/* New CSS for status message */
+#statusMessage {
+    display: none; /* Hidden by default */
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Success message */
+#statusMessage.success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+/* Error message */
+#statusMessage.error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
