@@ -64,13 +64,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
                 if (decodedParams) {
-                    console.log("Processing transaction with submitValue function:", tx);
+                    console.log("Found decoded parameters:", decodedParams);
 
                     try {
-                        const queryIdParam = decodedParams.find(param => param.name === '_queryId').value;
-                        const valueParam = decodedParams.find(param => param.name === '_value').value;
-                        const nonceParam = decodedParams.find(param => param.name === '_nonce').value;
-                        const queryDataParam = decodedParams.find(param => param.name === '_queryData').value;
+                        const queryIdParam = decodedParams[0].value;
+                        const valueParam = decodedParams[1].value;
+                        const nonceParam = decodedParams[2].value;
+                        const queryDataParam = decodedParams[3].value;
 
                         console.log("Decoded _queryId:", queryIdParam);
                         console.log("Decoded _value:", ethers.utils.toUtf8String(valueParam));
