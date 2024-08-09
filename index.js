@@ -59,10 +59,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             let foundValidTransaction = false;
 
             for (let tx of data.items) {
-                console.log("Transaction object:", tx);
+                console.log("Checking transaction:", tx);
 
-                // Checking for the presence of `input` or `decoded_input` in the transaction object
                 const inputData = tx.input || (tx.decoded_input && tx.decoded_input.raw_input);
+                
                 if (inputData && inputData.startsWith(submitValueFunctionHash)) {
                     console.log("Processing transaction with submitValue function:", inputData);
 
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         console.error("Error decoding transaction input:", error);
                     }
                 } else {
-                    console.log("Skipping transaction, not related to submitValue function. Transaction input: ", inputData);
+                    console.log("Transaction has no input data:", tx);
                 }
             }
 
