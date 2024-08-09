@@ -70,7 +70,84 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("News content:", newsContent);
         
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
-        const contractABI = [/* ABI from your Python script goes here */];
+        const contractABI = [
+            {
+                "inputs": [
+                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                    {"internalType": "bytes", "name": "_value", "type": "bytes"},
+                    {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                    {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
+                ],
+                "name": "submitValue",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "anonymous": False,
+                "inputs": [
+                    {"indexed": True, "internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                    {"indexed": True, "internalType": "uint256", "name": "_time", "type": "uint256"},
+                    {"indexed": False, "internalType": "bytes", "name": "_value", "type": "bytes"},
+                    {"indexed": False, "internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                    {"indexed": False, "internalType": "bytes", "name": "_queryData", "type": "bytes"},
+                    {"indexed": True, "internalType": "address", "name": "_reporter", "type": "address"}
+                ],
+                "name": "NewReport",
+                "type": "event"
+            },
+            {
+                "inputs": [
+                    {"internalType": "address", "name": "_reporter", "type": "address"}
+                ],
+                "name": "getReporterLastTimestamp",
+                "outputs": [
+                    {"internalType": "uint256", "name": "", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "reportingLock",
+                "outputs": [
+                    {"internalType": "uint256", "name": "", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"internalType": "address", "name": "_reporter", "type": "address"}
+                ],
+                "name": "getStakeAmount",
+                "outputs": [
+                    {"internalType": "uint256", "name": "", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "requiredStakeAmount",
+                "outputs": [
+                    {"internalType": "uint256", "name": "", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
+                ],
+                "name": "getNewValueCountbyQueryId",
+                "outputs": [
+                    {"internalType": "uint256", "name": "", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
         const contract = new web3.eth.Contract(contractABI, contractAddress);
 
         // Encode the StringQuery data
