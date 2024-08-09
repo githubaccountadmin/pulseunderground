@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
-                if (decodedParams) {
+                if (decodedParams && decodedParams.length >= 4) {
                     console.log("Found decoded parameters:", decodedParams);
 
                     try {
@@ -72,9 +72,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                         // Only process if it's a StringQuery
                         if (decodedQueryData[0] === "StringQuery") {
-                            // Handle BigNumber conversion to string
-                            const bigNumberValue = ethers.BigNumber.from(decodedParams[1].value);
-                            const decodedString = ethers.utils.toUtf8String(bigNumberValue.toHexString());
+                            // Decode the string content from the bytes
+                            const decodedString = ethers.utils.toUtf8String(decodedQueryData[1]);
                             console.log("Decoded StringQuery data:", decodedString);
 
                             const newsFeed = document.getElementById('newsFeed');
@@ -91,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         console.error("Error decoding parameters:", error);
                     }
                 } else {
-                    console.log("Transaction has no decoded input data:", tx);
+                    console.log("Transaction has no or insufficient decoded input data:", tx);
                 }
             }
 
