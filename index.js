@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM fully loaded and parsed");
 
+    // Check if the elements exist
+    console.log("Checking for elements in the DOM...");
+    console.log("Connect Wallet Button exists:", document.getElementById('connectWallet') !== null);
+    console.log("Publish Story Button exists:", document.getElementById('publishStory') !== null);
+    
     // Initialize Web3Modal
     let web3Modal;
     let provider;
