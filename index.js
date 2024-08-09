@@ -74,10 +74,16 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                         console.log("Decoded _queryId:", queryIdParam);
                         
-                        // Convert hexadecimal string to BigNumber or another appropriate format
-                        const decodedValue = ethers.BigNumber.from(valueParam).toString();
-                        console.log("Decoded _value:", decodedValue);
-                        
+                        // Attempt to decode _value as a string if possible
+                        let decodedValue;
+                        try {
+                            decodedValue = ethers.utils.toUtf8String(valueParam);
+                            console.log("Decoded _value as string:", decodedValue);
+                        } catch (error) {
+                            decodedValue = ethers.BigNumber.from(valueParam).toString();
+                            console.log("Decoded _value as BigNumber:", decodedValue);
+                        }
+
                         // Decode the query data
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded _queryData:", decodedQueryData);
