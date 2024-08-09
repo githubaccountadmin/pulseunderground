@@ -1,7 +1,4 @@
-import Web3Modal from "https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js";
-import WalletConnectProvider from "https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js";
-
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log("DOM fully loaded and parsed");
 
     let web3Modal;
@@ -12,19 +9,22 @@ document.addEventListener('DOMContentLoaded', function() {
     async function init() {
         console.log("Initializing Web3Modal...");
 
-        const providerOptions = {
-            walletconnect: {
-                package: WalletConnectProvider,
-                options: {
-                    rpc: {
-                        369: "https://rpc.pulsechain.com" // PulseChain RPC
-                    },
-                    chainId: 369
-                }
-            }
-        };
-
         try {
+            const Web3Modal = (await import('https://cdn.jsdelivr.net/npm/web3modal@1.9.0/dist/index.min.js')).default;
+            const WalletConnectProvider = (await import('https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js')).default;
+
+            const providerOptions = {
+                walletconnect: {
+                    package: WalletConnectProvider,
+                    options: {
+                        rpc: {
+                            369: "https://rpc.pulsechain.com"
+                        },
+                        chainId: 369
+                    }
+                }
+            };
+
             web3Modal = new Web3Modal({
                 cacheProvider: false,
                 providerOptions,
@@ -62,6 +62,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    async function loadNewsFeed() {
+        console.log("Loading news feed...");
+
+        const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
+        
+        try {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+
+            data.transactions.forEach(tx => {
+                if (tx.input.startsWith('0x')) { // Filter out transactions that are not contract interactions
+                    const decodedInput = web3.eth.abi.decodeParameters(
+                        ['bytes32', 'bytes', 'uint256', 'bytes'],
+                        tx.input.slice(10)
+                    );
+                    const newsContent = web3.eth.abi.decodeParameter('string', decodedInput[1]);
+                    const newsFeed = document.getElementById('newsFeed');
+                    const article = document.createElement('article');
+                    article.innerHTML = `
+                        <h3>News</h3>
+                        <p>${newsContent}</p>
+                    `;
+                    newsFeed.appendChild(article);
+                }
+            });
+        } catch (error) {
+            console.error("Error loading news feed:", error);
+        }
+    }
+
     async function submitStory() {
         console.log("Submitting story...");
         const title = document.getElementById('title').value;
@@ -69,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const fullArticle = document.getElementById('fullArticle').value;
         const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
         console.log("News content:", newsContent);
-
+        
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
         const contractABI = [
             {
@@ -134,36 +164,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
-
-    async function loadNewsFeed() {
-        console.log("Loading news feed...");
-
-        const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
-        
-        try {
-            const response = await fetch(apiUrl);
-            const data = await response.json();
-
-            data.transactions.forEach(tx => {
-                if (tx.input.startsWith('0x')) { // Filter out transactions that are not contract interactions
-                    const decodedInput = web3.eth.abi.decodeParameters(
-                        ['bytes32', 'bytes', 'uint256', 'bytes'],
-                        tx.input.slice(10)
-                    );
-                    const newsContent = web3.eth.abi.decodeParameter('string', decodedInput[1]);
-                    const newsFeed = document.getElementById('newsFeed');
-                    const article = document.createElement('article');
-                    article.innerHTML = `
-                        <h3>News</h3>
-                        <p>${newsContent}</p>
-                    `;
-                    newsFeed.appendChild(article);
-                }
-            });
-        } catch (error) {
-            console.error("Error loading news feed:", error);
-        }
-    }
 
     init();
 });
