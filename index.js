@@ -73,8 +73,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         // Only process if it's a StringQuery
                         if (decodedQueryData[0] === "StringQuery") {
                             // Handle BigNumber conversion to string
-                            const bigNumberValue = decodedParams[1].value;
-                            const decodedString = ethers.utils.toUtf8String(ethers.BigNumber.from(bigNumberValue).toHexString());
+                            const bigNumberValue = ethers.BigNumber.from(decodedParams[1].value);
+                            const decodedString = ethers.utils.toUtf8String(bigNumberValue.toHexString());
                             console.log("Decoded StringQuery data:", decodedString);
 
                             const newsFeed = document.getElementById('newsFeed');
