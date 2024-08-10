@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     let provider;
     let signer;
     let contract;
+    let currentPage = 1;  // Page counter for pagination
+    let isLoading = false;  // Flag to prevent multiple simultaneous loads
+    let noMoreTransactions = false;  // Flag to stop fetching when no more data is available
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
@@ -37,9 +40,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     checkWalletConnection();
 
     async function loadNewsFeed() {
-        console.log("Loading news feed...");
+        if (isLoading || noMoreTransactions) return; // Prevents loading if already loading or no more transactions are available
 
-        const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
+        isLoading = true;
+        console.log("Loading news feed, page:", currentPage);
+
+        const apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&page=${currentPage}`;
 
         try {
             console.log("Fetching data from API:", apiUrl);
@@ -95,12 +101,19 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
 
-            if (!foundValidTransaction) {
-                displayStatusMessage("No valid news stories found.", true);
+            if (!foundValidTransaction && data.items.length === 0) {
+                noMoreTransactions = true; // No more transactions to load
+                displayStatusMessage("No more transactions to load.", true);
+            } else if (!foundValidTransaction) {
+                currentPage++; // Load the next page
+                loadNewsFeed(); // Automatically load the next batch
             }
+
         } catch (error) {
             console.error("Error loading news feed:", error);
             displayStatusMessage('Error loading news feed: ' + error.message, true);
+        } finally {
+            isLoading = false;
         }
     }
 
@@ -174,11 +187,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    function detectScrollForMore() {
+        window.addEventListener('scroll', () => {
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+                loadNewsFeed(); // Automatically load more content when near the bottom
+            }
+        });
+    }
+
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     console.log("Event listener added to Connect Wallet button.");
 
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
-    loadNewsFeed();
+    detectScrollForMore();  // Initialize scroll detection
+    loadNewsFeed();  // Initial load
 });
