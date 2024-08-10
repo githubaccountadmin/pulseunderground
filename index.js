@@ -65,26 +65,25 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     try {
                         const queryDataParam = decodedParams[3].value;
-
+                    
                         // Decode the query data
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded _queryData:", decodedQueryData);
-
-                        // Process both StringQuery and SpotPrice
-                        const queryType = decodedQueryData[0];
-                        if (queryType === "StringQuery" || queryType === "SpotPrice") {
+                    
+                        // Only process if it's a StringQuery
+                        if (decodedQueryData[0] === "StringQuery") {
                             // Decode the string content from the bytes
                             const decodedString = ethers.utils.toUtf8String(decodedQueryData[1]);
-                            console.log(`Decoded ${queryType} data:`, decodedString);
-
+                            console.log("Decoded StringQuery data:", decodedString);
+                    
                             const newsFeed = document.getElementById('newsFeed');
                             const article = document.createElement('article');
                             article.innerHTML = `
-                                <h3>${queryType}</h3>
+                                <h3>News</h3>
                                 <p>${decodedString}</p>
                             `;
                             newsFeed.appendChild(article);
-
+                    
                             foundValidTransaction = true;
                         }
                     } catch (error) {
