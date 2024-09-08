@@ -24,21 +24,17 @@ nav a {
 }
 
 main {
-    display: flex;
+    display: block; /* Change from flex to block */
     padding: 20px;
 }
 
 #newsFeed {
-    flex: 2;
-    margin-right: 20px;
+    margin-bottom: 20px; /* Add some spacing at the bottom */
 }
 
-aside {
-    flex: 1;
-    background: #ddd;
-    padding: 10px;
-}
+/* Removed aside styling */
 
+/* Footer styling */
 footer {
     background: #333;
     color: #fff;
@@ -47,9 +43,9 @@ footer {
     margin-top: 20px;
 }
 
-/* New CSS for status message */
+/* Status message styling */
 #statusMessage {
-    display: none; /* Hidden by default */
+    display: none;
     margin: 10px 0;
     padding: 10px;
     border: 1px solid transparent;
