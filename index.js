@@ -67,6 +67,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             signer = provider.getSigner();
             console.log("Wallet connected, signer:", signer);
 
+            // Initialize the contract after the wallet is connected
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
+
             displayStatusMessage('Wallet connected.');
         } catch (e) {
             displayStatusMessage('Could not connect to wallet: ' + e.message, true);
@@ -235,24 +238,26 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Close the modal when the user clicks the close button
-    document.querySelector('.close').addEventListener('click', function() {
-        document.getElementById('lockModal').style.display = 'none';
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    console.log("Event listener added to Connect Wallet button.");
+
+    // Correct event listener only added to the report button, not the text box
+    document.getElementById('publishStory').addEventListener('click', submitStory);
+    console.log("Event listener added to Publish Story button.");
+
+    // Modal close functionality
+    const modal = document.getElementById('lockModal');
+    const closeModalButton = document.getElementById('closeModal');
+    closeModalButton.addEventListener('click', function() {
+        modal.style.display = 'none';
     });
 
-    // When the user clicks anywhere outside of the modal, close it
+    // Close modal when clicking outside
     window.addEventListener('click', function(event) {
-        const modal = document.getElementById('lockModal');
         if (event.target === modal) {
             modal.style.display = 'none';
         }
     });
-
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    console.log("Event listener added to Connect Wallet button.");
-
-    document.getElementById('publishStory').addEventListener('click', submitStory);
-    console.log("Event listener added to Publish Story button.");
 
     loadNewsFeed();
 });
