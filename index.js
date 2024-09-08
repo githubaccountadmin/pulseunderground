@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    async function loadNewsFeed() {
+    async function newsFeed() {
         console.log("Loading news feed...");
 
         const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
