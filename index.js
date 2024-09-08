@@ -49,6 +49,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             ],
             "stateMutability": "view",
             "type": "function"
+        },
+        {
+            "inputs": [
+                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                {"internalType": "uint256", "name": "_index", "type": "uint256"}
+            ],
+            "name": "getReportTimestamp",
+            "outputs": [
+                {"internalType": "uint256", "name": "", "type": "uint256"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
         }
     ];
 
@@ -66,9 +78,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             await provider.send("eth_requestAccounts", []);
             signer = provider.getSigner();
             console.log("Wallet connected, signer:", signer);
-
-            // Initialize the contract after the wallet is connected
-            contract = new ethers.Contract(contractAddress, contractABI, signer);
 
             displayStatusMessage('Wallet connected.');
         } catch (e) {
@@ -153,16 +162,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log("Checking if reporter is locked...");
 
         try {
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
             const reporterAddress = await signer.getAddress();
 
             // Fetch the reporter's last timestamp (when they last reported)
             const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
 
-            // Fetch the reporting lock duration (in seconds)
+            // Fetch the reporting lock duration (in seconds or blocks)
             const reportingLock = await contract.getReportingLock();
 
             // Get the current time in seconds
-            const currentTime = Math.floor(Date.now() / 1000);
+            const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
 
             // Calculate the time difference
             const timeSinceLastReport = currentTime - lastReportTimestamp;
@@ -174,13 +184,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const seconds = remainingLockTime % 60;
 
                 console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
-
-                // Show modal with lock time
-                const modal = document.getElementById('lockModal');
-                const lockMessage = document.getElementById('lockMessage');
-                lockMessage.textContent = `Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`;
-                modal.style.display = 'block';
-
+                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
                 return false;
             } else {
                 console.log('Reporter is unlocked.');
@@ -188,6 +192,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         } catch (error) {
             console.error('Error checking reporter lock status:', error);
+            return false;
         }
     }
 
@@ -241,23 +246,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     console.log("Event listener added to Connect Wallet button.");
 
-    // Correct event listener only added to the report button, not the text box
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
-
-    // Modal close functionality
-    const modal = document.getElementById('lockModal');
-    const closeModalButton = document.getElementById('closeModal');
-    closeModalButton.addEventListener('click', function() {
-        modal.style.display = 'none';
-    });
-
-    // Close modal when clicking outside
-    window.addEventListener('click', function(event) {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
 
     loadNewsFeed();
 });
