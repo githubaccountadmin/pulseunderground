@@ -5,6 +5,53 @@ document.addEventListener('DOMContentLoaded', async function() {
     let signer;
     let contract;
 
+    const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
+    const contractABI = [
+        {
+            "inputs": [
+                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                {"internalType": "bytes", "name": "_value", "type": "bytes"},
+                {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
+            ],
+            "name": "submitValue",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
+            ],
+            "name": "getNewValueCountbyQueryId",
+            "outputs": [
+                {"internalType": "uint256", "name": "", "type": "uint256"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {"internalType": "address", "name": "_reporter", "type": "address"}
+            ],
+            "name": "getReporterLastTimestamp",
+            "outputs": [
+                {"internalType": "uint256", "name": "", "type": "uint256"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getReportingLock",
+            "outputs": [
+                {"internalType": "uint256", "name": "", "type": "uint256"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        }
+    ];
+
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
         statusMessage.textContent = message;
@@ -99,7 +146,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Function to check if reporter is locked
     async function checkIfReporterLocked() {
         console.log("Checking if reporter is locked...");
 
@@ -112,30 +158,14 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Fetch the reporting lock duration (in seconds or blocks)
             const reportingLock = await contract.getReportingLock();
 
-            // Fetch the staked amount for the reporter
-            const stakerInfo = await contract.getStakerInfo(reporterAddress);
-            const reporterStake = stakerInfo[0]; // Assuming first return value is stake
-
-            // Fetch the minimum stake required to report
-            const minimumStake = await contract.minimumStakeAmount();
-
-            // Calculate the adjusted lock period based on the reporter's stake
-            let lockPeriodMultiplier = 1;
-            if (reporterStake.gt(minimumStake)) {
-                lockPeriodMultiplier = minimumStake.div(reporterStake);
-            }
-
-            // Adjust the lock period based on the stake
-            const adjustedLockPeriod = reportingLock.mul(lockPeriodMultiplier);
-
-            // Get the current timestamp or block number
+            // Get the current time in seconds
             const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
 
-            // Calculate how long the reporter is locked for
+            // Calculate the time difference
             const timeSinceLastReport = currentTime - lastReportTimestamp;
-            const remainingLockTime = adjustedLockPeriod.sub(timeSinceLastReport);
 
-            if (remainingLockTime.gt(0)) {
+            if (timeSinceLastReport < reportingLock) {
+                const remainingLockTime = reportingLock - timeSinceLastReport;
                 const hours = Math.floor(remainingLockTime / 3600);
                 const minutes = Math.floor((remainingLockTime % 3600) / 60);
                 const seconds = remainingLockTime % 60;
@@ -163,61 +193,34 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
 
-        const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
-        const contractABI = [
-            {
-                "inputs": [
-                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-                    {"internalType": "bytes", "name": "_value", "type": "bytes"},
-                    {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
-                    {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
-                ],
-                "name": "submitValue",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
-                ],
-                "name": "getNewValueCountbyQueryId",
-                "outputs": [
-                    {"internalType": "uint256", "name": "", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ];
+        const isUnlocked = await checkIfReporterLocked();
+        if (!isUnlocked) {
+            displayStatusMessage('Reporter is still locked. Please wait until unlocked.', true);
+            return;
+        }
 
         try {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-            const canReport = await checkIfReporterLocked();
+            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
+            const queryId = ethers.utils.keccak256(queryData);
+            console.log("Generated query ID:", queryId);
 
-            if (canReport) {
-                const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
-                const queryId = ethers.utils.keccak256(queryData);
-                console.log("Generated query ID:", queryId);
+            const nonce = await contract.getNewValueCountbyQueryId(queryId);
+            console.log("Current nonce:", nonce);
 
-                const nonce = await contract.getNewValueCountbyQueryId(queryId);
-                console.log("Current nonce:", nonce);
+            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
+            console.log("Encoded value:", value);
 
-                const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
-                console.log("Encoded value:", value);
+            const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
+            console.log("Estimated gas:", gasEstimate.toString());
 
-                const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
-                console.log("Estimated gas:", gasEstimate.toString());
-
-                try {
-                    const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
-                    displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
-                } catch (error) {
-                    console.error("Error submitting story:", error);
-                    displayStatusMessage('Error submitting story: ' + error.message, true);
-                }
-            } else {
-                displayStatusMessage('Reporter is locked and cannot submit a story at this time.', true);
+            try {
+                const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
+                displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
+            } catch (error) {
+                console.error("Error submitting story:", error);
+                displayStatusMessage('Error submitting story: ' + error.message, true);
             }
 
         } catch (error) {
