@@ -56,14 +56,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     try {
                         const queryDataParam = decodedParams[3].value;
 
-                        // Decode the query data
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded query data:", decodedQueryData);
 
                         const reportContentBytes = decodedQueryData[1];
-
-                        // Safely attempt to decode bytes to string
                         let reportContent = '';
+
                         try {
                             reportContent = ethers.utils.toUtf8String(reportContentBytes);
                         } catch (utf8Error) {
@@ -79,11 +77,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                             return;
                         }
 
-                        // Display only the valid report content
                         const article = document.createElement('article');
-                        article.innerHTML = `
-                            <p>${reportContent}</p>
-                        `;
+                        article.innerHTML = `<p>${reportContent}</p>`;
                         newsFeed.appendChild(article);
 
                         foundValidTransaction = true;
@@ -112,12 +107,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (!signer) {
             console.error("Wallet not connected. Cannot submit story.");
             displayStatusMessage('Wallet not connected. Please connect your wallet first.', true);
-            return;
-        }
-
-        if (!reportContent || reportContent.trim() === "") {
-            console.error("Report content is empty.");
-            displayStatusMessage('Report content is required.', true);
             return;
         }
 
@@ -161,26 +150,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
             console.log("Encoded value:", value);
 
-            // Check balance before estimating gas
-            const balance = await signer.getBalance();
-            console.log("Current balance of the account:", ethers.utils.formatEther(balance));
+            // Removed balance check as it's not necessary
 
-            const stakeRequirement = ethers.utils.parseEther('1'); // Example of a 1 ETH stake requirement. Adjust accordingly.
-            if (balance.lt(stakeRequirement)) {
-                displayStatusMessage(`Insufficient balance. You need at least ${ethers.utils.formatEther(stakeRequirement)} ETH to submit a report.`, true);
-                return;
-            }
-
-            let gasEstimate;
-            try {
-                gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
-                console.log("Estimated gas:", gasEstimate.toString());
-            } catch (gasError) {
-                console.error("Gas estimation failed:", gasError);
-                displayStatusMessage('Gas estimation failed: ' + gasError.message, true);
-                // Fallback to a reasonable gas limit if estimation fails
-                gasEstimate = ethers.BigNumber.from("300000");
-            }
+            const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
+            console.log("Estimated gas:", gasEstimate.toString());
 
             try {
                 const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
