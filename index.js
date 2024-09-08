@@ -161,6 +161,16 @@ document.addEventListener('DOMContentLoaded', async function() {
             const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
             console.log("Encoded value:", value);
 
+            // Check balance before estimating gas
+            const balance = await signer.getBalance();
+            console.log("Current balance of the account:", ethers.utils.formatEther(balance));
+
+            const stakeRequirement = ethers.utils.parseEther('1'); // Example of a 1 ETH stake requirement. Adjust accordingly.
+            if (balance.lt(stakeRequirement)) {
+                displayStatusMessage(`Insufficient balance. You need at least ${ethers.utils.formatEther(stakeRequirement)} ETH to submit a report.`, true);
+                return;
+            }
+
             let gasEstimate;
             try {
                 gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
