@@ -7,10 +7,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
-        if (!statusMessage) {
-            console.error("statusMessage element not found!");
-            return;
-        }
         statusMessage.textContent = message;
         statusMessage.style.color = isError ? 'red' : 'green';
         statusMessage.style.display = 'block';
@@ -60,15 +56,21 @@ document.addEventListener('DOMContentLoaded', async function() {
                     try {
                         const queryDataParam = decodedParams[3].value;
 
-                        // Decode the query data (returns a tuple with queryType and report content in bytes)
+                        // Decode the query data
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded query data:", decodedQueryData);
 
-                        // Skip the first part (queryType) and only use the second part (report content)
                         const reportContentBytes = decodedQueryData[1];
-                        
-                        // Convert the report content bytes to a string
-                        const reportContent = ethers.utils.toUtf8String(reportContentBytes);
+
+                        // Safely attempt to decode bytes to string
+                        let reportContent = '';
+                        try {
+                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                        } catch (utf8Error) {
+                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                            reportContent = "<Invalid or non-readable content>";
+                        }
+
                         console.log("Decoded report content:", reportContent);
 
                         const newsFeed = document.getElementById('newsFeed');
@@ -77,7 +79,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             return;
                         }
 
-                        // Display only the report content
+                        // Display only the valid report content
                         const article = document.createElement('article');
                         article.innerHTML = `
                             <p>${reportContent}</p>
@@ -105,11 +107,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function submitStory() {
         console.log("Submitting story...");
         const reportContent = document.getElementById('reportContent').value;
-        if (!reportContent) {
-            console.error("Report content is empty or null.");
-            displayStatusMessage('Please enter a report before submitting.', true);
-            return;
-        }
         console.log("Report content to be submitted:", reportContent);
 
         if (!signer) {
@@ -178,8 +175,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     console.log("Event listener added to Connect Wallet button.");
 
-    document.getElementById('publishStory').addEventListener('click', submitStory);
+    document.getElementById('submitStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
-    loadNewsFeed();  // Now the function name matches
+    loadNewsFeed();
 });
