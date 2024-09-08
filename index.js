@@ -155,11 +155,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Fetch the reporter's last timestamp (when they last reported)
             const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
 
-            // Fetch the reporting lock duration (in seconds or blocks)
+            // Fetch the reporting lock duration (in seconds)
             const reportingLock = await contract.getReportingLock();
 
             // Get the current time in seconds
-            const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+            const currentTime = Math.floor(Date.now() / 1000);
 
             // Calculate the time difference
             const timeSinceLastReport = currentTime - lastReportTimestamp;
@@ -171,7 +171,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const seconds = remainingLockTime % 60;
 
                 console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
-                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+
+                // Show modal with lock time
+                const modal = document.getElementById('lockModal');
+                const lockMessage = document.getElementById('lockMessage');
+                lockMessage.textContent = `Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`;
+                modal.style.display = 'block';
+
                 return false;
             } else {
                 console.log('Reporter is unlocked.');
@@ -229,10 +235,23 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    // Close the modal when the user clicks the close button
+    document.querySelector('.close').addEventListener('click', function() {
+        document.getElementById('lockModal').style.display = 'none';
+    });
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('lockModal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     console.log("Event listener added to Connect Wallet button.");
 
-    document.getElementById('submitStory').addEventListener('click', submitStory);
+    document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
     loadNewsFeed();
