@@ -26,8 +26,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Removed automatic wallet connection check
-
     async function loadNewsFeed() {
         console.log("Loading news feed...");
 
@@ -96,11 +94,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     async function submitStory() {
         console.log("Submitting story...");
-        const title = document.getElementById('title').value;
-        const summary = document.getElementById('summary').value;
-        const fullArticle = document.getElementById('fullArticle').value;
-        const newsContent = `Title: ${title}\nSummary: ${summary}\nFull Article: ${fullArticle}`;
-        console.log("News content to be submitted:", newsContent);
+        const reportContent = document.getElementById('reportContent').value;
+        console.log("Report content to be submitted:", reportContent);
 
         if (!signer) {
             console.error("Wallet not connected. Cannot submit story.");
@@ -138,14 +133,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(newsContent)]);
+            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
             const queryId = ethers.utils.keccak256(queryData);
             console.log("Generated query ID:", queryId);
 
             const nonce = await contract.getNewValueCountbyQueryId(queryId);
             console.log("Current nonce:", nonce);
 
-            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(newsContent)]);
+            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
             console.log("Encoded value:", value);
 
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
@@ -165,7 +160,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Connect wallet only when 'Connect Wallet' button is clicked
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     console.log("Event listener added to Connect Wallet button.");
 
