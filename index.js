@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
+        if (!statusMessage) {
+            console.error("statusMessage element not found!");
+            return;
+        }
         statusMessage.textContent = message;
         statusMessage.style.color = isError ? 'red' : 'green';
         statusMessage.style.display = 'block';
@@ -26,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    async function newsFeed() {
+    async function loadNewsFeed() {
         console.log("Loading news feed...");
 
         const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
@@ -66,6 +70,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                             console.log(`Decoded ${queryType} data:`, decodedString);
 
                             const newsFeed = document.getElementById('newsFeed');
+                            if (!newsFeed) {
+                                console.error("newsFeed element not found!");
+                                return;
+                            }
                             const article = document.createElement('article');
                             article.innerHTML = `
                                 <h3>${queryType}</h3>
@@ -95,6 +103,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function submitStory() {
         console.log("Submitting story...");
         const reportContent = document.getElementById('reportContent').value;
+        if (!reportContent) {
+            console.error("Report content is empty or null.");
+            displayStatusMessage('Please enter a report before submitting.', true);
+            return;
+        }
         console.log("Report content to be submitted:", reportContent);
 
         if (!signer) {
