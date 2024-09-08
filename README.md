@@ -1,1 +1,2 @@
-NEWS on Pulse# news
+The Pulse Underground
+Decentralized, Censorship-Resistant, Real-time News from around the World.
