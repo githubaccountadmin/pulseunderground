@@ -64,25 +64,24 @@ document.addEventListener('DOMContentLoaded', async function() {
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded _queryData:", decodedQueryData);
 
-                        const queryType = decodedQueryData[0];
-                        if (queryType === "StringQuery" || queryType === "SpotPrice") {
-                            const decodedString = ethers.utils.toUtf8String(decodedQueryData[1]);
-                            console.log(`Decoded ${queryType} data:`, decodedString);
+                        // Remove displaying queryType and show only the main report (decodedString)
+                        const decodedString = ethers.utils.toUtf8String(decodedQueryData[1]);
+                        console.log(`Decoded report data:`, decodedString);
 
-                            const newsFeed = document.getElementById('newsFeed');
-                            if (!newsFeed) {
-                                console.error("newsFeed element not found!");
-                                return;
-                            }
-                            const article = document.createElement('article');
-                            article.innerHTML = `
-                                <h3>${queryType}</h3>
-                                <p>${decodedString}</p>
-                            `;
-                            newsFeed.appendChild(article);
-
-                            foundValidTransaction = true;
+                        const newsFeed = document.getElementById('newsFeed');
+                        if (!newsFeed) {
+                            console.error("newsFeed element not found!");
+                            return;
                         }
+                        
+                        // Only display the main decoded report content
+                        const article = document.createElement('article');
+                        article.innerHTML = `
+                            <p>${decodedString}</p>
+                        `;
+                        newsFeed.appendChild(article);
+
+                        foundValidTransaction = true;
                     } catch (error) {
                         console.error("Error decoding parameters:", error);
                     }
@@ -179,5 +178,5 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
-    loadNewsFeed();  // Matches the function name
+    loadNewsFeed();  // Now the function name matches
 });
