@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function () {
     console.log("DOM fully loaded and parsed");
 
     let provider;
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
-                if (decodedParams && decodedParams.length >= 4) {
+                if (decodedParams && decodedParams.length >= 4 && tx.method === 'submitValue') {
                     console.log("Found decoded parameters:", decodedParams);
 
                     try {
@@ -60,38 +60,47 @@ document.addEventListener('DOMContentLoaded', async function() {
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded query data:", decodedQueryData);
 
-                        const reportContentBytes = decodedQueryData[1];
+                        const queryType = decodedQueryData[0];
+                        console.log("Decoded query type:", queryType);
 
-                        // Safely attempt to decode bytes to string
-                        let reportContent = '';
-                        try {
-                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                        } catch (utf8Error) {
-                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                            reportContent = "<Invalid or non-readable content>";
+                        // Only process StringQuery type transactions
+                        if (queryType === "StringQuery") {
+                            const reportContentBytes = decodedQueryData[1];
+
+                            // Safely attempt to decode bytes to string
+                            let reportContent = '';
+                            try {
+                                reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                            } catch (utf8Error) {
+                                console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                                reportContent = "<Invalid or non-readable content>";
+                            }
+
+                            console.log("Decoded report content:", reportContent);
+
+                            const newsFeed = document.getElementById('newsFeed');
+                            if (!newsFeed) {
+                                console.error("newsFeed element not found!");
+                                return;
+                            }
+
+                            // Display only the valid report content
+                            const article = document.createElement('article');
+                            article.innerHTML = `
+                                <p>${reportContent}</p>
+                            `;
+                            newsFeed.appendChild(article);
+
+                            foundValidTransaction = true;
+                        } else {
+                            console.log(`Skipping non-StringQuery transaction of type: ${queryType}`);
                         }
 
-                        console.log("Decoded report content:", reportContent);
-
-                        const newsFeed = document.getElementById('newsFeed');
-                        if (!newsFeed) {
-                            console.error("newsFeed element not found!");
-                            return;
-                        }
-
-                        // Display only the valid report content
-                        const article = document.createElement('article');
-                        article.innerHTML = `
-                            <p>${reportContent}</p>
-                        `;
-                        newsFeed.appendChild(article);
-
-                        foundValidTransaction = true;
                     } catch (error) {
                         console.error("Error decoding parameters:", error);
                     }
                 } else {
-                    console.log("Transaction has no or insufficient decoded input data:", tx);
+                    console.log("Transaction has no or insufficient decoded input data or is not submitValue:", tx);
                 }
             }
 
