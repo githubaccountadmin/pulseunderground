@@ -179,5 +179,5 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
-    loadNewsFeed();
+    loadNewsFeed();  // Matches the function name
 });
