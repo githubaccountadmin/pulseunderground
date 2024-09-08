@@ -20,21 +20,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             signer = provider.getSigner();
             console.log("Wallet connected, signer:", signer);
 
-            localStorage.setItem('walletConnected', 'true');
             displayStatusMessage('Wallet connected.');
         } catch (e) {
             displayStatusMessage('Could not connect to wallet: ' + e.message, true);
         }
     }
 
-    function checkWalletConnection() {
-        const walletConnected = localStorage.getItem('walletConnected');
-        if (walletConnected === 'true') {
-            connectWallet();
-        }
-    }
-
-    checkWalletConnection();
+    // Removed automatic wallet connection check
 
     async function loadNewsFeed() {
         console.log("Loading news feed...");
@@ -70,10 +62,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded _queryData:", decodedQueryData);
 
-                        // Process both StringQuery and SpotPrice
                         const queryType = decodedQueryData[0];
                         if (queryType === "StringQuery" || queryType === "SpotPrice") {
-                            // Decode the string content from the bytes
                             const decodedString = ethers.utils.toUtf8String(decodedQueryData[1]);
                             console.log(`Decoded ${queryType} data:`, decodedString);
 
@@ -114,6 +104,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         if (!signer) {
             console.error("Wallet not connected. Cannot submit story.");
+            displayStatusMessage('Wallet not connected. Please connect your wallet first.', true);
             return;
         }
 
@@ -174,6 +165,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    // Connect wallet only when 'Connect Wallet' button is clicked
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     console.log("Event listener added to Connect Wallet button.");
 
