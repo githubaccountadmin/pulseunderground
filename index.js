@@ -99,6 +99,59 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    // Function to check if reporter is locked
+    async function checkIfReporterLocked() {
+        console.log("Checking if reporter is locked...");
+
+        try {
+            const reporterAddress = await signer.getAddress();
+
+            // Fetch the reporter's last timestamp (when they last reported)
+            const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
+
+            // Fetch the reporting lock duration (in seconds or blocks)
+            const reportingLock = await contract.getReportingLock();
+
+            // Fetch the staked amount for the reporter
+            const stakerInfo = await contract.getStakerInfo(reporterAddress);
+            const reporterStake = stakerInfo[0]; // Assuming first return value is stake
+
+            // Fetch the minimum stake required to report
+            const minimumStake = await contract.minimumStakeAmount();
+
+            // Calculate the adjusted lock period based on the reporter's stake
+            let lockPeriodMultiplier = 1;
+            if (reporterStake.gt(minimumStake)) {
+                lockPeriodMultiplier = minimumStake.div(reporterStake);
+            }
+
+            // Adjust the lock period based on the stake
+            const adjustedLockPeriod = reportingLock.mul(lockPeriodMultiplier);
+
+            // Get the current timestamp or block number
+            const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+
+            // Calculate how long the reporter is locked for
+            const timeSinceLastReport = currentTime - lastReportTimestamp;
+            const remainingLockTime = adjustedLockPeriod.sub(timeSinceLastReport);
+
+            if (remainingLockTime.gt(0)) {
+                const hours = Math.floor(remainingLockTime / 3600);
+                const minutes = Math.floor((remainingLockTime % 3600) / 60);
+                const seconds = remainingLockTime % 60;
+
+                console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+                return false;
+            } else {
+                console.log('Reporter is unlocked.');
+                return true;
+            }
+        } catch (error) {
+            console.error('Error checking reporter lock status:', error);
+        }
+    }
+
     async function submitStory() {
         console.log("Submitting story...");
         const reportContent = document.getElementById('reportContent').value;
@@ -140,27 +193,31 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
-            const queryId = ethers.utils.keccak256(queryData);
-            console.log("Generated query ID:", queryId);
+            const canReport = await checkIfReporterLocked();
 
-            const nonce = await contract.getNewValueCountbyQueryId(queryId);
-            console.log("Current nonce:", nonce);
+            if (canReport) {
+                const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
+                const queryId = ethers.utils.keccak256(queryData);
+                console.log("Generated query ID:", queryId);
 
-            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
-            console.log("Encoded value:", value);
+                const nonce = await contract.getNewValueCountbyQueryId(queryId);
+                console.log("Current nonce:", nonce);
 
-            // Removed balance check as it's not necessary
+                const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
+                console.log("Encoded value:", value);
 
-            const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
-            console.log("Estimated gas:", gasEstimate.toString());
+                const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
+                console.log("Estimated gas:", gasEstimate.toString());
 
-            try {
-                const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
-                displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
-            } catch (error) {
-                console.error("Error submitting story:", error);
-                displayStatusMessage('Error submitting story: ' + error.message, true);
+                try {
+                    const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
+                    displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
+                } catch (error) {
+                    console.error("Error submitting story:", error);
+                    displayStatusMessage('Error submitting story: ' + error.message, true);
+                }
+            } else {
+                displayStatusMessage('Reporter is locked and cannot submit a story at this time.', true);
             }
 
         } catch (error) {
