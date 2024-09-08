@@ -63,39 +63,39 @@ document.addEventListener('DOMContentLoaded', async function () {
                         const queryType = decodedQueryData[0];
                         console.log("Decoded query type:", queryType);
 
-                        // Only process StringQuery type transactions
-                        if (queryType === "StringQuery") {
-                            const reportContentBytes = decodedQueryData[1];
-
-                            // Safely attempt to decode bytes to string
-                            let reportContent = '';
-                            try {
-                                reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                            } catch (utf8Error) {
-                                console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                                reportContent = "<Invalid or non-readable content>";
-                            }
-
-                            console.log("Decoded report content:", reportContent);
-
-                            const newsFeed = document.getElementById('newsFeed');
-                            if (!newsFeed) {
-                                console.error("newsFeed element not found!");
-                                return;
-                            }
-
-                            // Display only the valid report content
-                            const article = document.createElement('article');
-                            article.innerHTML = `
-                                <p>${reportContent}</p>
-                            `;
-                            newsFeed.appendChild(article);
-
-                            foundValidTransaction = true;
-                        } else {
+                        // Skip non-StringQuery types
+                        if (queryType !== "StringQuery") {
                             console.log(`Skipping non-StringQuery transaction of type: ${queryType}`);
+                            continue;
                         }
 
+                        const reportContentBytes = decodedQueryData[1];
+
+                        // Safely attempt to decode bytes to string
+                        let reportContent = '';
+                        try {
+                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                        } catch (utf8Error) {
+                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                            reportContent = "<Invalid or non-readable content>";
+                        }
+
+                        console.log("Decoded report content:", reportContent);
+
+                        const newsFeed = document.getElementById('newsFeed');
+                        if (!newsFeed) {
+                            console.error("newsFeed element not found!");
+                            return;
+                        }
+
+                        // Display only the valid report content
+                        const article = document.createElement('article');
+                        article.innerHTML = `
+                            <p>${reportContent}</p>
+                        `;
+                        newsFeed.appendChild(article);
+
+                        foundValidTransaction = true;
                     } catch (error) {
                         console.error("Error decoding parameters:", error);
                     }
@@ -128,10 +128,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         const contractABI = [
             {
                 "inputs": [
-                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-                    {"internalType": "bytes", "name": "_value", "type": "bytes"},
-                    {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
-                    {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
+                    { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" },
+                    { "internalType": "bytes", "name": "_value", "type": "bytes" },
+                    { "internalType": "uint256", "name": "_nonce", "type": "uint256" },
+                    { "internalType": "bytes", "name": "_queryData", "type": "bytes" }
                 ],
                 "name": "submitValue",
                 "outputs": [],
@@ -140,11 +140,11 @@ document.addEventListener('DOMContentLoaded', async function () {
             },
             {
                 "inputs": [
-                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
+                    { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" }
                 ],
                 "name": "getNewValueCountbyQueryId",
                 "outputs": [
-                    {"internalType": "uint256", "name": "", "type": "uint256"}
+                    { "internalType": "uint256", "name": "", "type": "uint256" }
                 ],
                 "stateMutability": "view",
                 "type": "function"
