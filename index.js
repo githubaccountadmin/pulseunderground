@@ -60,12 +60,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                     try {
                         const queryDataParam = decodedParams[3].value;
 
-                        // Decode the query data
+                        // Decode the query data (returns a tuple with queryType and report content in bytes)
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                        console.log("Decoded _queryData:", decodedQueryData);
+                        console.log("Decoded query data:", decodedQueryData);
 
-                        // Only show the main report content (decodedQueryData[1])
-                        const reportContent = ethers.utils.toUtf8String(decodedQueryData[1]);
+                        // Skip the first part (queryType) and only use the second part (report content)
+                        const reportContentBytes = decodedQueryData[1];
+                        
+                        // Convert the report content bytes to a string
+                        const reportContent = ethers.utils.toUtf8String(reportContentBytes);
                         console.log("Decoded report content:", reportContent);
 
                         const newsFeed = document.getElementById('newsFeed');
@@ -74,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             return;
                         }
 
-                        // Display only the report content, no query type
+                        // Display only the report content
                         const article = document.createElement('article');
                         article.innerHTML = `
                             <p>${reportContent}</p>
