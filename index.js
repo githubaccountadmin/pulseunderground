@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async function () {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log("DOM fully loaded and parsed");
 
     let provider;
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
-                if (decodedParams && decodedParams.length >= 4 && tx.method === 'submitValue') {
+                if (decodedParams && decodedParams.length >= 4) {
                     console.log("Found decoded parameters:", decodedParams);
 
                     try {
@@ -59,15 +59,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                         // Decode the query data
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded query data:", decodedQueryData);
-
-                        const queryType = decodedQueryData[0];
-                        console.log("Decoded query type:", queryType);
-
-                        // Skip non-StringQuery types
-                        if (queryType !== "StringQuery") {
-                            console.log(`Skipping non-StringQuery transaction of type: ${queryType}`);
-                            continue;
-                        }
 
                         const reportContentBytes = decodedQueryData[1];
 
@@ -100,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         console.error("Error decoding parameters:", error);
                     }
                 } else {
-                    console.log("Transaction has no or insufficient decoded input data or is not submitValue:", tx);
+                    console.log("Transaction has no or insufficient decoded input data:", tx);
                 }
             }
 
@@ -124,14 +115,20 @@ document.addEventListener('DOMContentLoaded', async function () {
             return;
         }
 
+        if (!reportContent || reportContent.trim() === "") {
+            console.error("Report content is empty.");
+            displayStatusMessage('Report content is required.', true);
+            return;
+        }
+
         const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
         const contractABI = [
             {
                 "inputs": [
-                    { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" },
-                    { "internalType": "bytes", "name": "_value", "type": "bytes" },
-                    { "internalType": "uint256", "name": "_nonce", "type": "uint256" },
-                    { "internalType": "bytes", "name": "_queryData", "type": "bytes" }
+                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                    {"internalType": "bytes", "name": "_value", "type": "bytes"},
+                    {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                    {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
                 ],
                 "name": "submitValue",
                 "outputs": [],
@@ -140,11 +137,11 @@ document.addEventListener('DOMContentLoaded', async function () {
             },
             {
                 "inputs": [
-                    { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" }
+                    {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
                 ],
                 "name": "getNewValueCountbyQueryId",
                 "outputs": [
-                    { "internalType": "uint256", "name": "", "type": "uint256" }
+                    {"internalType": "uint256", "name": "", "type": "uint256"}
                 ],
                 "stateMutability": "view",
                 "type": "function"
@@ -164,8 +161,16 @@ document.addEventListener('DOMContentLoaded', async function () {
             const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
             console.log("Encoded value:", value);
 
-            const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
-            console.log("Estimated gas:", gasEstimate.toString());
+            let gasEstimate;
+            try {
+                gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
+                console.log("Estimated gas:", gasEstimate.toString());
+            } catch (gasError) {
+                console.error("Gas estimation failed:", gasError);
+                displayStatusMessage('Gas estimation failed: ' + gasError.message, true);
+                // Fallback to a reasonable gas limit if estimation fails
+                gasEstimate = ethers.BigNumber.from("300000");
+            }
 
             try {
                 const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
