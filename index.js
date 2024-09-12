@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     let provider;
     let signer;
     let contract;
+    let nextPageParams = null; // For pagination
+    let loadingMore = false;   // To prevent multiple simultaneous loads
+    let allDataLoaded = false; // Flag to indicate if all data has been loaded
+    let loadedTransactions = new Set(); // To keep track of processed transactions
 
     const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
     const contractABI = [
@@ -85,10 +89,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    async function loadNewsFeed() {
+    async function loadNewsFeed(isInitialLoad = true) {
         console.log("Loading news feed...");
 
-        const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        if (loadingIndicator) loadingIndicator.style.display = 'block';
+
+        let apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/' +
+                     '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions' +
+                     '?filter=to%20%7C%20from&limit=50';
+
+        if (nextPageParams) {
+            apiUrl += `&${nextPageParams}`;
+        }
 
         try {
             console.log("Fetching data from API:", apiUrl);
@@ -102,9 +115,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
+            nextPageParams = data.next_page_params || null;
+            if (!nextPageParams) {
+                allDataLoaded = true;
+            }
+
             let foundValidTransaction = false;
 
             for (let tx of data.items) {
+                // Skip transactions we've already processed
+                if (loadedTransactions.has(tx.hash)) {
+                    continue;
+                }
+
                 console.log("Checking transaction:", tx);
 
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
@@ -113,48 +136,80 @@ document.addEventListener('DOMContentLoaded', async function() {
                     console.log("Found decoded parameters:", decodedParams);
 
                     try {
+                        const methodName = tx.method;
                         const queryDataParam = decodedParams[3].value;
+
+                        // Only process if the method is 'submitValue'
+                        if (methodName !== 'submitValue') {
+                            continue;
+                        }
 
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded query data:", decodedQueryData);
 
-                        const reportContentBytes = decodedQueryData[1];
-                        let reportContent = '';
+                        if (decodedQueryData[0] === "StringQuery") {
+                            const reportContentBytes = decodedQueryData[1];
+                            let reportContent = '';
 
-                        try {
-                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                        } catch (utf8Error) {
-                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                            reportContent = "<Invalid or non-readable content>";
+                            try {
+                                reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                            } catch (utf8Error) {
+                                console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                                reportContent = "<Invalid or non-readable content>";
+                            }
+
+                            console.log("Decoded report content:", reportContent);
+
+                            if (reportContent && reportContent !== "<Invalid or non-readable content>") {
+                                const newsFeed = document.getElementById('newsFeed');
+                                if (!newsFeed) {
+                                    console.error("newsFeed element not found!");
+                                    return;
+                                }
+
+                                // Get the timestamp and reporter address
+                                const timestamp = new Date(tx.timestamp * 1000).toLocaleString();
+                                const reporterAddress = tx.from;
+
+                                const article = document.createElement('article');
+
+                                const metadataDiv = document.createElement('div');
+                                metadataDiv.className = 'metadata';
+                                metadataDiv.innerHTML = `<strong>Reporter:</strong> ${reporterAddress} <br> <strong>Submitted on:</strong> ${timestamp}`;
+
+                                const p = document.createElement('p');
+                                p.textContent = reportContent; // Use textContent to prevent XSS
+
+                                article.appendChild(metadataDiv);
+                                article.appendChild(p);
+                                newsFeed.appendChild(article);
+
+                                foundValidTransaction = true;
+                            }
                         }
-
-                        console.log("Decoded report content:", reportContent);
-
-                        const newsFeed = document.getElementById('newsFeed');
-                        if (!newsFeed) {
-                            console.error("newsFeed element not found!");
-                            return;
-                        }
-
-                        const article = document.createElement('article');
-                        article.innerHTML = `<p>${reportContent}</p>`;
-                        newsFeed.appendChild(article);
-
-                        foundValidTransaction = true;
                     } catch (error) {
                         console.error("Error decoding parameters:", error);
                     }
                 } else {
                     console.log("Transaction has no or insufficient decoded input data:", tx);
                 }
+
+                // Mark this transaction as processed
+                loadedTransactions.add(tx.hash);
             }
 
-            if (!foundValidTransaction) {
+            if (!foundValidTransaction && !allDataLoaded) {
+                console.log("No valid news stories found in this batch. Loading more...");
+                await loadNewsFeed(false); // Recursive call to load more data
+            } else if (!foundValidTransaction && allDataLoaded && isInitialLoad) {
                 displayStatusMessage("No valid news stories found.", true);
             }
         } catch (error) {
             console.error("Error loading news feed:", error);
             displayStatusMessage('Error loading news feed: ' + error.message, true);
+        } finally {
+            loadingMore = false;
+            if (loadingIndicator) loadingIndicator.style.display = 'none';
         }
     }
 
@@ -168,11 +223,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Fetch the reporter's last timestamp (when they last reported)
             const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
 
-            // Fetch the reporting lock duration (in seconds or blocks)
+            // Fetch the reporting lock duration (in seconds)
             const reportingLock = await contract.getReportingLock();
 
             // Get the current time in seconds
-            const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+            const currentBlock = await provider.getBlock('latest');
+            const currentTime = currentBlock.timestamp;
 
             // Calculate the time difference
             const timeSinceLastReport = currentTime - lastReportTimestamp;
@@ -243,11 +299,40 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    function setupInfiniteScroll() {
+        const sentinel = document.createElement('div');
+        sentinel.id = 'sentinel';
+        document.body.appendChild(sentinel);
+
+        const observer = new IntersectionObserver(async (entries) => {
+            if (entries[0].isIntersecting && !loadingMore && !allDataLoaded) {
+                loadingMore = true;
+                await loadNewsFeed(false);
+            }
+        }, {
+            rootMargin: '0px',
+            threshold: 0.1
+        });
+
+        observer.observe(sentinel);
+    }
+
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     console.log("Event listener added to Connect Wallet button.");
 
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
+
+    // Setup infinite scrolling
+    setupInfiniteScroll();
+    console.log("Infinite scroll setup complete.");
+
+    // Add a loading indicator element
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.id = 'loadingIndicator';
+    loadingIndicator.style.display = 'none';
+    loadingIndicator.textContent = 'Loading...';
+    document.body.appendChild(loadingIndicator);
 
     loadNewsFeed();
 });
