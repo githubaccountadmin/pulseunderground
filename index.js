@@ -171,8 +171,14 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             if (data.items.length > 0) {
-                lastTransactionBlock = data.items[data.items.length - 1].block;  // Track last block for pagination
-                console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
+                const lastBlockInData = data.items[data.items.length - 1].block;
+                if (lastTransactionBlock === lastBlockInData) {
+                    console.log("Warning: API returned duplicate block data. No new data.");
+                    noMoreData = true;
+                } else {
+                    lastTransactionBlock = lastBlockInData;  // Track last block for pagination
+                    console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
+                }
             } else {
                 console.log("No more items in the current data set.");
             }
