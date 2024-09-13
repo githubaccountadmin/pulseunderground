@@ -125,6 +125,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 return;
             }
 
+            let newValidTransactions = 0;
+
             for (let tx of data.items) {
                 console.log("Checking transaction:", tx);
 
@@ -161,7 +163,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 article.innerHTML = `<p>${reportContent}</p>`;
                                 newsFeed.appendChild(article);
 
-                                validTransactionsCount++;  // Increment valid transactions
+                                newValidTransactions++;
+                                validTransactionsCount++;
                             } else {
                                 console.log("Transaction is not a StringQuery.");
                             }
@@ -180,7 +183,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             // Automatically fetch more if not enough valid transactions to fill the page
-            const newsFeed = document.getElementById('newsFeed');
             if (validTransactionsCount < validTransactionLimit && !noMoreData) {
                 console.log(`Fetched ${validTransactionsCount} valid StringQuery transactions, fetching more...`);
                 loadNewsFeed();  // Trigger another fetch if needed
