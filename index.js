@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         loading = true;
         console.log("loadNewsFeed called. loading:", loading, "noMoreData:", noMoreData);
 
-        let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100`;
+        let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to%20%7C%20from&limit=100`;
 
         if (lastTransactionBlock) {
             apiUrl += `&beforeBlock=${lastTransactionBlock}`;
@@ -131,41 +131,51 @@ document.addEventListener('DOMContentLoaded', async function () {
                 if (seenBlocks.has(tx.block)) continue;
 
                 console.log("Checking transaction:", tx);
-                let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
-                if (decodedParams && decodedParams.length >= 4) {
-                    const queryType = decodedParams[0].value;  // Fetch query type
-                    if (queryType === "StringQuery") {  // We only care about "StringQuery" types
+                // Check the method and parameters
+                const method = tx.method;
+                if (method === 'submitValue') {
+                    let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
+
+                    if (decodedParams && decodedParams.length >= 4) {
                         console.log("Found decoded parameters:", decodedParams);
+                        const queryType = decodedParams[0].value;  // Fetch query type
+                        const queryDataParam = decodedParams[3].value;
 
-                        try {
-                            const queryDataParam = decodedParams[3].value;
-                            console.log("Raw queryDataParam:", queryDataParam);
-
-                            let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                            console.log("Decoded query data:", decodedQueryData);
-
-                            const reportContentBytes = decodedQueryData[1];
-                            let reportContent = '';
+                        console.log("Query Type:", queryType);
+                        if (queryType === "StringQuery") {
+                            console.log("StringQuery found in transaction.");
 
                             try {
-                                reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                                console.log("Decoded report content (UTF-8):", reportContent);
-                            } catch (utf8Error) {
-                                console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                                reportContent = "<Invalid or non-readable content>";
+                                let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
+                                console.log("Decoded query data:", decodedQueryData);
+
+                                const reportContentBytes = decodedQueryData[1];
+                                let reportContent = '';
+
+                                try {
+                                    reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                                    console.log("Decoded report content (UTF-8):", reportContent);
+                                } catch (utf8Error) {
+                                    console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                                    reportContent = "<Invalid or non-readable content>";
+                                }
+
+                                const newsFeed = document.getElementById('newsFeed');
+                                const article = document.createElement('article');
+                                article.innerHTML = `<p>${reportContent}</p>`;
+                                newsFeed.appendChild(article);
+
+                                foundValidTransaction = true;
+                            } catch (error) {
+                                console.error("Error decoding parameters:", error);
                             }
-
-                            const newsFeed = document.getElementById('newsFeed');
-                            const article = document.createElement('article');
-                            article.innerHTML = `<p>${reportContent}</p>`;
-                            newsFeed.appendChild(article);
-
-                            foundValidTransaction = true;
-                        } catch (error) {
-                            console.error("Error decoding parameters:", error);
+                        } else {
+                            console.log("Not a StringQuery transaction.");
                         }
                     }
+                } else {
+                    console.log("Transaction method not 'submitValue', skipping.");
                 }
 
                 seenBlocks.add(tx.block);  // Mark the block as processed
