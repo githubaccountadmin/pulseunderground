@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             await provider.send("eth_requestAccounts", []);
             signer = provider.getSigner();
             console.log("Wallet connected, signer:", signer);
+
             displayStatusMessage('Wallet connected.');
         } catch (e) {
             displayStatusMessage('Could not connect to wallet: ' + e.message, true);
@@ -94,6 +95,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log("loadNewsFeed called. loading:", loading, "noMoreData:", noMoreData);
 
         let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100`;
+
+        // Log the current state of lastTransactionBlock before fetching
+        console.log("Last fetched block before API call:", lastTransactionBlock);
 
         if (lastTransactionBlock) {
             apiUrl += `&beforeBlock=${lastTransactionBlock}`;
@@ -186,6 +190,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         } finally {
             loading = false;
             console.log("News feed loading complete. loading set to:", loading);
+            console.log("Last fetched block after API call:", lastTransactionBlock);
         }
     }
 
@@ -268,22 +273,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    // Scroll event - fixed to only load when near bottom
     window.addEventListener('scroll', () => {
-        const scrollY = window.scrollY;
-        const windowHeight = window.innerHeight;
-        const documentHeight = document.body.offsetHeight;
-
-        console.log('Scroll event detected:', scrollY, 'Window height:', windowHeight, 'Document height:', documentHeight);
-        if ((windowHeight + scrollY) >= documentHeight - 500 && !loading) {
+        console.log('Scroll event detected:', window.scrollY, 'Window height:', window.innerHeight, 'Document height:', document.body.offsetHeight);
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
             console.log("Triggering news feed load on scroll.");
             loadNewsFeed();
         }
     });
 
-    // Enable wallet connection and publish button
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    document.getElementById('publishStory').removeAttribute('disabled');
     document.getElementById('publishStory').addEventListener('click', submitStory);
 
     // Initial load of the news feed
