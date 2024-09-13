@@ -9,10 +9,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const contractABI = [
         {
             "inputs": [
-                { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" },
-                { "internalType": "bytes", "name": "_value", "type": "bytes" },
-                { "internalType": "uint256", "name": "_nonce", "type": "uint256" },
-                { "internalType": "bytes", "name": "_queryData", "type": "bytes" }
+                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                {"internalType": "bytes", "name": "_value", "type": "bytes"},
+                {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
+                {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
             ],
             "name": "submitValue",
             "outputs": [],
@@ -21,22 +21,22 @@ document.addEventListener('DOMContentLoaded', async function() {
         },
         {
             "inputs": [
-                { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" }
+                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
             ],
             "name": "getNewValueCountbyQueryId",
             "outputs": [
-                { "internalType": "uint256", "name": "", "type": "uint256" }
+                {"internalType": "uint256", "name": "", "type": "uint256"}
             ],
             "stateMutability": "view",
             "type": "function"
         },
         {
             "inputs": [
-                { "internalType": "address", "name": "_reporter", "type": "address" }
+                {"internalType": "address", "name": "_reporter", "type": "address"}
             ],
             "name": "getReporterLastTimestamp",
             "outputs": [
-                { "internalType": "uint256", "name": "", "type": "uint256" }
+                {"internalType": "uint256", "name": "", "type": "uint256"}
             ],
             "stateMutability": "view",
             "type": "function"
@@ -45,48 +45,33 @@ document.addEventListener('DOMContentLoaded', async function() {
             "inputs": [],
             "name": "getReportingLock",
             "outputs": [
-                { "internalType": "uint256", "name": "", "type": "uint256" }
+                {"internalType": "uint256", "name": "", "type": "uint256"}
             ],
             "stateMutability": "view",
             "type": "function"
         },
         {
             "inputs": [
-                { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" },
-                { "internalType": "uint256", "name": "_index", "type": "uint256" }
+                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+                {"internalType": "uint256", "name": "_index", "type": "uint256"}
             ],
             "name": "getReportTimestamp",
             "outputs": [
-                { "internalType": "uint256", "name": "", "type": "uint256" }
+                {"internalType": "uint256", "name": "", "type": "uint256"}
             ],
             "stateMutability": "view",
             "type": "function"
         }
     ];
 
-    // Modal elements for reporter lock
-    const modal = document.getElementById("reporterLockModal");
-    const span = document.getElementsByClassName("close")[0];
-
-    span.onclick = function() {
-        modal.style.display = "none";
-    };
-
-    function showLockModal(message) {
-        document.getElementById('lockMessage').textContent = message;
-        modal.style.display = "block";
-    }
+    let page = 1; // Infinite scrolling starts with page 1
+    let loading = false; // Track if we're currently loading more data
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
         statusMessage.textContent = message;
-        statusMessage.className = isError ? 'error' : 'success';
+        statusMessage.style.color = isError ? 'red' : 'green';
         statusMessage.style.display = 'block';
-
-        // Hide the message after 5 seconds
-        setTimeout(() => {
-            statusMessage.style.display = 'none';
-        }, 5000);
     }
 
     async function connectWallet() {
@@ -103,6 +88,79 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    async function loadNewsFeed(page = 1) {
+        console.log("Loading news feed... Page:", page);
+
+        const apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100&page=${page}`;
+
+        try {
+            console.log("Fetching data from API:", apiUrl);
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) {
+                console.error("Error fetching data, status:", response.status);
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log("Data fetched from API:", data);
+
+            let foundValidTransaction = false;
+
+            for (let tx of data.items) {
+                console.log("Checking transaction:", tx);
+
+                let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
+
+                if (decodedParams && decodedParams.length >= 4) {
+                    console.log("Found decoded parameters:", decodedParams);
+
+                    try {
+                        const queryDataParam = decodedParams[3].value;
+
+                        let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
+                        console.log("Decoded query data:", decodedQueryData);
+
+                        const reportContentBytes = decodedQueryData[1];
+                        let reportContent = '';
+
+                        try {
+                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                        } catch (utf8Error) {
+                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                            reportContent = "<Invalid or non-readable content>";
+                        }
+
+                        console.log("Decoded report content:", reportContent);
+
+                        const newsFeed = document.getElementById('newsFeed');
+                        if (!newsFeed) {
+                            console.error("newsFeed element not found!");
+                            return;
+                        }
+
+                        const article = document.createElement('article');
+                        article.innerHTML = `<p>${reportContent}</p>`;
+                        newsFeed.appendChild(article);
+
+                        foundValidTransaction = true;
+                    } catch (error) {
+                        console.error("Error decoding parameters:", error);
+                    }
+                } else {
+                    console.log("Transaction has no or insufficient decoded input data:", tx);
+                }
+            }
+
+            if (!foundValidTransaction) {
+                displayStatusMessage("No valid news stories found.", true);
+            }
+        } catch (error) {
+            console.error("Error loading news feed:", error);
+            displayStatusMessage('Error loading news feed: ' + error.message, true);
+        }
+    }
+
     async function checkIfReporterLocked() {
         console.log("Checking if reporter is locked...");
 
@@ -110,11 +168,16 @@ document.addEventListener('DOMContentLoaded', async function() {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
             const reporterAddress = await signer.getAddress();
 
+            // Fetch the reporter's last timestamp (when they last reported)
             const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
-            const reportingLock = await contract.getReportingLock();
-            const currentBlock = await provider.getBlock('latest');
-            const currentTime = currentBlock.timestamp;
 
+            // Fetch the reporting lock duration (in seconds or blocks)
+            const reportingLock = await contract.getReportingLock();
+
+            // Get the current time in seconds
+            const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+
+            // Calculate the time difference
             const timeSinceLastReport = currentTime - lastReportTimestamp;
 
             if (timeSinceLastReport < reportingLock) {
@@ -123,9 +186,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const minutes = Math.floor((remainingLockTime % 3600) / 60);
                 const seconds = remainingLockTime % 60;
 
-                const lockMessage = `Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`;
-                console.log(lockMessage);
-                showLockModal(lockMessage);
+                console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
                 return false;
             } else {
                 console.log('Reporter is unlocked.');
@@ -157,20 +219,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-            const queryData = ethers.utils.defaultAbiCoder.encode(
-                ['string', 'bytes'],
-                ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]
-            );
+            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
             const queryId = ethers.utils.keccak256(queryData);
             console.log("Generated query ID:", queryId);
 
             const nonce = await contract.getNewValueCountbyQueryId(queryId);
             console.log("Current nonce:", nonce);
 
-            const value = ethers.utils.defaultAbiCoder.encode(
-                ['string', 'bytes'],
-                ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]
-            );
+            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
             console.log("Encoded value:", value);
 
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
@@ -190,135 +246,23 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    // Infinite Scrolling Mechanism
+    window.addEventListener('scroll', () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
+            loading = true;
+            page++;
+            loadNewsFeed(page).then(() => {
+                loading = false;
+            });
+        }
+    });
+
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     console.log("Event listener added to Connect Wallet button.");
 
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
 
-    // Disable "Publish Story" button when textarea is empty
-    const reportContentElement = document.getElementById('reportContent');
-    const publishButton = document.getElementById('publishStory');
-    publishButton.disabled = true; // Initially disable the button
-
-    reportContentElement.addEventListener('input', function() {
-        const trimmedValue = this.value.trim();
-        console.log("Input detected:", trimmedValue); // Log input value for debugging
-
-        if (trimmedValue.length > 0) {
-            console.log("Enabling publish button");
-            publishButton.disabled = false;
-        } else {
-            console.log("Disabling publish button");
-            publishButton.disabled = true;
-        }
-    });
-
-    // Infinite Scrolling Implementation
-    let isLoading = false;
-    let nextPageParams = null; // To store the parameters for the next page
-    let reachedEnd = false;    // Flag to indicate if we've reached the end of the data
-
-    async function loadNewsFeed(initialLoad = false) {
-        if (isLoading || reachedEnd) {
-            return;
-        }
-
-        isLoading = true;
-        console.log("Loading news feed...");
-
-        const apiUrlBase = 'https://api.scan.pulsechain.com/api/v2/addresses/' +
-                           '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions' +
-                           '?filter=to%20%7C%20from';
-
-        let apiUrl = apiUrlBase;
-        if (nextPageParams) {
-            apiUrl += `&starting_after=${nextPageParams.starting_after}`;
-        }
-
-        try {
-            console.log("Fetching data from API:", apiUrl);
-            const response = await fetch(apiUrl);
-
-            if (!response.ok) {
-                console.error("Error fetching data, status:", response.status);
-                throw new Error(`API Error: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            console.log("Data fetched from API:", data);
-
-            if (data.items.length === 0) {
-                console.log("No more data to load.");
-                reachedEnd = true;
-                isLoading = false;
-                return;
-            }
-
-            nextPageParams = data.next_page_params || null;
-
-            for (let tx of data.items) {
-                console.log("Checking transaction:", tx);
-
-                let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
-
-                if (decodedParams && decodedParams.length >= 4) {
-                    console.log("Found decoded parameters:", decodedParams);
-
-                    try {
-                        const queryDataParam = decodedParams[3].value;
-
-                        let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                        console.log("Decoded query data:", decodedQueryData);
-
-                        const reportType = decodedQueryData[0];
-                        const reportContentBytes = decodedQueryData[1];
-                        let reportContent = '';
-
-                        try {
-                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                        } catch (utf8Error) {
-                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                            reportContent = "<Invalid or non-readable content>";
-                        }
-
-                        console.log("Decoded report content:", reportContent);
-
-                        if (reportType === "StringQuery") {
-                            const newsFeed = document.getElementById('newsFeed');
-                            if (!newsFeed) {
-                                console.error("newsFeed element not found!");
-                                isLoading = false;
-                                return;
-                            }
-
-                            const article = document.createElement('article');
-                            article.innerHTML = `<p>${reportContent}</p>`;
-                            newsFeed.appendChild(article);
-                        }
-                    } catch (error) {
-                        console.error("Error decoding parameters:", error);
-                    }
-                } else {
-                    console.log("Transaction has no or insufficient decoded input data:", tx);
-                }
-            }
-        } catch (error) {
-            console.error("Error loading news feed:", error);
-            displayStatusMessage('Error loading news feed: ' + error.message, true);
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    // Event listener for infinite scrolling
-    window.addEventListener('scroll', function() {
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
-            // User is near the bottom of the page
-            loadNewsFeed();
-        }
-    });
-
-    // Initial call to load news feed
-    loadNewsFeed(true);
+    // Initial load of the news feed
+    loadNewsFeed();
 });
