@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     ];
 
-    let lastTransactionBlock = null;  // To track the block number for pagination
+    let nextPageParams = null;  // Track the next page parameters
     let loading = false;
     let noMoreData = false;  // Prevents further fetching if no more data
 
@@ -96,11 +96,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100`;
 
-        if (lastTransactionBlock) {
-            apiUrl += `&beforeBlock=${lastTransactionBlock}`;
-            console.log("Appending block filter:", lastTransactionBlock);
+        if (nextPageParams) {
+            apiUrl += `&beforeBlock=${nextPageParams.block}`;
+            console.log("Appending next page params:", nextPageParams);
         } else {
-            console.log("First page of data, no block filter needed.");
+            console.log("First page of data, no pagination params.");
         }
 
         try {
@@ -114,8 +114,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             const data = await response.json();
             console.log("Data fetched from API:", data);
-
-            let foundValidTransaction = false;
 
             if (data.items.length === 0) {
                 noMoreData = true;  // Set flag if no more data is available
@@ -133,58 +131,36 @@ document.addEventListener('DOMContentLoaded', async function () {
                 if (decodedParams && decodedParams.length >= 4) {
                     console.log("Found decoded parameters:", decodedParams);
 
+                    const reportContentBytes = decodedParams[3].value;
+                    let reportContent = '';
+
                     try {
-                        const queryDataParam = decodedParams[3].value;
-                        console.log("Raw queryDataParam:", queryDataParam);
-
-                        let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                        console.log("Decoded query data:", decodedQueryData);
-
-                        const reportContentBytes = decodedQueryData[1];
-                        let reportContent = '';
-
-                        try {
-                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                            console.log("Decoded report content (UTF-8):", reportContent);
-                        } catch (utf8Error) {
-                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                            reportContent = "<Invalid or non-readable content>";
-                        }
-
-                        const newsFeed = document.getElementById('newsFeed');
-                        if (!newsFeed) {
-                            console.error("newsFeed element not found!");
-                            return;
-                        }
-
-                        const article = document.createElement('article');
-                        article.innerHTML = `<p>${reportContent}</p>`;
-                        newsFeed.appendChild(article);
-
-                        foundValidTransaction = true;
-                    } catch (error) {
-                        console.error("Error decoding parameters:", error);
+                        reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                        console.log("Decoded report content (UTF-8):", reportContent);
+                    } catch (utf8Error) {
+                        console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                        reportContent = "<Invalid or non-readable content>";
                     }
+
+                    const newsFeed = document.getElementById('newsFeed');
+                    if (!newsFeed) {
+                        console.error("newsFeed element not found!");
+                        return;
+                    }
+
+                    const article = document.createElement('article');
+                    article.innerHTML = `<p>${reportContent}</p>`;
+                    newsFeed.appendChild(article);
                 } else {
                     console.log("Transaction has no or insufficient decoded input data:", tx);
                 }
             }
 
             if (data.items.length > 0) {
-                const lastBlockInData = data.items[data.items.length - 1].block;
-                if (lastTransactionBlock === lastBlockInData) {
-                    console.log("Warning: API returned duplicate block data. No new data.");
-                    noMoreData = true;
-                } else {
-                    lastTransactionBlock = lastBlockInData;  // Track last block for pagination
-                    console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
-                }
+                nextPageParams = { block: data.items[data.items.length - 1].block };  // Track last block for pagination
+                console.log("Updated nextPageParams to:", nextPageParams);
             } else {
                 console.log("No more items in the current data set.");
-            }
-
-            if (!foundValidTransaction) {
-                displayStatusMessage("No valid news stories found.", true);
             }
 
         } catch (error) {
