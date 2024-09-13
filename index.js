@@ -103,81 +103,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    async function loadNewsFeed() {
-        console.log("Loading news feed...");
-
-        const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/' +
-                       '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions' +
-                       '?filter=to%20%7C%20from';
-
-        try {
-            console.log("Fetching data from API:", apiUrl);
-            const response = await fetch(apiUrl);
-
-            if (!response.ok) {
-                console.error("Error fetching data, status:", response.status);
-                throw new Error(`API Error: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            console.log("Data fetched from API:", data);
-
-            let foundValidTransaction = false;
-
-            for (let tx of data.items) {
-                console.log("Checking transaction:", tx);
-
-                let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
-
-                if (decodedParams && decodedParams.length >= 4) {
-                    console.log("Found decoded parameters:", decodedParams);
-
-                    try {
-                        const queryDataParam = decodedParams[3].value;
-
-                        let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                        console.log("Decoded query data:", decodedQueryData);
-
-                        const reportContentBytes = decodedQueryData[1];
-                        let reportContent = '';
-
-                        try {
-                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                        } catch (utf8Error) {
-                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                            reportContent = "<Invalid or non-readable content>";
-                        }
-
-                        console.log("Decoded report content:", reportContent);
-
-                        const newsFeed = document.getElementById('newsFeed');
-                        if (!newsFeed) {
-                            console.error("newsFeed element not found!");
-                            return;
-                        }
-
-                        const article = document.createElement('article');
-                        article.innerHTML = `<p>${reportContent}</p>`;
-                        newsFeed.appendChild(article);
-
-                        foundValidTransaction = true;
-                    } catch (error) {
-                        console.error("Error decoding parameters:", error);
-                    }
-                } else {
-                    console.log("Transaction has no or insufficient decoded input data:", tx);
-                }
-            }
-
-            if (!foundValidTransaction) {
-                displayStatusMessage("No valid news stories found.", true);
-            }
-        } catch (error) {
-            console.error("Error loading news feed:", error);
-            displayStatusMessage('Error loading news feed: ' + error.message, true);
-        }
-    }
-
     async function checkIfReporterLocked() {
         console.log("Checking if reporter is locked...");
 
@@ -185,17 +110,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
             const reporterAddress = await signer.getAddress();
 
-            // Fetch the reporter's last timestamp (when they last reported)
             const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
-
-            // Fetch the reporting lock duration (in seconds)
             const reportingLock = await contract.getReportingLock();
-
-            // Get the current blockchain time
             const currentBlock = await provider.getBlock('latest');
             const currentTime = currentBlock.timestamp;
 
-            // Calculate the time difference
             const timeSinceLastReport = currentTime - lastReportTimestamp;
 
             if (timeSinceLastReport < reportingLock) {
@@ -278,10 +197,128 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log("Event listener added to Publish Story button.");
 
     // Disable "Publish Story" button when textarea is empty
-    document.getElementById('reportContent').addEventListener('input', function() {
-        const publishButton = document.getElementById('publishStory');
-        publishButton.disabled = !this.value.trim();
+    const reportContentElement = document.getElementById('reportContent');
+    const publishButton = document.getElementById('publishStory');
+    publishButton.disabled = true; // Initially disable the button
+
+    reportContentElement.addEventListener('input', function() {
+        const trimmedValue = this.value.trim();
+        console.log("Input detected:", trimmedValue); // Log input value for debugging
+
+        if (trimmedValue.length > 0) {
+            console.log("Enabling publish button");
+            publishButton.disabled = false;
+        } else {
+            console.log("Disabling publish button");
+            publishButton.disabled = true;
+        }
     });
 
-    loadNewsFeed();
+    // Infinite Scrolling Implementation
+    let isLoading = false;
+    let nextPageParams = null; // To store the parameters for the next page
+    let reachedEnd = false;    // Flag to indicate if we've reached the end of the data
+
+    async function loadNewsFeed(initialLoad = false) {
+        if (isLoading || reachedEnd) {
+            return;
+        }
+
+        isLoading = true;
+        console.log("Loading news feed...");
+
+        const apiUrlBase = 'https://api.scan.pulsechain.com/api/v2/addresses/' +
+                           '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions' +
+                           '?filter=to%20%7C%20from';
+
+        let apiUrl = apiUrlBase;
+        if (nextPageParams) {
+            apiUrl += `&starting_after=${nextPageParams.starting_after}`;
+        }
+
+        try {
+            console.log("Fetching data from API:", apiUrl);
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) {
+                console.error("Error fetching data, status:", response.status);
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log("Data fetched from API:", data);
+
+            if (data.items.length === 0) {
+                console.log("No more data to load.");
+                reachedEnd = true;
+                isLoading = false;
+                return;
+            }
+
+            nextPageParams = data.next_page_params || null;
+
+            for (let tx of data.items) {
+                console.log("Checking transaction:", tx);
+
+                let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
+
+                if (decodedParams && decodedParams.length >= 4) {
+                    console.log("Found decoded parameters:", decodedParams);
+
+                    try {
+                        const queryDataParam = decodedParams[3].value;
+
+                        let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
+                        console.log("Decoded query data:", decodedQueryData);
+
+                        const reportType = decodedQueryData[0];
+                        const reportContentBytes = decodedQueryData[1];
+                        let reportContent = '';
+
+                        try {
+                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                        } catch (utf8Error) {
+                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                            reportContent = "<Invalid or non-readable content>";
+                        }
+
+                        console.log("Decoded report content:", reportContent);
+
+                        if (reportType === "StringQuery") {
+                            const newsFeed = document.getElementById('newsFeed');
+                            if (!newsFeed) {
+                                console.error("newsFeed element not found!");
+                                isLoading = false;
+                                return;
+                            }
+
+                            const article = document.createElement('article');
+                            article.innerHTML = `<p>${reportContent}</p>`;
+                            newsFeed.appendChild(article);
+                        }
+                    } catch (error) {
+                        console.error("Error decoding parameters:", error);
+                    }
+                } else {
+                    console.log("Transaction has no or insufficient decoded input data:", tx);
+                }
+            }
+        } catch (error) {
+            console.error("Error loading news feed:", error);
+            displayStatusMessage('Error loading news feed: ' + error.message, true);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    // Event listener for infinite scrolling
+    window.addEventListener('scroll', function() {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+            // User is near the bottom of the page
+            loadNewsFeed();
+        }
+    });
+
+    // Initial call to load news feed
+    loadNewsFeed(true);
 });
