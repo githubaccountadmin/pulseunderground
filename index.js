@@ -67,7 +67,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     let lastTransactionBlock = null;  // To track the block number for pagination
     let loading = false;
     let noMoreData = false;  // Prevents further fetching if no more data
-    let seenBlocks = new Set();  // To ensure we don't process the same block twice
+    let validTransactionsCount = 0;  // Counter for valid StringQuery transactions
+    const validTransactionLimit = 100; // Min valid StringQuery transactions to fetch before stopping
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
@@ -91,7 +92,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function loadNewsFeed() {
-        if (loading || noMoreData) return;  // Prevents multiple simultaneous calls
+        if (loading || noMoreData || validTransactionsCount >= validTransactionLimit) return;  // Stop if loading, no more data, or if we have 100 valid transactions
         loading = true;
         console.log("loadNewsFeed called. loading:", loading, "noMoreData:", noMoreData);
 
@@ -116,8 +117,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             const data = await response.json();
             console.log("Data fetched from API:", data);
 
-            let foundValidTransaction = false;
-
             if (data.items.length === 0) {
                 noMoreData = true;  // Set flag if no more data is available
                 displayStatusMessage("No more news stories available.", true);
@@ -127,9 +126,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             for (let tx of data.items) {
-                // Avoid displaying already seen blocks
-                if (seenBlocks.has(tx.block)) continue;
-
                 console.log("Checking transaction:", tx);
 
                 // Only process 'submitValue' transactions
@@ -165,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 article.innerHTML = `<p>${reportContent}</p>`;
                                 newsFeed.appendChild(article);
 
-                                foundValidTransaction = true;
+                                validTransactionsCount++;  // Increment valid transactions
                             } else {
                                 console.log("Transaction is not a StringQuery.");
                             }
@@ -176,8 +172,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                 } else {
                     console.log("Transaction method not 'submitValue', skipping.");
                 }
-
-                seenBlocks.add(tx.block);  // Mark the block as processed
             }
 
             if (data.items.length > 0) {
@@ -185,17 +179,13 @@ document.addEventListener('DOMContentLoaded', async function () {
                 console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
             }
 
-            if (!foundValidTransaction) {
-                displayStatusMessage("No valid news stories found.", true);
+            // Automatically fetch more if not enough valid transactions to fill the page
+            const newsFeed = document.getElementById('newsFeed');
+            if (validTransactionsCount < validTransactionLimit && !noMoreData) {
+                console.log(`Fetched ${validTransactionsCount} valid StringQuery transactions, fetching more...`);
+                loadNewsFeed();  // Trigger another fetch if needed
             } else {
                 displayStatusMessage("News feed updated.");
-            }
-
-            // Automatically fetch more if not enough content to fill the page
-            const newsFeed = document.getElementById('newsFeed');
-            if (newsFeed.scrollHeight <= window.innerHeight && !noMoreData) {
-                console.log("Not enough data to fill the page, fetching more...");
-                loadNewsFeed();  // Trigger another fetch if needed
             }
 
         } catch (error) {
@@ -204,38 +194,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         } finally {
             loading = false;
             console.log("News feed loading complete. loading set to:", loading);
-        }
-    }
-
-    async function checkIfReporterLocked() {
-        console.log("Checking if reporter is locked...");
-
-        try {
-            contract = new ethers.Contract(contractAddress, contractABI, signer);
-            const reporterAddress = await signer.getAddress();
-
-            const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
-            const reportingLock = await contract.getReportingLock();
-            const currentTime = Math.floor(Date.now() / 1000);
-
-            const timeSinceLastReport = currentTime - lastReportTimestamp;
-
-            if (timeSinceLastReport < reportingLock) {
-                const remainingLockTime = reportingLock - timeSinceLastReport;
-                const hours = Math.floor(remainingLockTime / 3600);
-                const minutes = Math.floor((remainingLockTime % 3600) / 60);
-                const seconds = remainingLockTime % 60;
-
-                console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
-                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
-                return false;
-            } else {
-                console.log('Reporter is unlocked.');
-                return true;
-            }
-        } catch (error) {
-            console.error('Error checking reporter lock status:', error);
-            return false;
         }
     }
 
@@ -270,25 +228,51 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.log("Encoded value:", value);
 
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
-            console.log("Estimated gas:", gasEstimate.toString());
+            console.log("Estimated gas for submitValue:", gasEstimate.toString());
 
-            try {
-                const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
-                displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
-            } catch (error) {
-                console.error("Error submitting story:", error);
-                displayStatusMessage('Error submitting story: ' + error.message, true);
-            }
+            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate });
+            console.log("Transaction submitted, waiting for confirmation...", tx.hash);
+
+            displayStatusMessage("Story successfully submitted!");
 
         } catch (error) {
-            console.error("Error during story submission process:", error);
-            displayStatusMessage('Error during story submission process: ' + error.message, true);
+            console.error("Error submitting story:", error);
+            displayStatusMessage('Error submitting story: ' + error.message, true);
+        }
+    }
+
+    async function checkIfReporterLocked() {
+        console.log("Checking if reporter is locked...");
+        try {
+            contract = new ethers.Contract(contractAddress, contractABI, provider);
+            const lockTime = await contract.getReportingLock();
+            console.log("Reporter lock duration (in seconds):", lockTime);
+
+            const lastTimestamp = await contract.getReporterLastTimestamp(signer.getAddress());
+            console.log("Last reporting timestamp:", lastTimestamp);
+
+            const currentTime = Math.floor(Date.now() / 1000);
+            const unlockTime = Number(lastTimestamp) + Number(lockTime);
+
+            if (currentTime < unlockTime) {
+                const remainingTime = unlockTime - currentTime;
+                console.log("Reporter is still locked. Time left (seconds):", remainingTime);
+                return false;
+            }
+
+            console.log("Reporter is not locked.");
+            return true;
+
+        } catch (error) {
+            console.error("Error checking if reporter is locked:", error);
+            displayStatusMessage('Error checking lock status: ' + error.message, true);
+            return false;
         }
     }
 
     window.addEventListener('scroll', () => {
         console.log('Scroll event detected:', window.scrollY, 'Window height:', window.innerHeight, 'Document height:', document.body.offsetHeight);
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading && !noMoreData) {
             console.log("Triggering news feed load on scroll.");
             loadNewsFeed();
         }
