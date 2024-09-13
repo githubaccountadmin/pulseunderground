@@ -269,26 +269,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    function throttle(func, limit) {
-        let inThrottle;
-        return function () {
-            const args = arguments;
-            const context = this;
-            if (!inThrottle) {
-                func.apply(context, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
-            }
-        }
-    }
-
-    window.addEventListener('scroll', throttle(() => {
+    window.addEventListener('scroll', () => {
         console.log('Scroll event detected:', window.scrollY, 'Window height:', window.innerHeight, 'Document height:', document.body.offsetHeight);
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100 && !loading) {
             console.log("Triggering news feed load on scroll.");
             loadNewsFeed();
         }
-    }, 100));
+    });
 
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     document.getElementById('publishStory').addEventListener('click', submitStory);
