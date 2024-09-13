@@ -1,111 +1,190 @@
+/* General Styles */
 body {
-    font-family: 'Georgia', serif;
-    background-color: #f4f4f4;
-    color: #333;
-    line-height: 1.6;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #15202b;
+    color: #ffffff;
 }
 
+/* Container */
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Header */
 header {
-    background: #333;
-    color: #fff;
-    padding: 10px 20px;
-    text-align: center;
-}
-
-nav {
-    margin: 10px 0;
-    text-align: center;
-}
-
-nav a {
-    margin: 0 15px;
-    color: #333;
-    text-decoration: none;
-}
-
-main {
-    display: block; /* Change from flex to block */
-    padding: 20px;
-}
-
-#newsFeed {
-    margin-bottom: 20px; /* Add some spacing at the bottom */
-}
-
-/* Footer styling */
-footer {
-    background: #333;
-    color: #fff;
-    text-align: center;
+    background-color: #192734;
     padding: 10px 0;
-    margin-top: 20px;
+    border-bottom: 1px solid #38444d;
 }
 
-/* Status message styling */
+header h1 {
+    font-size: 24px;
+    margin: 0;
+    color: #1da1f2;
+}
+
+header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header button {
+    background-color: #1da1f2;
+    color: #ffffff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+header button:hover {
+    background-color: #1a91da;
+}
+
+/* Status Message */
 #statusMessage {
-    display: none;
+    text-align: center;
     margin: 10px 0;
     padding: 10px;
-    border: 1px solid transparent;
     border-radius: 5px;
-    text-align: center;
-    font-weight: bold;
 }
 
-/* Success message */
 #statusMessage.success {
-    color: #155724;
-    background-color: #d4edda;
-    border-color: #c3e6cb;
+    background-color: #e6ffed;
+    color: #2e7d32;
 }
 
-/* Error message */
 #statusMessage.error {
-    color: #721c24;
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
+    background-color: #ffebee;
+    color: #c62828;
 }
 
-/* Modal styling */
+/* Story Submission */
+#storySubmission {
+    background-color: #192734;
+    padding: 15px;
+    border-bottom: 1px solid #38444d;
+}
+
+#storySubmission textarea {
+    width: 100%;
+    background-color: transparent;
+    border: none;
+    resize: none;
+    color: #ffffff;
+    font-size: 18px;
+    outline: none;
+    height: 80px;
+}
+
+#storySubmission button {
+    background-color: #1da1f2;
+    color: #ffffff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    float: right;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+#storySubmission button:disabled {
+    background-color: #1a91da;
+    cursor: not-allowed;
+}
+
+/* News Feed */
+#newsFeed {
+    margin-top: 10px;
+}
+
+#newsFeed article {
+    background-color: #192734;
+    padding: 15px;
+    border-bottom: 1px solid #38444d;
+}
+
+#newsFeed .metadata {
+    font-size: 12px;
+    color: #8899a6;
+    margin-bottom: 10px;
+}
+
+#newsFeed p {
+    font-size: 16px;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+/* Footer */
+footer {
+    background-color: #192734;
+    padding: 10px 0;
+    text-align: center;
+    border-top: 1px solid #38444d;
+    color: #8899a6;
+}
+
+footer p {
+    margin: 0;
+}
+
+/* Modal Styles */
 .modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1; /* Sit on top */
+    display: none;
+    position: fixed;
+    z-index: 1;
     left: 0;
     top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgb(0,0,0); /* Fallback color */
-    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-    padding-top: 60px;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(21, 32, 43, 0.9);
 }
 
 .modal-content {
-    background-color: #fefefe;
-    margin: 5% auto; /* 15% from the top and centered */
+    background-color: #192734;
+    margin: 15% auto;
     padding: 20px;
-    border: 1px solid #888;
-    width: 80%; /* Could be more or less, depending on screen size */
+    border: 1px solid #38444d;
+    width: 80%;
+    max-width: 500px;
+    color: #ffffff;
+    position: relative;
 }
 
 .close {
-    color: #aaa;
-    float: right;
+    color: #ffffff;
+    position: absolute;
+    top: 10px;
+    right: 15px;
     font-size: 28px;
     font-weight: bold;
+    cursor: pointer;
 }
 
 .close:hover,
 .close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
+    color: #1da1f2;
 }
 
-/* Lock message styling */
-#lockMessage {
-    font-size: 18px;
-    color: #333;
-    text-align: center;
+/* Scrollbar Styles */
+body::-webkit-scrollbar {
+    width: 12px;
+}
+
+body::-webkit-scrollbar-track {
+    background: #15202b;
+}
+
+body::-webkit-scrollbar-thumb {
+    background-color: #1da1f2;
+    border-radius: 20px;
+    border: 3px solid #15202b;
 }
