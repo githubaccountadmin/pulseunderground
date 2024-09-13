@@ -92,12 +92,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     async function loadNewsFeed() {
         if (loading || noMoreData) return;  // Prevents multiple simultaneous calls
         loading = true;
+        console.log("loadNewsFeed called. loading:", loading, "noMoreData:", noMoreData);
 
-        console.log("Loading news feed...");
         let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100`;
 
         if (lastTransactionBlock) {
             apiUrl += `&beforeBlock=${lastTransactionBlock}`;
+            console.log("Appending block filter:", lastTransactionBlock);
+        } else {
+            console.log("First page of data, no block filter needed.");
         }
 
         try {
@@ -117,6 +120,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (data.items.length === 0) {
                 noMoreData = true;  // Set flag if no more data is available
                 displayStatusMessage("No more news stories available.", true);
+                console.log("No more transactions to load, stopping further requests.");
                 loading = false;
                 return;
             }
@@ -131,6 +135,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                     try {
                         const queryDataParam = decodedParams[3].value;
+                        console.log("Raw queryDataParam:", queryDataParam);
 
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                         console.log("Decoded query data:", decodedQueryData);
@@ -140,12 +145,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                         try {
                             reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                            console.log("Decoded report content (UTF-8):", reportContent);
                         } catch (utf8Error) {
                             console.warn("Error decoding report content as UTF-8 string:", utf8Error);
                             reportContent = "<Invalid or non-readable content>";
                         }
-
-                        console.log("Decoded report content:", reportContent);
 
                         const newsFeed = document.getElementById('newsFeed');
                         if (!newsFeed) {
@@ -169,6 +173,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (data.items.length > 0) {
                 lastTransactionBlock = data.items[data.items.length - 1].block;  // Track last block for pagination
                 console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
+            } else {
+                console.log("No more items in the current data set.");
             }
 
             if (!foundValidTransaction) {
@@ -180,6 +186,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             displayStatusMessage('Error loading news feed: ' + error.message, true);
         } finally {
             loading = false;
+            console.log("News feed loading complete. loading set to:", loading);
         }
     }
 
@@ -263,7 +270,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     window.addEventListener('scroll', () => {
+        console.log('Scroll event detected:', window.scrollY, 'Window height:', window.innerHeight, 'Document height:', document.body.offsetHeight);
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
+            console.log("Triggering news feed load on scroll.");
             loadNewsFeed();
         }
     });
