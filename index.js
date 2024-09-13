@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     let lastTransactionBlock = null;  // To track the block number for pagination
     let loading = false;
     let noMoreData = false;  // Prevents further fetching if no more data
+    let seenBlocks = new Set();  // To ensure we don't process the same block twice
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
@@ -126,59 +127,53 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             for (let tx of data.items) {
-                console.log("Checking transaction:", tx);
+                // Avoid displaying already seen blocks
+                if (seenBlocks.has(tx.block)) continue;
 
+                console.log("Checking transaction:", tx);
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
                 if (decodedParams && decodedParams.length >= 4) {
-                    console.log("Found decoded parameters:", decodedParams);
-
-                    try {
-                        const queryDataParam = decodedParams[3].value;
-                        console.log("Raw queryDataParam:", queryDataParam);
-
-                        let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                        console.log("Decoded query data:", decodedQueryData);
-
-                        const reportContentBytes = decodedQueryData[1];
-                        let reportContent = '';
+                    const queryType = decodedParams[0].value;  // Fetch query type
+                    if (queryType === "StringQuery") {  // We only care about "StringQuery" types
+                        console.log("Found decoded parameters:", decodedParams);
 
                         try {
-                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                            console.log("Decoded report content (UTF-8):", reportContent);
-                        } catch (utf8Error) {
-                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                            reportContent = "<Invalid or non-readable content>";
-                        }
+                            const queryDataParam = decodedParams[3].value;
+                            console.log("Raw queryDataParam:", queryDataParam);
 
-                        // Only append valid report content
-                        if (reportContent) {
-                            const newsFeed = document.getElementById('newsFeed');
-                            if (!newsFeed) {
-                                console.error("newsFeed element not found!");
-                                return;
+                            let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
+                            console.log("Decoded query data:", decodedQueryData);
+
+                            const reportContentBytes = decodedQueryData[1];
+                            let reportContent = '';
+
+                            try {
+                                reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                                console.log("Decoded report content (UTF-8):", reportContent);
+                            } catch (utf8Error) {
+                                console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                                reportContent = "<Invalid or non-readable content>";
                             }
 
+                            const newsFeed = document.getElementById('newsFeed');
                             const article = document.createElement('article');
                             article.innerHTML = `<p>${reportContent}</p>`;
                             newsFeed.appendChild(article);
 
                             foundValidTransaction = true;
+                        } catch (error) {
+                            console.error("Error decoding parameters:", error);
                         }
-
-                    } catch (error) {
-                        console.error("Error decoding parameters:", error);
                     }
-                } else {
-                    console.log("Transaction has no or insufficient decoded input data:", tx);
                 }
+
+                seenBlocks.add(tx.block);  // Mark the block as processed
             }
 
             if (data.items.length > 0) {
                 lastTransactionBlock = data.items[data.items.length - 1].block;  // Track last block for pagination
                 console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
-            } else {
-                console.log("No more items in the current data set.");
             }
 
             if (!foundValidTransaction) {
@@ -191,6 +186,85 @@ document.addEventListener('DOMContentLoaded', async function () {
         } finally {
             loading = false;
             console.log("News feed loading complete. loading set to:", loading);
+        }
+    }
+
+    async function checkIfReporterLocked() {
+        console.log("Checking if reporter is locked...");
+
+        try {
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
+            const reporterAddress = await signer.getAddress();
+
+            const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
+            const reportingLock = await contract.getReportingLock();
+            const currentTime = Math.floor(Date.now() / 1000);
+
+            const timeSinceLastReport = currentTime - lastReportTimestamp;
+
+            if (timeSinceLastReport < reportingLock) {
+                const remainingLockTime = reportingLock - timeSinceLastReport;
+                const hours = Math.floor(remainingLockTime / 3600);
+                const minutes = Math.floor((remainingLockTime % 3600) / 60);
+                const seconds = remainingLockTime % 60;
+
+                console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+                return false;
+            } else {
+                console.log('Reporter is unlocked.');
+                return true;
+            }
+        } catch (error) {
+            console.error('Error checking reporter lock status:', error);
+            return false;
+        }
+    }
+
+    async function submitStory() {
+        console.log("Submitting story...");
+        const reportContent = document.getElementById('reportContent').value;
+        console.log("Report content to be submitted:", reportContent);
+
+        if (!signer) {
+            console.error("Wallet not connected. Cannot submit story.");
+            displayStatusMessage('Wallet not connected. Please connect your wallet first.', true);
+            return;
+        }
+
+        const isUnlocked = await checkIfReporterLocked();
+        if (!isUnlocked) {
+            displayStatusMessage('Reporter is still locked. Please wait until unlocked.', true);
+            return;
+        }
+
+        try {
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
+            const queryId = ethers.utils.keccak256(queryData);
+            console.log("Generated query ID:", queryId);
+
+            const nonce = await contract.getNewValueCountbyQueryId(queryId);
+            console.log("Current nonce:", nonce);
+
+            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
+            console.log("Encoded value:", value);
+
+            const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
+            console.log("Estimated gas:", gasEstimate.toString());
+
+            try {
+                const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
+                displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
+            } catch (error) {
+                console.error("Error submitting story:", error);
+                displayStatusMessage('Error submitting story: ' + error.message, true);
+            }
+
+        } catch (error) {
+            console.error("Error during story submission process:", error);
+            displayStatusMessage('Error during story submission process: ' + error.message, true);
         }
     }
 
