@@ -64,9 +64,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     ];
 
-    let nextPageParams = null;  // Track the next page parameters
+    let lastTransactionBlock = null;
     let loading = false;
-    let noMoreData = false;  // Prevents further fetching if no more data
+    let noMoreData = false;
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
@@ -81,8 +81,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             provider = new ethers.providers.Web3Provider(window.ethereum);
             await provider.send("eth_requestAccounts", []);
             signer = provider.getSigner();
-            console.log("Wallet connected, signer:", signer);
-
             displayStatusMessage('Wallet connected.');
         } catch (e) {
             displayStatusMessage('Could not connect to wallet: ' + e.message, true);
@@ -90,33 +88,26 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function loadNewsFeed() {
-        if (loading || noMoreData) return;  // Prevents multiple simultaneous calls
+        if (loading || noMoreData) return;
         loading = true;
         console.log("loadNewsFeed called. loading:", loading, "noMoreData:", noMoreData);
 
         let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100`;
 
-        if (nextPageParams) {
-            apiUrl += `&beforeBlock=${nextPageParams.block}`;
-            console.log("Appending next page params:", nextPageParams);
-        } else {
-            console.log("First page of data, no pagination params.");
+        if (lastTransactionBlock) {
+            apiUrl += `&beforeBlock=${lastTransactionBlock}`;
+            console.log("Appending block filter:", lastTransactionBlock);
         }
 
         try {
-            console.log("Fetching data from API:", apiUrl);
             const response = await fetch(apiUrl);
-
-            if (!response.ok) {
-                console.error("Error fetching data, status:", response.status);
-                throw new Error(`API Error: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
 
             const data = await response.json();
-            console.log("Data fetched from API:", data);
+            let foundValidTransaction = false;
 
             if (data.items.length === 0) {
-                noMoreData = true;  // Set flag if no more data is available
+                noMoreData = true;
                 displayStatusMessage("No more news stories available.", true);
                 console.log("No more transactions to load, stopping further requests.");
                 loading = false;
@@ -125,42 +116,34 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             for (let tx of data.items) {
                 console.log("Checking transaction:", tx);
-
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
                 if (decodedParams && decodedParams.length >= 4) {
-                    console.log("Found decoded parameters:", decodedParams);
-
-                    const reportContentBytes = decodedParams[3].value;
-                    let reportContent = '';
-
                     try {
-                        reportContent = ethers.utils.toUtf8String(reportContentBytes);
-                        console.log("Decoded report content (UTF-8):", reportContent);
-                    } catch (utf8Error) {
-                        console.warn("Error decoding report content as UTF-8 string:", utf8Error);
-                        reportContent = "<Invalid or non-readable content>";
-                    }
+                        const queryDataParam = decodedParams[3].value;
+                        let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
 
-                    const newsFeed = document.getElementById('newsFeed');
-                    if (!newsFeed) {
-                        console.error("newsFeed element not found!");
-                        return;
-                    }
+                        const reportContentBytes = decodedQueryData[1];
+                        let reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                        const newsFeed = document.getElementById('newsFeed');
+                        const article = document.createElement('article');
+                        article.innerHTML = `<p>${reportContent}</p>`;
+                        newsFeed.appendChild(article);
 
-                    const article = document.createElement('article');
-                    article.innerHTML = `<p>${reportContent}</p>`;
-                    newsFeed.appendChild(article);
-                } else {
-                    console.log("Transaction has no or insufficient decoded input data:", tx);
+                        foundValidTransaction = true;
+                    } catch (error) {
+                        console.warn("Error decoding transaction:", error);
+                    }
                 }
             }
 
             if (data.items.length > 0) {
-                nextPageParams = { block: data.items[data.items.length - 1].block };  // Track last block for pagination
-                console.log("Updated nextPageParams to:", nextPageParams);
-            } else {
-                console.log("No more items in the current data set.");
+                lastTransactionBlock = data.items[data.items.length - 1].block;
+                console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
+            }
+
+            if (!foundValidTransaction) {
+                displayStatusMessage("No valid news stories found.", true);
             }
 
         } catch (error) {
@@ -168,93 +151,39 @@ document.addEventListener('DOMContentLoaded', async function () {
             displayStatusMessage('Error loading news feed: ' + error.message, true);
         } finally {
             loading = false;
-            console.log("News feed loading complete. loading set to:", loading);
-        }
-    }
-
-    async function checkIfReporterLocked() {
-        console.log("Checking if reporter is locked...");
-
-        try {
-            contract = new ethers.Contract(contractAddress, contractABI, signer);
-            const reporterAddress = await signer.getAddress();
-
-            const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
-            const reportingLock = await contract.getReportingLock();
-            const currentTime = Math.floor(Date.now() / 1000);
-
-            const timeSinceLastReport = currentTime - lastReportTimestamp;
-
-            if (timeSinceLastReport < reportingLock) {
-                const remainingLockTime = reportingLock - timeSinceLastReport;
-                const hours = Math.floor(remainingLockTime / 3600);
-                const minutes = Math.floor((remainingLockTime % 3600) / 60);
-                const seconds = remainingLockTime % 60;
-
-                console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
-                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
-                return false;
-            } else {
-                console.log('Reporter is unlocked.');
-                return true;
-            }
-        } catch (error) {
-            console.error('Error checking reporter lock status:', error);
-            return false;
         }
     }
 
     async function submitStory() {
         console.log("Submitting story...");
         const reportContent = document.getElementById('reportContent').value;
-        console.log("Report content to be submitted:", reportContent);
-
         if (!signer) {
-            console.error("Wallet not connected. Cannot submit story.");
             displayStatusMessage('Wallet not connected. Please connect your wallet first.', true);
             return;
         }
 
-        const isUnlocked = await checkIfReporterLocked();
-        if (!isUnlocked) {
-            displayStatusMessage('Reporter is still locked. Please wait until unlocked.', true);
-            return;
-        }
-
         try {
-            contract = new ethers.Contract(contractAddress, contractABI, signer);
+            const isUnlocked = await checkIfReporterLocked();
+            if (!isUnlocked) return;
 
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
             const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
             const queryId = ethers.utils.keccak256(queryData);
-            console.log("Generated query ID:", queryId);
-
             const nonce = await contract.getNewValueCountbyQueryId(queryId);
-            console.log("Current nonce:", nonce);
-
             const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
-            console.log("Encoded value:", value);
 
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
-            console.log("Estimated gas:", gasEstimate.toString());
-
-            try {
-                const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
-                displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
-            } catch (error) {
-                console.error("Error submitting story:", error);
-                displayStatusMessage('Error submitting story: ' + error.message, true);
-            }
+            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
+            displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
 
         } catch (error) {
-            console.error("Error during story submission process:", error);
-            displayStatusMessage('Error during story submission process: ' + error.message, true);
+            console.error("Error during story submission:", error);
+            displayStatusMessage('Error during story submission: ' + error.message, true);
         }
     }
 
     window.addEventListener('scroll', () => {
-        console.log('Scroll event detected:', window.scrollY, 'Window height:', window.innerHeight, 'Document height:', document.body.offsetHeight);
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
-            console.log("Triggering news feed load on scroll.");
             loadNewsFeed();
         }
     });
@@ -262,6 +191,5 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     document.getElementById('publishStory').addEventListener('click', submitStory);
 
-    // Initial load of the news feed
     loadNewsFeed();
 });
