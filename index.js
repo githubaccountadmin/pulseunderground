@@ -96,9 +96,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100`;
 
-        // Log the current state of lastTransactionBlock before fetching
-        console.log("Last fetched block before API call:", lastTransactionBlock);
-
         if (lastTransactionBlock) {
             apiUrl += `&beforeBlock=${lastTransactionBlock}`;
             console.log("Appending block filter:", lastTransactionBlock);
@@ -190,7 +187,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         } finally {
             loading = false;
             console.log("News feed loading complete. loading set to:", loading);
-            console.log("Last fetched block after API call:", lastTransactionBlock);
         }
     }
 
