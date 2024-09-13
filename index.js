@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     let lastTransactionBlock = null;  // To track the block number for pagination
     let loading = false;
+    let noMoreData = false;  // Prevents further fetching if no more data
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function loadNewsFeed() {
-        if (loading) return;  // Prevents multiple simultaneous calls
+        if (loading || noMoreData) return;  // Prevents multiple simultaneous calls
         loading = true;
 
         console.log("Loading news feed...");
@@ -112,6 +113,13 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.log("Data fetched from API:", data);
 
             let foundValidTransaction = false;
+
+            if (data.items.length === 0) {
+                noMoreData = true;  // Set flag if no more data is available
+                displayStatusMessage("No more news stories available.", true);
+                loading = false;
+                return;
+            }
 
             for (let tx of data.items) {
                 console.log("Checking transaction:", tx);
@@ -159,15 +167,14 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             if (data.items.length > 0) {
-                lastTransactionBlock = data.items[data.items.length - 1].block;
+                lastTransactionBlock = data.items[data.items.length - 1].block;  // Track last block for pagination
                 console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
-            } else {
-                console.log("No more transactions to load.");
             }
 
             if (!foundValidTransaction) {
                 displayStatusMessage("No valid news stories found.", true);
             }
+
         } catch (error) {
             console.error("Error loading news feed:", error);
             displayStatusMessage('Error loading news feed: ' + error.message, true);
