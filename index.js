@@ -132,25 +132,24 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                 console.log("Checking transaction:", tx);
 
-                // Check the method and parameters
-                const method = tx.method;
-                if (method === 'submitValue') {
+                // Only process 'submitValue' transactions
+                if (tx.method === 'submitValue') {
                     let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
                     if (decodedParams && decodedParams.length >= 4) {
                         console.log("Found decoded parameters:", decodedParams);
-                        const queryType = decodedParams[0].value;  // Fetch query type
                         const queryDataParam = decodedParams[3].value;
 
-                        console.log("Query Type:", queryType);
-                        if (queryType === "StringQuery") {
-                            console.log("StringQuery found in transaction.");
+                        try {
+                            let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
+                            console.log("Decoded query data:", decodedQueryData);
 
-                            try {
-                                let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                                console.log("Decoded query data:", decodedQueryData);
+                            const queryType = decodedQueryData[0];
+                            const reportContentBytes = decodedQueryData[1];
 
-                                const reportContentBytes = decodedQueryData[1];
+                            if (queryType === "StringQuery") {
+                                console.log("StringQuery found in transaction.");
+
                                 let reportContent = '';
 
                                 try {
@@ -167,11 +166,11 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 newsFeed.appendChild(article);
 
                                 foundValidTransaction = true;
-                            } catch (error) {
-                                console.error("Error decoding parameters:", error);
+                            } else {
+                                console.log("Transaction is not a StringQuery.");
                             }
-                        } else {
-                            console.log("Not a StringQuery transaction.");
+                        } catch (error) {
+                            console.error("Error decoding parameters:", error);
                         }
                     }
                 } else {
@@ -188,6 +187,15 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             if (!foundValidTransaction) {
                 displayStatusMessage("No valid news stories found.", true);
+            } else {
+                displayStatusMessage("News feed updated.");
+            }
+
+            // Automatically fetch more if not enough content to fill the page
+            const newsFeed = document.getElementById('newsFeed');
+            if (newsFeed.scrollHeight <= window.innerHeight && !noMoreData) {
+                console.log("Not enough data to fill the page, fetching more...");
+                loadNewsFeed();  // Trigger another fetch if needed
             }
 
         } catch (error) {
