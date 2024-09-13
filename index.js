@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     ];
 
-    let lastTransactionBlock = null;
+    let lastTransactionBlock = null;  
     let loading = false;
     let noMoreData = false;
 
@@ -81,6 +81,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             provider = new ethers.providers.Web3Provider(window.ethereum);
             await provider.send("eth_requestAccounts", []);
             signer = provider.getSigner();
+            console.log("Wallet connected, signer:", signer);
+
             displayStatusMessage('Wallet connected.');
         } catch (e) {
             displayStatusMessage('Could not connect to wallet: ' + e.message, true);
@@ -88,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function loadNewsFeed() {
-        if (loading || noMoreData) return;
+        if (loading || noMoreData) return;  
         loading = true;
         console.log("loadNewsFeed called. loading:", loading, "noMoreData:", noMoreData);
 
@@ -97,17 +99,26 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (lastTransactionBlock) {
             apiUrl += `&beforeBlock=${lastTransactionBlock}`;
             console.log("Appending block filter:", lastTransactionBlock);
+        } else {
+            console.log("First page of data, no block filter needed.");
         }
 
         try {
+            console.log("Fetching data from API:", apiUrl);
             const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+
+            if (!response.ok) {
+                console.error("Error fetching data, status:", response.status);
+                throw new Error(`API Error: ${response.statusText}`);
+            }
 
             const data = await response.json();
+            console.log("Data fetched from API:", data);
+
             let foundValidTransaction = false;
 
             if (data.items.length === 0) {
-                noMoreData = true;
+                noMoreData = true;  
                 displayStatusMessage("No more news stories available.", true);
                 console.log("No more transactions to load, stopping further requests.");
                 loading = false;
@@ -116,30 +127,54 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             for (let tx of data.items) {
                 console.log("Checking transaction:", tx);
+
                 let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
                 if (decodedParams && decodedParams.length >= 4) {
+                    console.log("Found decoded parameters:", decodedParams);
+
                     try {
                         const queryDataParam = decodedParams[3].value;
+                        console.log("Raw queryDataParam:", queryDataParam);
+
                         let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
+                        console.log("Decoded query data:", decodedQueryData);
 
                         const reportContentBytes = decodedQueryData[1];
-                        let reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                        let reportContent = '';
+
+                        try {
+                            reportContent = ethers.utils.toUtf8String(reportContentBytes);
+                            console.log("Decoded report content (UTF-8):", reportContent);
+                        } catch (utf8Error) {
+                            console.warn("Error decoding report content as UTF-8 string:", utf8Error);
+                            reportContent = "<Invalid or non-readable content>";
+                        }
+
                         const newsFeed = document.getElementById('newsFeed');
+                        if (!newsFeed) {
+                            console.error("newsFeed element not found!");
+                            return;
+                        }
+
                         const article = document.createElement('article');
                         article.innerHTML = `<p>${reportContent}</p>`;
                         newsFeed.appendChild(article);
 
                         foundValidTransaction = true;
                     } catch (error) {
-                        console.warn("Error decoding transaction:", error);
+                        console.error("Error decoding parameters:", error);
                     }
+                } else {
+                    console.log("Transaction has no or insufficient decoded input data:", tx);
                 }
             }
 
             if (data.items.length > 0) {
-                lastTransactionBlock = data.items[data.items.length - 1].block;
+                lastTransactionBlock = data.items[data.items.length - 1].block;  
                 console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
+            } else {
+                console.log("No more items in the current data set.");
             }
 
             if (!foundValidTransaction) {
@@ -151,39 +186,93 @@ document.addEventListener('DOMContentLoaded', async function () {
             displayStatusMessage('Error loading news feed: ' + error.message, true);
         } finally {
             loading = false;
+            console.log("News feed loading complete. loading set to:", loading);
+        }
+    }
+
+    async function checkIfReporterLocked() {
+        console.log("Checking if reporter is locked...");
+
+        try {
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
+            const reporterAddress = await signer.getAddress();
+
+            const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
+            const reportingLock = await contract.getReportingLock();
+            const currentTime = Math.floor(Date.now() / 1000);
+
+            const timeSinceLastReport = currentTime - lastReportTimestamp;
+
+            if (timeSinceLastReport < reportingLock) {
+                const remainingLockTime = reportingLock - timeSinceLastReport;
+                const hours = Math.floor(remainingLockTime / 3600);
+                const minutes = Math.floor((remainingLockTime % 3600) / 60);
+                const seconds = remainingLockTime % 60;
+
+                console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+                return false;
+            } else {
+                console.log('Reporter is unlocked.');
+                return true;
+            }
+        } catch (error) {
+            console.error('Error checking reporter lock status:', error);
+            return false;
         }
     }
 
     async function submitStory() {
         console.log("Submitting story...");
         const reportContent = document.getElementById('reportContent').value;
+        console.log("Report content to be submitted:", reportContent);
+
         if (!signer) {
+            console.error("Wallet not connected. Cannot submit story.");
             displayStatusMessage('Wallet not connected. Please connect your wallet first.', true);
             return;
         }
 
-        try {
-            const isUnlocked = await checkIfReporterLocked();
-            if (!isUnlocked) return;
+        const isUnlocked = await checkIfReporterLocked();
+        if (!isUnlocked) {
+            displayStatusMessage('Reporter is still locked. Please wait until unlocked.', true);
+            return;
+        }
 
+        try {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
+
             const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
             const queryId = ethers.utils.keccak256(queryData);
+            console.log("Generated query ID:", queryId);
+
             const nonce = await contract.getNewValueCountbyQueryId(queryId);
+            console.log("Current nonce:", nonce);
+
             const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
+            console.log("Encoded value:", value);
 
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
-            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
-            displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
+            console.log("Estimated gas:", gasEstimate.toString());
+
+            try {
+                const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.add(100000) });
+                displayStatusMessage(`Transaction submitted successfully! Hash: ${tx.hash}`);
+            } catch (error) {
+                console.error("Error submitting story:", error);
+                displayStatusMessage('Error submitting story: ' + error.message, true);
+            }
 
         } catch (error) {
-            console.error("Error during story submission:", error);
-            displayStatusMessage('Error during story submission: ' + error.message, true);
+            console.error("Error during story submission process:", error);
+            displayStatusMessage('Error during story submission process: ' + error.message, true);
         }
     }
 
     window.addEventListener('scroll', () => {
+        console.log('Scroll event detected:', window.scrollY, 'Window height:', window.innerHeight, 'Document height:', document.body.offsetHeight);
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
+            console.log("Triggering news feed load on scroll.");
             loadNewsFeed();
         }
     });
