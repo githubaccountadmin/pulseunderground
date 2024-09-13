@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function () {
     console.log("DOM fully loaded and parsed");
 
     let provider;
@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     ];
 
-    let page = 1; // Infinite scrolling starts with page 1
-    let loading = false; // Track if we're currently loading more data
+    let lastTransactionTimestamp = null; // Tracks the latest transaction timestamp for pagination
+    let loading = false;
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
@@ -88,10 +88,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    async function loadNewsFeed(page = 1) {
-        console.log("Loading news feed... Page:", page);
+    async function loadNewsFeed() {
+        console.log("Loading news feed...");
 
-        const apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100&page=${page}`;
+        const apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100${lastTransactionTimestamp ? `&before=${lastTransactionTimestamp}` : ''}`;
 
         try {
             console.log("Fetching data from API:", apiUrl);
@@ -152,6 +152,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
 
+            if (data.items.length > 0) {
+                lastTransactionTimestamp = data.items[data.items.length - 1].timestamp;
+            }
+
             if (!foundValidTransaction) {
                 displayStatusMessage("No valid news stories found.", true);
             }
@@ -168,16 +172,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
             const reporterAddress = await signer.getAddress();
 
-            // Fetch the reporter's last timestamp (when they last reported)
             const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
-
-            // Fetch the reporting lock duration (in seconds or blocks)
             const reportingLock = await contract.getReportingLock();
+            const currentTime = Math.floor(Date.now() / 1000);
 
-            // Get the current time in seconds
-            const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-
-            // Calculate the time difference
             const timeSinceLastReport = currentTime - lastReportTimestamp;
 
             if (timeSinceLastReport < reportingLock) {
@@ -250,8 +248,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     window.addEventListener('scroll', () => {
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
             loading = true;
-            page++;
-            loadNewsFeed(page).then(() => {
+            loadNewsFeed().then(() => {
                 loading = false;
             });
         }
