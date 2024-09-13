@@ -160,6 +160,9 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             if (data.items.length > 0) {
                 lastTransactionBlock = data.items[data.items.length - 1].block;
+                console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
+            } else {
+                console.log("No more transactions to load.");
             }
 
             if (!foundValidTransaction) {
