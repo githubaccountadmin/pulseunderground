@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     ];
 
-    let lastTransactionTimestamp = null; // Tracks the latest transaction timestamp for pagination
+    let lastTransactionBlock = null;  // To track the block number for pagination
     let loading = false;
 
     function displayStatusMessage(message, isError = false) {
@@ -89,9 +89,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function loadNewsFeed() {
-        console.log("Loading news feed...");
+        if (loading) return;  // Prevents multiple simultaneous calls
+        loading = true;
 
-        const apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100${lastTransactionTimestamp ? `&before=${lastTransactionTimestamp}` : ''}`;
+        console.log("Loading news feed...");
+        let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from&limit=100`;
+
+        if (lastTransactionBlock) {
+            apiUrl += `&beforeBlock=${lastTransactionBlock}`;
+        }
 
         try {
             console.log("Fetching data from API:", apiUrl);
@@ -153,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             if (data.items.length > 0) {
-                lastTransactionTimestamp = data.items[data.items.length - 1].timestamp;
+                lastTransactionBlock = data.items[data.items.length - 1].block;
             }
 
             if (!foundValidTransaction) {
@@ -162,6 +168,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         } catch (error) {
             console.error("Error loading news feed:", error);
             displayStatusMessage('Error loading news feed: ' + error.message, true);
+        } finally {
+            loading = false;
         }
     }
 
@@ -244,21 +252,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    // Infinite Scrolling Mechanism
     window.addEventListener('scroll', () => {
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !loading) {
-            loading = true;
-            loadNewsFeed().then(() => {
-                loading = false;
-            });
+            loadNewsFeed();
         }
     });
 
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    console.log("Event listener added to Connect Wallet button.");
-
     document.getElementById('publishStory').addEventListener('click', submitStory);
-    console.log("Event listener added to Publish Story button.");
 
     // Initial load of the news feed
     loadNewsFeed();
