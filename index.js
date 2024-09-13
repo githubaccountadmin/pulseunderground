@@ -9,10 +9,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const contractABI = [
         {
             "inputs": [
-                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-                {"internalType": "bytes", "name": "_value", "type": "bytes"},
-                {"internalType": "uint256", "name": "_nonce", "type": "uint256"},
-                {"internalType": "bytes", "name": "_queryData", "type": "bytes"}
+                { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" },
+                { "internalType": "bytes", "name": "_value", "type": "bytes" },
+                { "internalType": "uint256", "name": "_nonce", "type": "uint256" },
+                { "internalType": "bytes", "name": "_queryData", "type": "bytes" }
             ],
             "name": "submitValue",
             "outputs": [],
@@ -21,22 +21,22 @@ document.addEventListener('DOMContentLoaded', async function() {
         },
         {
             "inputs": [
-                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
+                { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" }
             ],
             "name": "getNewValueCountbyQueryId",
             "outputs": [
-                {"internalType": "uint256", "name": "", "type": "uint256"}
+                { "internalType": "uint256", "name": "", "type": "uint256" }
             ],
             "stateMutability": "view",
             "type": "function"
         },
         {
             "inputs": [
-                {"internalType": "address", "name": "_reporter", "type": "address"}
+                { "internalType": "address", "name": "_reporter", "type": "address" }
             ],
             "name": "getReporterLastTimestamp",
             "outputs": [
-                {"internalType": "uint256", "name": "", "type": "uint256"}
+                { "internalType": "uint256", "name": "", "type": "uint256" }
             ],
             "stateMutability": "view",
             "type": "function"
@@ -45,30 +45,48 @@ document.addEventListener('DOMContentLoaded', async function() {
             "inputs": [],
             "name": "getReportingLock",
             "outputs": [
-                {"internalType": "uint256", "name": "", "type": "uint256"}
+                { "internalType": "uint256", "name": "", "type": "uint256" }
             ],
             "stateMutability": "view",
             "type": "function"
         },
         {
             "inputs": [
-                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-                {"internalType": "uint256", "name": "_index", "type": "uint256"}
+                { "internalType": "bytes32", "name": "_queryId", "type": "bytes32" },
+                { "internalType": "uint256", "name": "_index", "type": "uint256" }
             ],
             "name": "getReportTimestamp",
             "outputs": [
-                {"internalType": "uint256", "name": "", "type": "uint256"}
+                { "internalType": "uint256", "name": "", "type": "uint256" }
             ],
             "stateMutability": "view",
             "type": "function"
         }
     ];
 
+    // Modal elements for reporter lock
+    const modal = document.getElementById("reporterLockModal");
+    const span = document.getElementsByClassName("close")[0];
+
+    span.onclick = function() {
+        modal.style.display = "none";
+    };
+
+    function showLockModal(message) {
+        document.getElementById('lockMessage').textContent = message;
+        modal.style.display = "block";
+    }
+
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
         statusMessage.textContent = message;
-        statusMessage.style.color = isError ? 'red' : 'green';
+        statusMessage.className = isError ? 'error' : 'success';
         statusMessage.style.display = 'block';
+
+        // Hide the message after 5 seconds
+        setTimeout(() => {
+            statusMessage.style.display = 'none';
+        }, 5000);
     }
 
     async function connectWallet() {
@@ -88,7 +106,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function loadNewsFeed() {
         console.log("Loading news feed...");
 
-        const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions?filter=to%20%7C%20from';
+        const apiUrl = 'https://api.scan.pulsechain.com/api/v2/addresses/' +
+                       '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0/transactions' +
+                       '?filter=to%20%7C%20from';
 
         try {
             console.log("Fetching data from API:", apiUrl);
@@ -168,11 +188,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Fetch the reporter's last timestamp (when they last reported)
             const lastReportTimestamp = await contract.getReporterLastTimestamp(reporterAddress);
 
-            // Fetch the reporting lock duration (in seconds or blocks)
+            // Fetch the reporting lock duration (in seconds)
             const reportingLock = await contract.getReportingLock();
 
-            // Get the current time in seconds
-            const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+            // Get the current blockchain time
+            const currentBlock = await provider.getBlock('latest');
+            const currentTime = currentBlock.timestamp;
 
             // Calculate the time difference
             const timeSinceLastReport = currentTime - lastReportTimestamp;
@@ -183,8 +204,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const minutes = Math.floor((remainingLockTime % 3600) / 60);
                 const seconds = remainingLockTime % 60;
 
-                console.log(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
-                alert(`Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`);
+                const lockMessage = `Reporter is locked. Time left: ${hours}h ${minutes}m ${seconds}s`;
+                console.log(lockMessage);
+                showLockModal(lockMessage);
                 return false;
             } else {
                 console.log('Reporter is unlocked.');
@@ -216,14 +238,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
+            const queryData = ethers.utils.defaultAbiCoder.encode(
+                ['string', 'bytes'],
+                ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]
+            );
             const queryId = ethers.utils.keccak256(queryData);
             console.log("Generated query ID:", queryId);
 
             const nonce = await contract.getNewValueCountbyQueryId(queryId);
             console.log("Current nonce:", nonce);
 
-            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]);
+            const value = ethers.utils.defaultAbiCoder.encode(
+                ['string', 'bytes'],
+                ["NEWS", ethers.utils.toUtf8Bytes(reportContent)]
+            );
             console.log("Encoded value:", value);
 
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
@@ -248,6 +276,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     document.getElementById('publishStory').addEventListener('click', submitStory);
     console.log("Event listener added to Publish Story button.");
+
+    // Disable "Publish Story" button when textarea is empty
+    document.getElementById('reportContent').addEventListener('input', function() {
+        const publishButton = document.getElementById('publishStory');
+        publishButton.disabled = !this.value.trim();
+    });
 
     loadNewsFeed();
 });
