@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     ];
 
-    let lastTransactionBlock = null;  // To track the block number for pagination
+    let lastTransactionTimestamp = null;
     let loading = false;
     let noMoreData = false;  // Prevents further fetching if no more data
     let validTransactionsCount = 0;  // Counter for valid StringQuery transactions
@@ -119,13 +119,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         loading = true;
         console.log("Setting loading to true");
 
-        let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to%20%7C%20from&limit=100`;
+        let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&limit=100`;
 
-        if (lastTransactionBlock) {
-            apiUrl += `&beforeBlock=${lastTransactionBlock}`;
-            console.log("Appending block filter:", lastTransactionBlock);
+        if (lastTransactionTimestamp) {
+            apiUrl += `&toTimestamp=${lastTransactionTimestamp}`;
+            console.log("Appending timestamp filter:", lastTransactionTimestamp);
         } else {
-            console.log("First page of data, no block filter needed.");
+            console.log("First page of data, no timestamp filter needed.");
         }
 
         try {
@@ -200,8 +200,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             if (data.items.length > 0) {
-                lastTransactionBlock = data.items[data.items.length - 1].block;
-                console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
+                lastTransactionTimestamp = data.items[data.items.length - 1].timestamp;
+                console.log("Updated lastTransactionTimestamp to:", lastTransactionTimestamp);
             }
 
             console.log(`Processed ${data.items.length} transactions, found ${newValidTransactions} new valid transactions`);
@@ -369,7 +369,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     reloadButton.textContent = 'Reload News Feed';
     reloadButton.addEventListener('click', () => {
         console.log("Manual reload of news feed triggered");
-        lastTransactionBlock = null;
+        lastTransactionTimestamp = null;
         validTransactionsCount = 0;
         noMoreData = false;
         loadNewsFeed();
