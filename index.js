@@ -85,8 +85,17 @@ document.addEventListener('DOMContentLoaded', async function () {
             signer = provider.getSigner();
             console.log("Wallet connected, signer:", signer);
 
+            const address = await signer.getAddress();
+            console.log("Connected wallet address:", address);
+
             displayStatusMessage('Wallet connected.');
+            
+            // Enable the publish button after wallet connection
+            const publishButton = document.getElementById('publishStory');
+            publishButton.disabled = false;
+            console.log("Publish button enabled:", !publishButton.disabled);
         } catch (e) {
+            console.error("Error connecting wallet:", e);
             displayStatusMessage('Could not connect to wallet: ' + e.message, true);
         }
     }
@@ -200,17 +209,22 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function submitStory() {
-        console.log("Submitting story...");
+        console.log("Submit Story function called");
         const publishButton = document.getElementById('publishStory');
         const reportContentElement = document.getElementById('reportContent');
         const reportContent = reportContentElement.value.trim();
 
+        console.log("Current report content:", reportContent);
+        console.log("Publish button state before submission:", publishButton.disabled ? "disabled" : "enabled");
+
         if (!reportContent) {
+            console.log("Empty report content, aborting submission");
             displayStatusMessage('Please enter a story before submitting.', true);
             return;
         }
 
         publishButton.disabled = true;
+        console.log("Publish button disabled for submission");
         displayStatusMessage('Submitting story...', false);
 
         try {
@@ -218,7 +232,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                 throw new Error("Wallet not connected. Please connect your wallet first.");
             }
 
+            console.log("Checking if reporter is locked...");
             const isUnlocked = await checkIfReporterLocked();
+            console.log("Reporter lock status:", isUnlocked ? "unlocked" : "locked");
+
             if (!isUnlocked) {
                 throw new Error('Reporter is still locked. Please wait until unlocked.');
             }
@@ -246,6 +263,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             const receipt = await tx.wait();
             console.log("Transaction confirmed:", receipt.transactionHash);
 
+            console.log("Story submitted successfully");
             displayStatusMessage("Story successfully submitted!");
             reportContentElement.value = ''; // Clear the input field
             loadNewsFeed(); // Refresh the news feed
@@ -254,6 +272,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             displayStatusMessage('Error submitting story: ' + error.message, true);
         } finally {
             publishButton.disabled = false;
+            console.log("Publish button re-enabled");
         }
     }
 
@@ -262,13 +281,18 @@ document.addEventListener('DOMContentLoaded', async function () {
         try {
             contract = new ethers.Contract(contractAddress, contractABI, provider);
             const lockTime = await contract.getReportingLock();
-            console.log("Reporter lock duration (in seconds):", lockTime);
+            console.log("Reporter lock duration (in seconds):", lockTime.toString());
 
-            const lastTimestamp = await contract.getReporterLastTimestamp(signer.getAddress());
-            console.log("Last reporting timestamp:", lastTimestamp);
+            const address = await signer.getAddress();
+            console.log("Checking lock for address:", address);
+            const lastTimestamp = await contract.getReporterLastTimestamp(address);
+            console.log("Last reporting timestamp:", lastTimestamp.toString());
 
             const currentTime = Math.floor(Date.now() / 1000);
             const unlockTime = Number(lastTimestamp) + Number(lockTime);
+
+            console.log("Current time:", currentTime);
+            console.log("Unlock time:", unlockTime);
 
             if (currentTime < unlockTime) {
                 const remainingTime = unlockTime - currentTime;
@@ -296,6 +320,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     document.getElementById('publishStory').addEventListener('click', submitStory);
+
+    // Initial setup
+    const publishButton = document.getElementById('publishStory');
+    publishButton.disabled = true; // Disable the button initially
+    console.log("Publish button initial state:", publishButton.disabled ? "disabled" : "enabled");
 
     // Initial load of the news feed
     loadNewsFeed();
