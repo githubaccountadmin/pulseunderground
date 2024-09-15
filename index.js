@@ -201,22 +201,28 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     async function submitStory() {
         console.log("Submitting story...");
-        const reportContent = document.getElementById('reportContent').value;
-        console.log("Report content to be submitted:", reportContent);
+        const publishButton = document.getElementById('publishStory');
+        const reportContentElement = document.getElementById('reportContent');
+        const reportContent = reportContentElement.value.trim();
 
-        if (!signer) {
-            console.error("Wallet not connected. Cannot submit story.");
-            displayStatusMessage('Wallet not connected. Please connect your wallet first.', true);
+        if (!reportContent) {
+            displayStatusMessage('Please enter a story before submitting.', true);
             return;
         }
 
-        const isUnlocked = await checkIfReporterLocked();
-        if (!isUnlocked) {
-            displayStatusMessage('Reporter is still locked. Please wait until unlocked.', true);
-            return;
-        }
+        publishButton.disabled = true;
+        displayStatusMessage('Submitting story...', false);
 
         try {
+            if (!signer) {
+                throw new Error("Wallet not connected. Please connect your wallet first.");
+            }
+
+            const isUnlocked = await checkIfReporterLocked();
+            if (!isUnlocked) {
+                throw new Error('Reporter is still locked. Please wait until unlocked.');
+            }
+
             contract = new ethers.Contract(contractAddress, contractABI, signer);
 
             const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(reportContent)]);
@@ -232,14 +238,22 @@ document.addEventListener('DOMContentLoaded', async function () {
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
             console.log("Estimated gas for submitValue:", gasEstimate.toString());
 
-            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate });
+            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.mul(120).div(100) }); // Add 20% to the gas estimate
             console.log("Transaction submitted, waiting for confirmation...", tx.hash);
 
-            displayStatusMessage("Story successfully submitted!");
+            displayStatusMessage("Transaction submitted. Waiting for confirmation...", false);
 
+            const receipt = await tx.wait();
+            console.log("Transaction confirmed:", receipt.transactionHash);
+
+            displayStatusMessage("Story successfully submitted!");
+            reportContentElement.value = ''; // Clear the input field
+            loadNewsFeed(); // Refresh the news feed
         } catch (error) {
             console.error("Error submitting story:", error);
             displayStatusMessage('Error submitting story: ' + error.message, true);
+        } finally {
+            publishButton.disabled = false;
         }
     }
 
