@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         statusMessage.textContent = message;
         statusMessage.style.color = isError ? 'red' : 'green';
         statusMessage.style.display = 'block';
+        console.log(`Status Message: ${message}`);
     }
 
     async function connectWallet() {
@@ -101,9 +102,22 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function loadNewsFeed() {
-        if (loading || noMoreData || validTransactionsCount >= validTransactionLimit) return;  // Stop if loading, no more data, or if we have 100 valid transactions
+        console.log("loadNewsFeed called. Current state:", { loading, noMoreData, validTransactionsCount });
+        if (loading) {
+            console.log("Already loading, skipping this call");
+            return;
+        }
+        if (noMoreData) {
+            console.log("No more data flag is set, stopping further requests");
+            return;
+        }
+        if (validTransactionsCount >= validTransactionLimit) {
+            console.log(`Reached valid transaction limit (${validTransactionLimit}), stopping further requests`);
+            return;
+        }
+
         loading = true;
-        console.log("loadNewsFeed called. loading:", loading, "noMoreData:", noMoreData);
+        console.log("Setting loading to true");
 
         let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to%20%7C%20from&limit=100`;
 
@@ -127,35 +141,33 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.log("Data fetched from API:", data);
 
             if (data.items.length === 0) {
-                noMoreData = true;  // Set flag if no more data is available
-                displayStatusMessage("No more news stories available.", true);
-                console.log("No more transactions to load, stopping further requests.");
-                loading = false;
+                console.log("No items returned from API");
+                noMoreData = true;
+                displayStatusMessage("No more news stories available.");
                 return;
             }
 
             let newValidTransactions = 0;
 
             for (let tx of data.items) {
-                console.log("Checking transaction:", tx);
+                console.log("Processing transaction:", tx.hash);
 
-                // Only process 'submitValue' transactions
                 if (tx.method === 'submitValue') {
                     let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
                     if (decodedParams && decodedParams.length >= 4) {
-                        console.log("Found decoded parameters:", decodedParams);
+                        console.log("Found decoded parameters for transaction:", tx.hash);
                         const queryDataParam = decodedParams[3].value;
 
                         try {
                             let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                            console.log("Decoded query data:", decodedQueryData);
+                            console.log("Decoded query data for transaction:", tx.hash, decodedQueryData);
 
                             const queryType = decodedQueryData[0];
                             const reportContentBytes = decodedQueryData[1];
 
                             if (queryType === "StringQuery") {
-                                console.log("StringQuery found in transaction.");
+                                console.log("StringQuery found in transaction:", tx.hash);
 
                                 let reportContent = '';
 
@@ -174,29 +186,37 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                                 newValidTransactions++;
                                 validTransactionsCount++;
+                                console.log(`Valid transaction processed. Total: ${validTransactionsCount}`);
                             } else {
-                                console.log("Transaction is not a StringQuery.");
+                                console.log("Transaction is not a StringQuery:", tx.hash);
                             }
                         } catch (error) {
-                            console.error("Error decoding parameters:", error);
+                            console.error("Error decoding parameters for transaction:", tx.hash, error);
                         }
                     }
                 } else {
-                    console.log("Transaction method not 'submitValue', skipping.");
+                    console.log("Transaction method not 'submitValue', skipping:", tx.hash);
                 }
             }
 
             if (data.items.length > 0) {
-                lastTransactionBlock = data.items[data.items.length - 1].block;  // Track last block for pagination
+                lastTransactionBlock = data.items[data.items.length - 1].block;
                 console.log("Updated lastTransactionBlock to:", lastTransactionBlock);
             }
 
-            // Automatically fetch more if not enough valid transactions to fill the page
-            if (validTransactionsCount < validTransactionLimit && !noMoreData) {
+            console.log(`Processed ${data.items.length} transactions, found ${newValidTransactions} new valid transactions`);
+
+            if (newValidTransactions === 0) {
+                console.log("No new valid transactions found in this batch");
+            }
+
+            // Always try to fetch more data if we haven't reached the limit
+            if (validTransactionsCount < validTransactionLimit) {
                 console.log(`Fetched ${validTransactionsCount} valid StringQuery transactions, fetching more...`);
-                loadNewsFeed();  // Trigger another fetch if needed
+                setTimeout(() => loadNewsFeed(), 1000);  // Add a slight delay before the next fetch
             } else {
-                displayStatusMessage("News feed updated.");
+                console.log(`Reached ${validTransactionLimit} valid transactions, stopping further requests`);
+                displayStatusMessage("News feed fully loaded.");
             }
 
         } catch (error) {
@@ -318,14 +338,41 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    document.getElementById('publishStory').addEventListener('click', submitStory);
+    const connectWalletButton = document.getElementById('connectWallet');
+    const publishButton = document.getElementById('publishStory');
+
+    if (connectWalletButton) {
+        connectWalletButton.addEventListener('click', connectWallet);
+        console.log("Connect Wallet button event listener added");
+    } else {
+        console.error("Connect Wallet button not found in the DOM");
+    }
+
+    if (publishButton) {
+        publishButton.addEventListener('click', submitStory);
+        console.log("Publish Story button event listener added");
+    } else {
+        console.error("Publish Story button not found in the DOM");
+    }
 
     // Initial setup
-    const publishButton = document.getElementById('publishStory');
-    publishButton.disabled = true; // Disable the button initially
-    console.log("Publish button initial state:", publishButton.disabled ? "disabled" : "enabled");
+    if (publishButton) {
+        publishButton.disabled = true; // Disable the button initially
+        console.log("Publish button initial state:", publishButton.disabled ? "disabled" : "enabled");
+    }
 
     // Initial load of the news feed
     loadNewsFeed();
+
+    // Add a button to manually reload the news feed
+    const reloadButton = document.createElement('button');
+    reloadButton.textContent = 'Reload News Feed';
+    reloadButton.addEventListener('click', () => {
+        console.log("Manual reload of news feed triggered");
+        lastTransactionBlock = null;
+        validTransactionsCount = 0;
+        noMoreData = false;
+        loadNewsFeed();
+    });
+    document.body.appendChild(reloadButton);
 });
