@@ -103,16 +103,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     async function loadNewsFeed() {
         console.log("loadNewsFeed called. Current state:", { loading, noMoreData, validTransactionsCount });
-        if (loading) {
-            console.log("Already loading, skipping this call");
-            return;
-        }
-        if (noMoreData) {
-            console.log("No more data flag is set, stopping further requests");
-            return;
-        }
-        if (validTransactionsCount >= validTransactionLimit) {
-            console.log(`Reached valid transaction limit (${validTransactionLimit}), stopping further requests`);
+        if (loading || noMoreData || validTransactionsCount >= validTransactionLimit) {
+            console.log("Skipping loadNewsFeed due to current state.");
             return;
         }
 
@@ -122,10 +114,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100`;
 
         if (lastTransactionIndex) {
-            apiUrl += `&start=${lastTransactionIndex}`;
+            apiUrl += `&start_index=${lastTransactionIndex}`;
             console.log("Appending start index:", lastTransactionIndex);
-        } else {
-            console.log("First page of data, no start index needed.");
         }
 
         try {
@@ -133,7 +123,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             const response = await fetch(apiUrl);
 
             if (!response.ok) {
-                console.error("Error fetching data, status:", response.status);
                 throw new Error(`API Error: ${response.statusText}`);
             }
 
@@ -143,28 +132,27 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (data.items.length === 0) {
                 console.log("No items returned from API");
                 noMoreData = true;
-                displayStatusMessage("No more news stories available.");
+                displayStatusMessage("No more transactions available.");
                 return;
             }
 
             let newValidTransactions = 0;
 
             for (let tx of data.items) {
-                console.log("Processing transaction:", tx.hash);
+                console.log("Processing transaction:", tx.hash, "Method:", tx.method);
 
                 if (tx.method === 'submitValue') {
                     let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
 
                     if (decodedParams && decodedParams.length >= 4) {
-                        console.log("Found decoded parameters for transaction:", tx.hash);
                         const queryDataParam = decodedParams[3].value;
 
                         try {
                             let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
-                            console.log("Decoded query data for transaction:", tx.hash, decodedQueryData);
-
                             const queryType = decodedQueryData[0];
                             const reportContentBytes = decodedQueryData[1];
+
+                            console.log("Decoded query type:", queryType);
 
                             if (queryType === "StringQuery") {
                                 console.log("StringQuery found in transaction:", tx.hash);
@@ -186,16 +174,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                                 newValidTransactions++;
                                 validTransactionsCount++;
-                                console.log(`Valid transaction processed. Total: ${validTransactionsCount}`);
-                            } else {
-                                console.log("Transaction is not a StringQuery:", tx.hash);
                             }
                         } catch (error) {
                             console.error("Error decoding parameters for transaction:", tx.hash, error);
                         }
                     }
-                } else {
-                    console.log("Transaction method not 'submitValue', skipping:", tx.hash);
                 }
             }
 
