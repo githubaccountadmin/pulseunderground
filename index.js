@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     ];
 
-    let lastTransactionTimestamp = null;
+    let lastTransactionIndex = null;
     let loading = false;
     let noMoreData = false;  // Prevents further fetching if no more data
     let validTransactionsCount = 0;  // Counter for valid StringQuery transactions
@@ -119,13 +119,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         loading = true;
         console.log("Setting loading to true");
 
-        let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&limit=100`;
+        let apiUrl = `https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100`;
 
-        if (lastTransactionTimestamp) {
-            apiUrl += `&toTimestamp=${lastTransactionTimestamp}`;
-            console.log("Appending timestamp filter:", lastTransactionTimestamp);
+        if (lastTransactionIndex) {
+            apiUrl += `&start=${lastTransactionIndex}`;
+            console.log("Appending start index:", lastTransactionIndex);
         } else {
-            console.log("First page of data, no timestamp filter needed.");
+            console.log("First page of data, no start index needed.");
         }
 
         try {
@@ -200,8 +200,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             if (data.items.length > 0) {
-                lastTransactionTimestamp = data.items[data.items.length - 1].timestamp;
-                console.log("Updated lastTransactionTimestamp to:", lastTransactionTimestamp);
+                lastTransactionIndex = data.next_page_params ? data.next_page_params.start_index : null;
+                console.log("Updated lastTransactionIndex to:", lastTransactionIndex);
             }
 
             console.log(`Processed ${data.items.length} transactions, found ${newValidTransactions} new valid transactions`);
@@ -210,12 +210,12 @@ document.addEventListener('DOMContentLoaded', async function () {
                 console.log("No new valid transactions found in this batch");
             }
 
-            // Always try to fetch more data if we haven't reached the limit
-            if (validTransactionsCount < validTransactionLimit) {
+            // Always try to fetch more data if we haven't reached the limit and there's more data
+            if (validTransactionsCount < validTransactionLimit && lastTransactionIndex !== null) {
                 console.log(`Fetched ${validTransactionsCount} valid StringQuery transactions, fetching more...`);
                 setTimeout(() => loadNewsFeed(), 1000);  // Add a slight delay before the next fetch
             } else {
-                console.log(`Reached ${validTransactionLimit} valid transactions, stopping further requests`);
+                console.log(`Reached ${validTransactionLimit} valid transactions or no more data, stopping further requests`);
                 displayStatusMessage("News feed fully loaded.");
             }
 
@@ -369,7 +369,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     reloadButton.textContent = 'Reload News Feed';
     reloadButton.addEventListener('click', () => {
         console.log("Manual reload of news feed triggered");
-        lastTransactionTimestamp = null;
+        lastTransactionIndex = null;
         validTransactionsCount = 0;
         noMoreData = false;
         loadNewsFeed();
