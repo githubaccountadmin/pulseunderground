@@ -240,13 +240,13 @@ document.addEventListener('DOMContentLoaded', async function () {
                 throw new Error("Wallet not connected. Please connect your wallet first.");
             }
 
-            console.log("Checking if reporter is locked...");
-            const isUnlocked = await checkIfReporterLocked();
-            console.log("Reporter lock status:", isUnlocked ? "unlocked" : "locked");
+            // console.log("Checking if reporter is locked...");
+            // const isUnlocked = await checkIfReporterLocked();
+            // console.log("Reporter lock status:", isUnlocked ? "unlocked" : "locked");
 
-            if (!isUnlocked) {
-                throw new Error('Reporter is still locked. Please wait until unlocked.');
-            }
+            // if (!isUnlocked) {
+            //     throw new Error('Reporter is still locked. Please wait until unlocked.');
+            // }
 
             contract = new ethers.Contract(contractAddress, contractABI, signer);
 
@@ -285,51 +285,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function checkIfReporterLocked() {
-        console.log("Checking if reporter is locked...");
-        try {
-            contract = new ethers.Contract(contractAddress, contractABI, provider);
-            
-            // 1. Get the stake amount required to report
-            const stakeAmountRequired = await contract.getStakeAmount();
-            console.log("Stake amount required to report:", stakeAmountRequired.toString());
-    
-            // 2. Get the current reporter's staked amount
-            const address = await signer.getAddress();
-            const stakerInfo = await contract.getStakerInfo(address);
-            const reporterStakedAmount = stakerInfo[1]; // Using the 2nd output as the staked amount
-            console.log("Reporter's staked amount:", reporterStakedAmount.toString());
-    
-            // Calculate how many times the reporter can report in a 12-hour period
-            const reportingFrequency = Math.floor(reporterStakedAmount / stakeAmountRequired);
-            console.log("Reporter can report", reportingFrequency, "times per 12-hour period");
-    
-            // Calculate the adjusted lock time based on staked amount
-            const baseLockTime = 12 * 60 * 60; // 12 hours in seconds
-            const adjustedLockTime = Math.max(baseLockTime / reportingFrequency, 3600); // Minimum 1 hour lock time
-            console.log("Adjusted lock time (in seconds):", adjustedLockTime);
-    
-            // Get the last timestamp when the reporter submitted a report
-            const lastTimestamp = await contract.getReporterLastTimestamp(address);
-            console.log("Last reporting timestamp:", lastTimestamp.toString());
-    
-            const currentTime = Math.floor(Date.now() / 1000);
-            const timeSinceLastReport = currentTime - Number(lastTimestamp);
-            console.log("Time since last report (seconds):", timeSinceLastReport);
-    
-            if (timeSinceLastReport < adjustedLockTime) {
-                const remainingTime = adjustedLockTime - timeSinceLastReport;
-                console.log("Reporter is still locked. Time left (seconds):", remainingTime);
-                return false;
-            }
-    
-            console.log("Reporter is not locked.");
-            return true;
-    
-        } catch (error) {
-            console.error("Error checking if reporter is locked:", error);
-            displayStatusMessage('Error checking lock status: ' + error.message, true);
-            return false;
-        }
+        console.log("Reporter lock check is currently disabled.");
+        return true; // Always return true to skip the check
     }
 
     window.addEventListener('scroll', () => {
