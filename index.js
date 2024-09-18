@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', async function () {
     console.log("DOM fully loaded and parsed");
 
+    // Add this near the top of your file, after imports
+    const PARAGRAPH_SEPARATOR = '\n\n';
+
     let provider;
     let signer;
     let contract;
@@ -101,6 +104,18 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
+    // Add these new functions for paragraph handling
+    function displayNews(newsContent) {
+        const paragraphs = newsContent.split(PARAGRAPH_SEPARATOR);
+        return paragraphs.map((paragraph, index) => 
+            `<p key=${index} class="mb-4">${paragraph.trim()}</p>`
+        ).join('');
+    }
+
+    function prepareNewsContent(rawContent) {
+        return rawContent.replace(/\n\n+/g, PARAGRAPH_SEPARATOR);
+    }
+
     async function loadNewsFeed() {
         console.log("loadNewsFeed called. Current state:", { loading, noMoreData, validTransactionsCount });
         if (loading || noMoreData || validTransactionsCount >= validTransactionLimit) {
@@ -171,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                                 const newsFeed = document.getElementById('newsFeed');
                                 const article = document.createElement('article');
-                                article.innerHTML = `<p>${reportContent}</p>`;
+                                article.innerHTML = displayNews(reportContent);  // Use the new displayNews function
                                 newsFeed.appendChild(article);
 
                                 newValidTransactions++;
@@ -220,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log("Submit Story function called");
         const publishButton = document.getElementById('publishStory');
         const reportContentElement = document.getElementById('reportContent');
-        const reportContent = reportContentElement.value.trim();
+        const reportContent = prepareNewsContent(reportContentElement.value.trim());  // Use the new prepareNewsContent function
 
         console.log("Current report content:", reportContent);
         console.log("Publish button state before submission:", publishButton.disabled ? "disabled" : "enabled");
@@ -239,14 +254,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (!signer) {
                 throw new Error("Wallet not connected. Please connect your wallet first.");
             }
-
-            // console.log("Checking if reporter is locked...");
-            // const isUnlocked = await checkIfReporterLocked();
-            // console.log("Reporter lock status:", isUnlocked ? "unlocked" : "locked");
-
-            // if (!isUnlocked) {
-            //     throw new Error('Reporter is still locked. Please wait until unlocked.');
-            // }
 
             contract = new ethers.Contract(contractAddress, contractABI, signer);
 
