@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', async function () {
     console.log("DOM fully loaded and parsed");
 
-    // Add this near the top of your file, after imports
     const PARAGRAPH_SEPARATOR = '\n\n';
+    const LINE_BREAK = '\n';
 
     let provider;
     let signer;
@@ -69,9 +69,9 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     let lastTransactionParams = null;
     let loading = false;
-    let noMoreData = false;  // Prevents further fetching if no more data
-    let validTransactionsCount = 0;  // Counter for valid StringQuery transactions
-    const validTransactionLimit = 100; // Min valid StringQuery transactions to fetch before stopping
+    let noMoreData = false;
+    let validTransactionsCount = 0;
+    const validTransactionLimit = 100;
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
@@ -94,7 +94,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             displayStatusMessage('Wallet connected.');
             
-            // Enable the publish button after wallet connection
             const publishButton = document.getElementById('publishStory');
             publishButton.disabled = false;
             console.log("Publish button enabled:", !publishButton.disabled);
@@ -104,16 +103,18 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    // Add these new functions for paragraph handling
     function displayNews(newsContent) {
         const paragraphs = newsContent.split(PARAGRAPH_SEPARATOR);
-        return paragraphs.map((paragraph, index) => 
-            `<p key=${index} class="mb-4">${paragraph.trim()}</p>`
-        ).join('');
+        return paragraphs.map(paragraph => {
+            const lines = paragraph.split(LINE_BREAK);
+            return `<p class="mb-4">${lines.map(line => line.trim()).join('<br>')}</p>`;
+        }).join('');
     }
 
     function prepareNewsContent(rawContent) {
-        return rawContent.replace(/\n\n+/g, PARAGRAPH_SEPARATOR);
+        const normalizedContent = rawContent.replace(/\r\n/g, '\n');
+        const paragraphs = normalizedContent.replace(/\n{3,}/g, '\n\n');
+        return paragraphs.split('\n\n').map(p => p.trim()).join('\n\n');
     }
 
     async function loadNewsFeed() {
@@ -186,7 +187,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                                 const newsFeed = document.getElementById('newsFeed');
                                 const article = document.createElement('article');
-                                article.innerHTML = displayNews(reportContent);  // Use the new displayNews function
+                                article.innerHTML = displayNews(reportContent);
                                 newsFeed.appendChild(article);
 
                                 newValidTransactions++;
@@ -213,10 +214,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                 console.log("No new valid transactions found in this batch");
             }
 
-            // Always try to fetch more data if we haven't reached the limit and there's more data
             if (validTransactionsCount < validTransactionLimit && !noMoreData) {
                 console.log(`Fetched ${validTransactionsCount} valid StringQuery transactions, fetching more...`);
-                setTimeout(() => loadNewsFeed(), 1000);  // Add a slight delay before the next fetch
+                setTimeout(() => loadNewsFeed(), 1000);
             } else {
                 console.log(`Reached ${validTransactionLimit} valid transactions or no more data, stopping further requests`);
                 displayStatusMessage("News feed fully loaded.");
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log("Submit Story function called");
         const publishButton = document.getElementById('publishStory');
         const reportContentElement = document.getElementById('reportContent');
-        const reportContent = prepareNewsContent(reportContentElement.value.trim());  // Use the new prepareNewsContent function
+        const reportContent = prepareNewsContent(reportContentElement.value.trim());
 
         console.log("Current report content:", reportContent);
         console.log("Publish button state before submission:", publishButton.disabled ? "disabled" : "enabled");
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
             console.log("Estimated gas for submitValue:", gasEstimate.toString());
 
-            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.mul(120).div(100) }); // Add 20% to the gas estimate
+            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.mul(120).div(100) });
             console.log("Transaction submitted, waiting for confirmation...", tx.hash);
 
             displayStatusMessage("Transaction submitted. Waiting for confirmation...", false);
@@ -280,8 +280,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             console.log("Story submitted successfully");
             displayStatusMessage("Story successfully submitted!");
-            reportContentElement.value = ''; // Clear the input field
-            loadNewsFeed(); // Refresh the news feed
+            reportContentElement.value = '';
+            loadNewsFeed();
         } catch (error) {
             console.error("Error submitting story:", error);
             displayStatusMessage('Error submitting story: ' + error.message, true);
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     async function checkIfReporterLocked() {
         console.log("Reporter lock check is currently disabled.");
-        return true; // Always return true to skip the check
+        return true;
     }
 
     window.addEventListener('scroll', () => {
@@ -321,16 +321,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.error("Publish Story button not found in the DOM");
     }
 
-    // Initial setup
     if (publishButton) {
-        publishButton.disabled = true; // Disable the button initially
+        publishButton.disabled = true;
         console.log("Publish button initial state:", publishButton.disabled ? "disabled" : "enabled");
     }
 
-    // Initial load of the news feed
     loadNewsFeed();
 
-    // Add a button to manually reload the news feed
     const reloadButton = document.createElement('button');
     reloadButton.textContent = 'Reload News Feed';
     reloadButton.addEventListener('click', () => {
