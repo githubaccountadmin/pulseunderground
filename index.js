@@ -54,12 +54,20 @@ document.addEventListener('DOMContentLoaded', async function () {
             await provider.send("eth_requestAccounts", []);
             signer = provider.getSigner();
             console.log("Wallet connected, signer:", signer);
-
+    
             const address = await signer.getAddress();
             console.log("Connected wallet address:", address);
-
+    
             displayStatusMessage('Wallet connected.');
             
+            const connectWalletButton = document.getElementById('connectWallet');
+            const walletInfo = document.getElementById('walletInfo');
+            const walletAddress = document.getElementById('walletAddress');
+            
+            connectWalletButton.style.display = 'none';
+            walletInfo.style.display = 'block';
+            walletAddress.textContent = shortenAddress(address);
+    
             const publishButton = document.getElementById('publishStory');
             publishButton.disabled = false;
             console.log("Publish button enabled:", !publishButton.disabled);
