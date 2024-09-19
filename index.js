@@ -89,24 +89,23 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function renderNewsItems(items) {
         const newsFeed = document.getElementById('newsFeed');
-        newsFeed.innerHTML = '';
         items.forEach((item, index) => {
-            const article = document.createElement('article');
-            article.className = 'news-item';
-            article.innerHTML = displayNews(item.content, item.reporter, item.timestamp);
-            article.style.opacity = 0;
-            article.style.transform = 'translateY(20px)';
-            newsFeed.appendChild(article);
-
-            anime({
-                targets: article,
-                opacity: 1,
-                translateY: 0,
-                duration: 500,
-                easing: 'easeOutQuad',
-                delay: index * 100
-            });
+            let existingArticle = document.getElementById(`news-item-${index}`);
+            if (!existingArticle) {
+                const article = document.createElement('article');
+                article.id = `news-item-${index}`;
+                article.className = 'news-item';
+                article.innerHTML = displayNews(item.content, item.reporter, item.timestamp);
+                newsFeed.appendChild(article);
+            } else {
+                existingArticle.innerHTML = displayNews(item.content, item.reporter, item.timestamp);
+            }
         });
+
+        // Remove any excess articles
+        while (newsFeed.children.length > items.length) {
+            newsFeed.removeChild(newsFeed.lastChild);
+        }
     }
     
     function shortenAddress(address) {
