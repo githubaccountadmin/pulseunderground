@@ -23,6 +23,12 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
 }
 
 #sidebar-left h1 {
@@ -52,7 +58,7 @@ body {
     font-size: 24px;
 }
 
-#postButton {
+#postButton, #connectWallet {
     width: 100%;
     padding: 15px;
     background-color: #1da1f2;
@@ -68,23 +74,21 @@ body {
 #profile-section {
     margin-top: auto;
     padding: 20px 0;
-}
-
-#connectWallet, #walletInfo {
     width: 100%;
-    padding: 10px;
-    background-color: #1da1f2;
-    color: #ffffff;
-    border: none;
-    border-radius: 20px;
-    font-size: 14px;
-    cursor: pointer;
-    text-align: center;
 }
 
 #walletInfo {
+    width: 100%;
+    padding: 15px;
     background-color: #192734;
-    cursor: default;
+    color: #ffffff;
+    border: none;
+    border-radius: 30px;
+    font-size: 18px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #walletAddress {
@@ -261,13 +265,18 @@ main {
         display: none;
     }
     
-    #postButton {
+    #postButton, #connectWallet {
         font-size: 0;
         padding: 15px;
     }
     
     #postButton::after {
         content: "+";
+        font-size: 24px;
+    }
+    
+    #connectWallet::after {
+        content: "🔗";
         font-size: 24px;
     }
 }
