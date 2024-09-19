@@ -104,20 +104,23 @@ header button:hover {
     margin-top: 10px;
 }
 
-#newsFeed article {
+/* Updated News Feed Item Styles */
+.news-item {
     background-color: #192734;
     padding: 15px;
     border-bottom: 1px solid #38444d;
-}
-
-#newsFeed .metadata {
-    font-size: 12px;
-    color: #8899a6;
+    border-radius: 8px;
     margin-bottom: 10px;
 }
 
-#newsFeed p {
-    font-size: 16px;
+.reporter-info {
+    font-size: 0.5em;
+    color: #8899a6;
+    margin-bottom: 5px;
+}
+
+.news-content {
+    font-size: 1em;
     line-height: 1.5;
     word-wrap: break-word;
 }
