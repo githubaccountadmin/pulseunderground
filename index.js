@@ -69,7 +69,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function shortenAddress(address) {
-        if (typeof address !== 'string' || address.length < 10) {
+        console.log("Shortening address:", address);
+        if (typeof address !== 'string') {
             console.warn('Invalid address format:', address);
             return 'Unknown';
         }
@@ -77,7 +78,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function formatTimestamp(timestamp) {
-        if (!timestamp) {
+        console.log("Formatting timestamp:", timestamp);
+        if (!timestamp || isNaN(timestamp)) {
             console.warn('Invalid timestamp:', timestamp);
             return 'Unknown time';
         }
@@ -85,6 +87,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function displayNews(newsContent, reporterAddress, timestamp) {
+        console.log("Displaying news:", { newsContent, reporterAddress, timestamp });
         const PARAGRAPH_SEPARATOR = '\n\n';
         const LINE_BREAK = '\n';
         
@@ -174,6 +177,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 const newsFeed = document.getElementById('newsFeed');
                                 const article = document.createElement('article');
                                 try {
+                                    console.log("Transaction data:", { from: tx.from, timestamp: tx.block_timestamp });
                                     article.innerHTML = displayNews(reportContent, tx.from, tx.block_timestamp);
                                     newsFeed.appendChild(article);
 
@@ -219,7 +223,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
         } catch (error) {
-            console.error("Error loading news feed:", error);
+            console.error("Error in loadNewsFeed:", error);
             displayStatusMessage('Error loading news feed: ' + error.message, true);
         } finally {
             loading = false;
