@@ -1,9 +1,6 @@
 document.addEventListener('DOMContentLoaded', async function () {
     console.log("DOM fully loaded and parsed");
 
-    const PARAGRAPH_SEPARATOR = '\n\n';
-    const LINE_BREAK = '\n';
-
     let provider;
     let signer;
     let contract;
@@ -27,38 +24,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                 {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"}
             ],
             "name": "getNewValueCountbyQueryId",
-            "outputs": [
-                {"internalType": "uint256", "name": "", "type": "uint256"}
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {"internalType": "address", "name": "_reporter", "type": "address"}
-            ],
-            "name": "getReporterLastTimestamp",
-            "outputs": [
-                {"internalType": "uint256", "name": "", "type": "uint256"}
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getReportingLock",
-            "outputs": [
-                {"internalType": "uint256", "name": "", "type": "uint256"}
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-                {"internalType": "uint256", "name": "_index", "type": "uint256"}
-            ],
-            "name": "getReportTimestamp",
             "outputs": [
                 {"internalType": "uint256", "name": "", "type": "uint256"}
             ],
@@ -104,17 +69,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function displayNews(newsContent) {
+        const PARAGRAPH_SEPARATOR = '\n\n';
+        const LINE_BREAK = '\n';
+        
         const paragraphs = newsContent.split(PARAGRAPH_SEPARATOR);
         return paragraphs.map(paragraph => {
             const lines = paragraph.split(LINE_BREAK);
             return `<p class="mb-4">${lines.map(line => line.trim()).join('<br>')}</p>`;
         }).join('');
-    }
-
-    function prepareNewsContent(rawContent) {
-        const normalizedContent = rawContent.replace(/\r\n/g, '\n');
-        const paragraphs = normalizedContent.replace(/\n{3,}/g, '\n\n');
-        return paragraphs.split('\n\n').map(p => p.trim()).join('\n\n');
     }
 
     async function loadNewsFeed() {
@@ -235,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log("Submit Story function called");
         const publishButton = document.getElementById('publishStory');
         const reportContentElement = document.getElementById('reportContent');
-        const reportContent = prepareNewsContent(reportContentElement.value.trim());
+        const reportContent = reportContentElement.value.trim();
 
         console.log("Current report content:", reportContent);
         console.log("Publish button state before submission:", publishButton.disabled ? "disabled" : "enabled");
@@ -289,11 +251,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             publishButton.disabled = false;
             console.log("Publish button re-enabled");
         }
-    }
-
-    async function checkIfReporterLocked() {
-        console.log("Reporter lock check is currently disabled.");
-        return true;
     }
 
     window.addEventListener('scroll', () => {
