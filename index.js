@@ -69,10 +69,18 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function shortenAddress(address) {
+        if (typeof address !== 'string' || address.length < 10) {
+            console.warn('Invalid address format:', address);
+            return 'Unknown';
+        }
         return `${address.slice(0, 6)}...${address.slice(-4)}`;
     }
 
     function formatTimestamp(timestamp) {
+        if (!timestamp) {
+            console.warn('Invalid timestamp:', timestamp);
+            return 'Unknown time';
+        }
         return new Date(timestamp * 1000).toLocaleString();
     }
 
@@ -165,17 +173,21 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                                 const newsFeed = document.getElementById('newsFeed');
                                 const article = document.createElement('article');
-                                article.innerHTML = displayNews(reportContent, tx.from, tx.timestamp);
-                                newsFeed.appendChild(article);
+                                try {
+                                    article.innerHTML = displayNews(reportContent, tx.from, tx.block_timestamp);
+                                    newsFeed.appendChild(article);
 
-                                console.log("Added news item:", {
-                                    content: reportContent,
-                                    reporter: tx.from,
-                                    timestamp: tx.timestamp
-                                });
+                                    console.log("Added news item:", {
+                                        content: reportContent,
+                                        reporter: tx.from,
+                                        timestamp: tx.block_timestamp
+                                    });
 
-                                newValidTransactions++;
-                                validTransactionsCount++;
+                                    newValidTransactions++;
+                                    validTransactionsCount++;
+                                } catch (displayError) {
+                                    console.error("Error displaying news item:", displayError);
+                                }
                             }
                         } catch (error) {
                             console.error("Error decoding parameters for transaction:", tx.hash, error);
