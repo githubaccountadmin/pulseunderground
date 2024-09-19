@@ -81,8 +81,13 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function formatTimestamp(timestamp) {
         console.log("Formatting timestamp:", timestamp);
-        if (timestamp && !isNaN(timestamp)) {
-            return new Date(timestamp * 1000).toLocaleString();
+        if (timestamp && typeof timestamp === 'string') {
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleString();
+            } catch (error) {
+                console.error("Error parsing timestamp:", error);
+            }
         }
         return 'Unknown time';
     }
