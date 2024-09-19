@@ -75,13 +75,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         const paragraphs = newsContent.split(PARAGRAPH_SEPARATOR);
         const contentHtml = paragraphs.map(paragraph => {
             const lines = paragraph.split(LINE_BREAK);
-            return `<p class="mb-4">${lines.map(line => line.trim()).join('<br>')}</p>`;
+            return `<p>${lines.map(line => line.trim()).join('<br>')}</p>`;
         }).join('');
 
         return `
             <div class="news-item">
                 <div class="reporter-info">
-                    <span class="reporter-address">${reporterAddress}</span> • 
+                    <span class="reporter-address">${reporterAddress.slice(0, 6)}...${reporterAddress.slice(-4)}</span> • 
                     <span class="timestamp">${new Date(timestamp * 1000).toLocaleString()}</span>
                 </div>
                 <div class="news-content">
@@ -160,9 +160,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 }
 
                                 const newsFeed = document.getElementById('newsFeed');
-                                const newsItem = document.createElement('div');
-                                newsItem.innerHTML = displayNews(reportContent, tx.from, tx.timestamp);
-                                newsFeed.appendChild(newsItem);
+                                const newsItemHtml = displayNews(reportContent, tx.from, tx.timestamp);
+                                newsFeed.insertAdjacentHTML('beforeend', newsItemHtml);
 
                                 newValidTransactions++;
                                 validTransactionsCount++;
