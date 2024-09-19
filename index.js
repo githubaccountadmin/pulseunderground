@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     let provider;
     let signer;
     let contract;
+    let allNewsItems = [];
 
     const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
     const contractABI = [
@@ -68,20 +69,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    function createSearchInput() {
-        const searchContainer = document.getElementById('search-container');
-        const searchInput = document.createElement('input');
-        searchInput.type = 'text';
-        searchInput.id = 'search-input';
-        searchInput.placeholder = 'Search by reporter address';
-        searchInput.addEventListener('input', handleSearch);
-        searchContainer.appendChild(searchInput);
-    }
-
-    function handleSearch(event) {
-        const searchTerm = event.target.value.toLowerCase();
+    function performSearch() {
+        const searchInput = document.getElementById('search-input');
+        const searchTerm = searchInput.value.toLowerCase();
         const filteredItems = allNewsItems.filter(item => 
-            item.reporter.toLowerCase().includes(searchTerm)
+            item.reporter.toLowerCase().includes(searchTerm) ||
+            item.content.toLowerCase().includes(searchTerm)
         );
         renderNewsItems(filteredItems);
     }
@@ -220,27 +213,15 @@ document.addEventListener('DOMContentLoaded', async function () {
                                     reportContent = "<Invalid or non-readable content>";
                                 }
 
-                                const newsFeed = document.getElementById('newsFeed');
-                                const article = document.createElement('article');
-                                try {
-                                    console.log("Transaction data:", {
-                                        from: tx.from,
-                                        timestamp: tx.timestamp || tx.block_timestamp
-                                    });
-                                    article.innerHTML = displayNews(reportContent, tx.from, tx.timestamp || tx.block_timestamp);
-                                    newsFeed.appendChild(article);
+                                const newsItem = {
+                                    content: reportContent,
+                                    reporter: tx.from,
+                                    timestamp: tx.timestamp || tx.block_timestamp
+                                };
+                                allNewsItems.push(newsItem);
 
-                                    console.log("Added news item:", {
-                                        content: reportContent,
-                                        reporter: tx.from,
-                                        timestamp: tx.timestamp || tx.block_timestamp
-                                    });
-
-                                    newValidTransactions++;
-                                    validTransactionsCount++;
-                                } catch (displayError) {
-                                    console.error("Error displaying news item:", displayError);
-                                }
+                                newValidTransactions++;
+                                validTransactionsCount++;
                             }
                         } catch (error) {
                             console.error("Error decoding parameters for transaction:", tx.hash, error);
@@ -249,6 +230,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 }
             }
             
+            renderNewsItems(allNewsItems);
+
             if (data.next_page_params) {
                 lastTransactionParams = data.next_page_params;
                 console.log("Updated lastTransactionParams to:", lastTransactionParams);
@@ -350,6 +333,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     const connectWalletButton = document.getElementById('connectWallet');
     const publishButton = document.getElementById('publishStory');
+    const searchInput = document.getElementById('search-input');
+    const searchButton = document.getElementById('search-button');
 
     if (connectWalletButton) {
         connectWalletButton.addEventListener('click', connectWallet);
@@ -370,7 +355,25 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log("Publish button initial state:", publishButton.disabled ? "disabled" : "enabled");
     }
 
-    createSearchInput();
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                performSearch();
+            }
+        });
+        console.log("Search input event listener added");
+    } else {
+        console.error("Search input not found in the DOM");
+    }
+
+    if (searchButton) {
+        searchButton.addEventListener('click', performSearch);
+        console.log("Search button event listener added");
+    } else {
+        console.error("Search button not found in the DOM");
+    }
+
     loadNewsFeed();
 
     const reloadButton = document.createElement('button');
@@ -380,6 +383,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         lastTransactionParams = null;
         validTransactionsCount = 0;
         noMoreData = false;
+        allNewsItems = [];
         loadNewsFeed();
     });
     document.body.appendChild(reloadButton);
