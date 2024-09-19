@@ -68,6 +68,46 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
+    function createSearchInput() {
+        const searchContainer = document.getElementById('search-container');
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.id = 'search-input';
+        searchInput.placeholder = 'Search by reporter address';
+        searchInput.addEventListener('input', handleSearch);
+        searchContainer.appendChild(searchInput);
+    }
+
+    function handleSearch(event) {
+        const searchTerm = event.target.value.toLowerCase();
+        const filteredItems = allNewsItems.filter(item => 
+            item.reporter.toLowerCase().includes(searchTerm)
+        );
+        renderNewsItems(filteredItems);
+    }
+
+    function renderNewsItems(items) {
+        const newsFeed = document.getElementById('newsFeed');
+        newsFeed.innerHTML = '';
+        items.forEach((item, index) => {
+            const article = document.createElement('article');
+            article.className = 'news-item';
+            article.innerHTML = displayNews(item.content, item.reporter, item.timestamp);
+            article.style.opacity = 0;
+            article.style.transform = 'translateY(20px)';
+            newsFeed.appendChild(article);
+
+            anime({
+                targets: article,
+                opacity: 1,
+                translateY: 0,
+                duration: 500,
+                easing: 'easeOutQuad',
+                delay: index * 100
+            });
+        });
+    }
+    
     function shortenAddress(address) {
         console.log("Shortening address:", address);
         if (typeof address === 'object' && address.hash) {
@@ -330,6 +370,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log("Publish button initial state:", publishButton.disabled ? "disabled" : "enabled");
     }
 
+    createSearchInput();
     loadNewsFeed();
 
     const reloadButton = document.createElement('button');
