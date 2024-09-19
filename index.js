@@ -68,27 +68,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    function displayNews(newsContent, reporterAddress, timestamp) {
+    function displayNews(newsContent) {
         const PARAGRAPH_SEPARATOR = '\n\n';
         const LINE_BREAK = '\n';
         
         const paragraphs = newsContent.split(PARAGRAPH_SEPARATOR);
-        const contentHtml = paragraphs.map(paragraph => {
+        return paragraphs.map(paragraph => {
             const lines = paragraph.split(LINE_BREAK);
-            return `<p>${lines.map(line => line.trim()).join('<br>')}</p>`;
+            return `<p class="mb-4">${lines.map(line => line.trim()).join('<br>')}</p>`;
         }).join('');
-
-        return `
-            <div class="news-item">
-                <div class="reporter-info">
-                    <span class="reporter-address">${reporterAddress.slice(0, 6)}...${reporterAddress.slice(-4)}</span> • 
-                    <span class="timestamp">${new Date(timestamp * 1000).toLocaleString()}</span>
-                </div>
-                <div class="news-content">
-                    ${contentHtml}
-                </div>
-            </div>
-        `;
     }
 
     async function loadNewsFeed() {
@@ -160,8 +148,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 }
 
                                 const newsFeed = document.getElementById('newsFeed');
-                                const newsItemHtml = displayNews(reportContent, tx.from, tx.timestamp);
-                                newsFeed.insertAdjacentHTML('beforeend', newsItemHtml);
+                                const article = document.createElement('article');
+                                article.innerHTML = displayNews(reportContent);
+                                newsFeed.appendChild(article);
 
                                 newValidTransactions++;
                                 validTransactionsCount++;
