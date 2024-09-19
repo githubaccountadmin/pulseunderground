@@ -68,15 +68,31 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    function displayNews(newsContent) {
+    function shortenAddress(address) {
+        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    }
+
+    function formatTimestamp(timestamp) {
+        return new Date(timestamp * 1000).toLocaleString();
+    }
+
+    function displayNews(newsContent, reporterAddress, timestamp) {
         const PARAGRAPH_SEPARATOR = '\n\n';
         const LINE_BREAK = '\n';
         
         const paragraphs = newsContent.split(PARAGRAPH_SEPARATOR);
-        return paragraphs.map(paragraph => {
+        const reporterInfo = `
+            <div class="reporter-info">
+                Reporter: ${shortenAddress(reporterAddress)} | ${formatTimestamp(timestamp)}
+            </div>
+        `;
+        
+        const content = paragraphs.map(paragraph => {
             const lines = paragraph.split(LINE_BREAK);
             return `<p class="mb-4">${lines.map(line => line.trim()).join('<br>')}</p>`;
         }).join('');
+
+        return reporterInfo + content;
     }
 
     async function loadNewsFeed() {
@@ -151,6 +167,12 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 const article = document.createElement('article');
                                 article.innerHTML = displayNews(reportContent, tx.from, tx.timestamp);
                                 newsFeed.appendChild(article);
+
+                                console.log("Added news item:", {
+                                    content: reportContent,
+                                    reporter: tx.from,
+                                    timestamp: tx.timestamp
+                                });
 
                                 newValidTransactions++;
                                 validTransactionsCount++;
