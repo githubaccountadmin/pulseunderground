@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                                 const newsFeed = document.getElementById('newsFeed');
                                 const article = document.createElement('article');
-                                article.innerHTML = displayNews(reportContent);
+                                article.innerHTML = displayNews(reportContent, tx.from, tx.timestamp);
                                 newsFeed.appendChild(article);
 
                                 newValidTransactions++;
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     }
                 }
             }
-
+            
             if (data.next_page_params) {
                 lastTransactionParams = data.next_page_params;
                 console.log("Updated lastTransactionParams to:", lastTransactionParams);
