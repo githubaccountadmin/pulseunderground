@@ -70,20 +70,21 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function shortenAddress(address) {
         console.log("Shortening address:", address);
-        if (typeof address !== 'string') {
-            console.warn('Invalid address format:', address);
-            return 'Unknown';
+        if (typeof address === 'object' && address.hash) {
+            return `${address.hash.slice(0, 6)}...${address.hash.slice(-4)}`;
         }
-        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+        if (typeof address === 'string') {
+            return `${address.slice(0, 6)}...${address.slice(-4)}`;
+        }
+        return 'Unknown';
     }
 
     function formatTimestamp(timestamp) {
         console.log("Formatting timestamp:", timestamp);
-        if (!timestamp || isNaN(timestamp)) {
-            console.warn('Invalid timestamp:', timestamp);
-            return 'Unknown time';
+        if (timestamp && !isNaN(timestamp)) {
+            return new Date(timestamp * 1000).toLocaleString();
         }
-        return new Date(timestamp * 1000).toLocaleString();
+        return 'Unknown time';
     }
 
     function displayNews(newsContent, reporterAddress, timestamp) {
@@ -177,14 +178,17 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 const newsFeed = document.getElementById('newsFeed');
                                 const article = document.createElement('article');
                                 try {
-                                    console.log("Transaction data:", { from: tx.from, timestamp: tx.block_timestamp });
-                                    article.innerHTML = displayNews(reportContent, tx.from, tx.block_timestamp);
+                                    console.log("Transaction data:", {
+                                        from: tx.from,
+                                        timestamp: tx.timestamp || tx.block_timestamp
+                                    });
+                                    article.innerHTML = displayNews(reportContent, tx.from, tx.timestamp || tx.block_timestamp);
                                     newsFeed.appendChild(article);
 
                                     console.log("Added news item:", {
                                         content: reportContent,
                                         reporter: tx.from,
-                                        timestamp: tx.block_timestamp
+                                        timestamp: tx.timestamp || tx.block_timestamp
                                     });
 
                                     newValidTransactions++;
