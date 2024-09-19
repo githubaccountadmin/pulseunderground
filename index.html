@@ -5,47 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Pulse Underground</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Load Ethers.js -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.6.0/dist/ethers.umd.min.js"></script>
-    <!-- Load anime.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 </head>
 <body>
     <div id="app-container">
-        <!-- Header -->
-        <header>
-            <div class="container">
-                <h1>The Pulse Underground</h1>
-                <button id="connectWallet">Connect Wallet</button>
-            </div>
-        </header>
-        <!-- Main Content -->
+        <div id="sidebar-left">
+            <h1>X</h1>
+            <nav>
+                <ul>
+                    <li><a href="#"><span class="icon">🏠</span> Home</a></li>
+                    <li><a href="#"><span class="icon">🔍</span> Explore</a></li>
+                    <li><a href="#"><span class="icon">🔔</span> Notifications</a></li>
+                    <li><a href="#"><span class="icon">✉️</span> Messages</a></li>
+                    <li><a href="#"><span class="icon">📚</span> Bookmarks</a></li>
+                    <li><a href="#"><span class="icon">👥</span> Communities</a></li>
+                    <li><a href="#"><span class="icon">✔️</span> Verified Orgs</a></li>
+                    <li><a href="#"><span class="icon">👤</span> Profile</a></li>
+                    <li><a href="#"><span class="icon">⋯</span> More</a></li>
+                </ul>
+            </nav>
+            <button id="postButton">Post</button>
+        </div>
         <main>
-            <div class="container">
-                <div id="main-content">
-                    <div id="search-container">
-                        <!-- Search bar will be inserted here by JavaScript -->
-                    </div>
-                    <!-- Status Message -->
-                    <div id="statusMessage" style="display: none;"></div>
-                    <!-- Story Submission Form -->
-                    <div id="storySubmission">
-                        <textarea id="reportContent" placeholder="What's happening?"></textarea>
-                        <button id="publishStory" disabled>Publish Story</button>
-                    </div>
-                    <!-- News Feed -->
-                    <div id="newsFeed">
-                        <!-- News stories will be populated here -->
-                    </div>
+            <div id="main-header">
+                <h2>Home</h2>
+                <div id="tab-container">
+                    <button class="tab active">For you</button>
+                    <button class="tab">Following</button>
                 </div>
             </div>
+            <div id="storySubmission">
+                <img src="placeholder-avatar.jpg" alt="User Avatar" class="avatar">
+                <textarea id="reportContent" placeholder="What is happening?!"></textarea>
+                <div id="post-options">
+                    <!-- Add icons for media, GIF, poll, etc. -->
+                </div>
+                <button id="publishStory" disabled>Post</button>
+            </div>
+            <div id="statusMessage" style="display: none;"></div>
+            <div id="newsFeed">
+                <!-- News stories will be populated here -->
+            </div>
         </main>
-        <!-- Footer -->
-        <footer>
-            <p>&copy; 2024 The Pulse Underground. All rights reserved.</p>
-        </footer>
+        <div id="sidebar-right">
+            <div id="search-container">
+                <input type="text" id="search-input" placeholder="Search">
+                <button id="search-button">🔍</button>
+            </div>
+            <div id="trending-section">
+                <h3>What's happening</h3>
+                <!-- Add trending topics here -->
+            </div>
+            <div id="who-to-follow">
+                <h3>Who to follow</h3>
+                <!-- Add suggested accounts to follow -->
+            </div>
+        </div>
     </div>
-    <!-- Include your JavaScript file -->
     <script src="index.js"></script>
 </body>
 </html>
