@@ -188,3 +188,10 @@ body::-webkit-scrollbar-thumb {
     border-radius: 20px;
     border: 3px solid #15202b;
 }
+
+/* Reporter Info Styles */
+.reporter-info {
+    font-size: 10px;
+    color: #8899a6;
+    margin-bottom: 5px;
+}
