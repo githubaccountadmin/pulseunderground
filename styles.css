@@ -138,6 +138,7 @@ main {
     background-color: rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(12px);
     z-index: 1;
+    border-bottom: 1px solid #2f3336;
 }
 
 #main-header h2 {
@@ -149,11 +150,13 @@ main {
 #tab-container {
     display: flex;
     border-bottom: 1px solid #2f3336;
+    justify-content: space-around;
+    padding: 0 16px;
 }
 
 .tab {
-    flex: 1;
-    padding: 16px 0;
+    flex: 0 1 auto;
+    padding: 16px 8px;
     background: none;
     border: none;
     color: #ffffff;
@@ -161,22 +164,30 @@ main {
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
+    position: relative;
 }
 
 .tab:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-.tab.active {
-    color: #1d9bf0;
-    border-bottom: 4px solid #1d9bf0;
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 4px;
+    background-color: #1d9bf0;
+    border-radius: 9999px 9999px 0 0;
 }
 
 #storySubmission {
     padding: 12px 16px;
     border-bottom: 1px solid #2f3336;
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
 }
 
 .avatar {
@@ -195,6 +206,7 @@ main {
     min-height: 80px;
     resize: none;
     padding: 12px 0;
+    margin-left: 60px;
 }
 
 #post-options {
@@ -207,6 +219,7 @@ main {
 }
 
 #publishStory {
+    align-self: flex-end;
     padding: 8px 16px;
     background-color: #1d9bf0;
     color: #ffffff;
@@ -216,6 +229,7 @@ main {
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
+    margin-top: 8px;
 }
 
 #publishStory:hover {
@@ -238,22 +252,24 @@ main {
     background-color: #000000;
     padding: 6px 0;
     z-index: 2;
+    margin-right: -16px;
 }
 
 #search-input {
-    width: calc(100% - 20px);
+    width: 100%;
     padding: 12px 40px 12px 44px;
     border-radius: 9999px;
-    border: none;
+    border: 1px solid #333639;
     background-color: #202327;
     color: #ffffff;
     font-size: 15px;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
 }
 
 #search-input:focus {
     background-color: #000000;
-    outline: 1px solid #1d9bf0;
+    border-color: #1d9bf0;
+    outline: none;
 }
 
 #search-button {
@@ -296,6 +312,15 @@ main {
     font-size: 15px;
     color: #71767b;
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.reporter-info .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin-right: 12px;
 }
 
 /* Status Message */
