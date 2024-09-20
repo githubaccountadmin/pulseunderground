@@ -130,7 +130,7 @@ main {
 
 #main-header {
     padding: 0 16px;
-    height: 53px;
+    height: 48px;
     display: flex;
     align-items: center;
     position: sticky;
@@ -143,28 +143,29 @@ main {
 
 #main-header h2 {
     margin: 0;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
 }
 
 #tab-container {
     display: flex;
     border-bottom: 1px solid #2f3336;
-    justify-content: space-around;
-    padding: 0 16px;
+    justify-content: space-between;
+    padding: 0;
 }
 
 .tab {
-    flex: 0 1 auto;
-    padding: 16px 8px;
+    flex: 1;
+    padding: 14px 16px;
     background: none;
     border: none;
     color: #ffffff;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
     position: relative;
+    text-align: center;
 }
 
 .tab:hover {
@@ -184,15 +185,15 @@ main {
 }
 
 #storySubmission {
-    padding: 12px 16px;
+    padding: 8px 16px;
     border-bottom: 1px solid #2f3336;
     display: flex;
-    flex-direction: column;
+    align-items: flex-start;
 }
 
 .avatar {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     margin-right: 12px;
 }
@@ -202,34 +203,31 @@ main {
     background: none;
     border: none;
     color: #ffffff;
-    font-size: 20px;
-    min-height: 80px;
+    font-size: 18px;
+    min-height: 60px;
     resize: none;
-    padding: 12px 0;
-    margin-left: 60px;
+    padding: 8px 0;
+    margin-left: 0;
 }
 
 #post-options {
     width: 100%;
-    margin-left: 60px;
-    margin-top: 12px;
+    margin-top: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 #publishStory {
-    align-self: flex-end;
-    padding: 8px 16px;
+    padding: 6px 16px;
     background-color: #1d9bf0;
     color: #ffffff;
     border: none;
     border-radius: 9999px;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
-    margin-top: 8px;
 }
 
 #publishStory:hover {
@@ -256,8 +254,8 @@ main {
 }
 
 #search-input {
-    width: 100%;
-    padding: 12px 40px 12px 44px;
+    width: calc(100% - 20px);
+    padding: 10px 40px 10px 44px;
     border-radius: 9999px;
     border: 1px solid #333639;
     background-color: #202327;
@@ -299,7 +297,7 @@ main {
 }
 
 #newsFeed article {
-    padding: 12px 16px;
+    padding: 10px 16px;
     border-bottom: 1px solid #2f3336;
     transition: background-color 0.2s;
 }
@@ -309,18 +307,18 @@ main {
 }
 
 .reporter-info {
-    font-size: 15px;
+    font-size: 14px;
     color: #71767b;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     display: flex;
     align-items: center;
 }
 
 .reporter-info .avatar {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    margin-right: 12px;
+    margin-right: 10px;
 }
 
 /* Status Message */
