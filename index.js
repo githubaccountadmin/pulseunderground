@@ -42,36 +42,46 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
-        statusMessage.textContent = message;
-        statusMessage.style.color = isError ? 'red' : 'green';
-        statusMessage.style.display = 'block';
-        console.log(`Status Message: ${message}`);
+        if (statusMessage) {
+            statusMessage.textContent = message;
+            statusMessage.style.color = isError ? 'red' : 'green';
+            statusMessage.style.display = 'block';
+            console.log(`Status Message: ${message}`);
+        } else {
+            console.error('Status message element not found');
+        }
     }
 
     async function connectWallet() {
         console.log("Connect Wallet button clicked.");
         try {
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            await provider.send("eth_requestAccounts", []);
-            signer = provider.getSigner();
-            console.log("Wallet connected, signer:", signer);
-    
-            const address = await signer.getAddress();
-            console.log("Connected wallet address:", address);
-    
-            displayStatusMessage('Wallet connected.');
-            
-            const connectWalletButton = document.getElementById('connectWallet');
-            const walletInfo = document.getElementById('walletInfo');
-            const walletAddress = document.getElementById('walletAddress');
-            
-            connectWalletButton.style.display = 'none';
-            walletInfo.style.display = 'block';
-            walletAddress.textContent = shortenAddress(address);
-    
-            const publishButton = document.getElementById('publishStory');
-            publishButton.disabled = false;
-            console.log("Publish button enabled:", !publishButton.disabled);
+            if (typeof window.ethereum !== 'undefined') {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                console.log("Wallet connected, signer:", signer);
+        
+                const address = await signer.getAddress();
+                console.log("Connected wallet address:", address);
+        
+                displayStatusMessage('Wallet connected.');
+                
+                const connectWalletButton = document.getElementById('connectWallet');
+                const walletInfo = document.getElementById('walletInfo');
+                const walletAddress = document.getElementById('walletAddress');
+                
+                if (connectWalletButton) connectWalletButton.style.display = 'none';
+                if (walletInfo) walletInfo.style.display = 'block';
+                if (walletAddress) walletAddress.textContent = shortenAddress(address);
+        
+                const publishButton = document.getElementById('publishStory');
+                if (publishButton) {
+                    publishButton.disabled = false;
+                    console.log("Publish button enabled:", !publishButton.disabled);
+                }
+            } else {
+                throw new Error("Ethereum provider not found. Please install MetaMask or a similar wallet.");
+            }
         } catch (e) {
             console.error("Error connecting wallet:", e);
             displayStatusMessage('Could not connect to wallet: ' + e.message, true);
@@ -81,6 +91,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     function performSearch() {
         autoFetchingEnabled = false; // Pause auto-fetching
         const searchInput = document.getElementById('search-input');
+        if (!searchInput) {
+            console.error("Search input element not found");
+            return;
+        }
         const searchTerm = searchInput.value.toLowerCase();
         console.log("Performing search with term:", searchTerm);
         
@@ -102,11 +116,16 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         // Show the reload button
-        document.getElementById('reloadNewsFeed').style.display = 'block';
+        const reloadButton = document.getElementById('reloadNewsFeed');
+        if (reloadButton) reloadButton.style.display = 'block';
     }
 
     function renderNewsItems(items) {
         const newsFeed = document.getElementById('newsFeed');
+        if (!newsFeed) {
+            console.error("News feed element not found");
+            return;
+        }
         newsFeed.innerHTML = ''; // Clear existing items
         items.forEach((item, index) => {
             const article = document.createElement('article');
@@ -288,6 +307,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log("Submit Story function called");
         const publishButton = document.getElementById('publishStory');
         const reportContentElement = document.getElementById('reportContent');
+        if (!publishButton || !reportContentElement) {
+            console.error("Required elements for story submission not found");
+            return;
+        }
         const reportContent = reportContentElement.value.trim();
 
         console.log("Current report content:", reportContent);
@@ -346,8 +369,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function resumeAutoFetching() {
         autoFetchingEnabled = true;
-        document.getElementById('reloadNewsFeed').style.display = 'none';
-        document.getElementById('search-input').value = ''; // Clear search input
+        const reloadButton = document.getElementById('reloadNewsFeed');
+        const searchInput = document.getElementById('search-input');
+        if (reloadButton) reloadButton.style.display = 'none';
+        if (searchInput) searchInput.value = ''; // Clear search input
         loadNewsFeed(); // Immediately fetch new data
     }
 
@@ -412,3 +437,4 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
     
     loadNewsFeed();
+});
