@@ -80,32 +80,33 @@ document.addEventListener('DOMContentLoaded', async function () {
     function performSearch() {
         const searchInput = document.getElementById('search-input');
         const searchTerm = searchInput.value.toLowerCase();
+        console.log("Performing search with term:", searchTerm);
+        
         const filteredItems = allNewsItems.filter(item => 
             item.reporter.toLowerCase().includes(searchTerm) ||
             item.content.toLowerCase().includes(searchTerm)
         );
+        
+        console.log("Filtered items:", filteredItems);
         renderNewsItems(filteredItems);
+        
+        if (filteredItems.length === 0) {
+            displayStatusMessage("No results found for your search.", false);
+        } else {
+            displayStatusMessage(`Found ${filteredItems.length} result(s) for your search.`, false);
+        }
     }
 
     function renderNewsItems(items) {
         const newsFeed = document.getElementById('newsFeed');
+        newsFeed.innerHTML = ''; // Clear existing items
         items.forEach((item, index) => {
-            let existingArticle = document.getElementById(`news-item-${index}`);
-            if (!existingArticle) {
-                const article = document.createElement('article');
-                article.id = `news-item-${index}`;
-                article.className = 'news-item';
-                article.innerHTML = displayNews(item.content, item.reporter, item.timestamp);
-                newsFeed.appendChild(article);
-            } else {
-                existingArticle.innerHTML = displayNews(item.content, item.reporter, item.timestamp);
-            }
+            const article = document.createElement('article');
+            article.id = `news-item-${index}`;
+            article.className = 'news-item';
+            article.innerHTML = displayNews(item.content, item.reporter, item.timestamp);
+            newsFeed.appendChild(article);
         });
-
-        // Remove any excess articles
-        while (newsFeed.children.length > items.length) {
-            newsFeed.removeChild(newsFeed.lastChild);
-        }
     }
     
     function shortenAddress(address) {
@@ -238,6 +239,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
             
             renderNewsItems(allNewsItems);
+            console.log("All news items after loading:", allNewsItems);
 
             if (data.next_page_params) {
                 lastTransactionParams = data.next_page_params;
