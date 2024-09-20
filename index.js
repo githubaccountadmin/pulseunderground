@@ -82,10 +82,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         const searchTerm = searchInput.value.toLowerCase();
         console.log("Performing search with term:", searchTerm);
         
-        const filteredItems = allNewsItems.filter(item => 
-            item.reporter.toLowerCase().includes(searchTerm) ||
-            item.content.toLowerCase().includes(searchTerm)
-        );
+        const filteredItems = allNewsItems.filter(item => {
+            const reporterAddress = typeof item.reporter === 'object' && item.reporter.hash 
+                ? item.reporter.hash.toLowerCase() 
+                : (typeof item.reporter === 'string' ? item.reporter.toLowerCase() : '');
+            return reporterAddress.includes(searchTerm) ||
+                   item.content.toLowerCase().includes(searchTerm);
+        });
         
         console.log("Filtered items:", filteredItems);
         renderNewsItems(filteredItems);
@@ -96,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             displayStatusMessage(`Found ${filteredItems.length} result(s) for your search.`, false);
         }
     }
-
+    
     function renderNewsItems(items) {
         const newsFeed = document.getElementById('newsFeed');
         newsFeed.innerHTML = ''; // Clear existing items
