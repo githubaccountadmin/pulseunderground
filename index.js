@@ -83,11 +83,18 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log("Performing search with term:", searchTerm);
         
         const filteredItems = allNewsItems.filter(item => {
-            const reporterAddress = typeof item.reporter === 'object' && item.reporter.hash 
-                ? item.reporter.hash.toLowerCase() 
-                : (typeof item.reporter === 'string' ? item.reporter.toLowerCase() : '');
+            let reporterAddress = '';
+            if (typeof item.reporter === 'string') {
+                reporterAddress = item.reporter.toLowerCase();
+            } else if (typeof item.reporter === 'object') {
+                reporterAddress = (item.reporter.hash || item.reporter.address || '').toLowerCase();
+            }
+            
+            console.log("Item being searched:", item);
+            console.log("Reporter address for search:", reporterAddress);
+            
             return reporterAddress.includes(searchTerm) ||
-                   item.content.toLowerCase().includes(searchTerm);
+                   (item.content && item.content.toLowerCase().includes(searchTerm));
         });
         
         console.log("Filtered items:", filteredItems);
@@ -114,15 +121,18 @@ document.addEventListener('DOMContentLoaded', async function () {
     
     function shortenAddress(address) {
         console.log("Shortening address:", address);
-        if (typeof address === 'object' && address.hash) {
-            return `${address.hash.slice(0, 6)}...${address.hash.slice(-4)}`;
+        if (typeof address === 'object') {
+            const hash = address.hash || address.address;
+            if (hash && typeof hash === 'string') {
+                return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
+            }
         }
         if (typeof address === 'string') {
             return `${address.slice(0, 6)}...${address.slice(-4)}`;
         }
         return 'Unknown';
     }
-
+    
     function formatTimestamp(timestamp) {
         console.log("Formatting timestamp:", timestamp);
         if (timestamp && typeof timestamp === 'string') {
@@ -229,6 +239,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                                     reporter: tx.from,
                                     timestamp: tx.timestamp || tx.block_timestamp
                                 };
+                                console.log("New news item:", newsItem);
                                 allNewsItems.push(newsItem);
 
                                 newValidTransactions++;
