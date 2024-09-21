@@ -130,7 +130,7 @@ main {
 
 #main-header {
     padding: 0 16px;
-    height: 48px;
+    height: 53px;
     display: flex;
     align-items: center;
     position: sticky;
@@ -143,7 +143,7 @@ main {
 
 #main-header h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: bold;
 }
 
@@ -151,21 +151,20 @@ main {
     display: flex;
     border-bottom: 1px solid #2f3336;
     justify-content: space-between;
-    padding: 0;
+    padding: 0 16px;
 }
 
 .tab {
-    flex: 1;
-    padding: 14px 16px;
+    flex: 0 1 auto;
+    padding: 16px 32px;
     background: none;
     border: none;
     color: #ffffff;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
     position: relative;
-    text-align: center;
 }
 
 .tab:hover {
@@ -185,17 +184,18 @@ main {
 }
 
 #storySubmission {
-    padding: 8px 16px;
+    padding: 12px 16px;
     border-bottom: 1px solid #2f3336;
     display: flex;
     align-items: flex-start;
 }
 
 .avatar {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     margin-right: 12px;
+    margin-top: 4px;
 }
 
 #reportContent {
@@ -203,28 +203,34 @@ main {
     background: none;
     border: none;
     color: #ffffff;
-    font-size: 18px;
-    min-height: 60px;
+    font-size: 20px;
+    min-height: 80px;
     resize: none;
-    padding: 8px 0;
+    padding: 12px 0;
     margin-left: 0;
+    overflow: hidden;
+    transition: min-height 0.2s;
+}
+
+#reportContent:focus {
+    outline: none;
 }
 
 #post-options {
     width: 100%;
-    margin-top: 8px;
+    margin-top: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 #publishStory {
-    padding: 6px 16px;
+    padding: 8px 16px;
     background-color: #1d9bf0;
     color: #ffffff;
     border: none;
     border-radius: 9999px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
@@ -254,8 +260,8 @@ main {
 }
 
 #search-input {
-    width: calc(100% - 20px);
-    padding: 10px 40px 10px 44px;
+    width: calc(100% - 32px);
+    padding: 12px 40px 12px 44px;
     border-radius: 9999px;
     border: 1px solid #333639;
     background-color: #202327;
@@ -297,7 +303,7 @@ main {
 }
 
 #newsFeed article {
-    padding: 10px 16px;
+    padding: 12px 16px;
     border-bottom: 1px solid #2f3336;
     transition: background-color 0.2s;
 }
@@ -307,18 +313,18 @@ main {
 }
 
 .reporter-info {
-    font-size: 14px;
+    font-size: 15px;
     color: #71767b;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
 }
 
 .reporter-info .avatar {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    margin-right: 10px;
+    margin-right: 12px;
 }
 
 /* Status Message */
