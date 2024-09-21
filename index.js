@@ -40,6 +40,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     let validTransactionsCount = 0;
     const validTransactionLimit = 100;
 
+    // Clear input fields on page load
+    const reportContent = document.getElementById('reportContent');
+    const searchInput = document.getElementById('search-input');
+    if (reportContent) {
+        reportContent.value = '';
+    }
+    if (searchInput) {
+        searchInput.value = '';
+    }
+
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
         if (statusMessage) {
