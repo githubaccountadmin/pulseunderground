@@ -390,6 +390,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     const searchInput = document.getElementById('search-input');
     const searchButton = document.getElementById('search-button');
     const reloadNewsFeedButton = document.getElementById('reloadNewsFeed');
+    const reportContent = document.getElementById('reportContent');
+
+    reportContent.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
 
     if (connectWalletButton) {
         connectWalletButton.addEventListener('click', connectWallet);
