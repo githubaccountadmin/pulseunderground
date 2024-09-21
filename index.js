@@ -397,7 +397,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     const connectWalletButton = document.getElementById('connectWallet');
     const publishButton = document.getElementById('publishStory');
-    const searchInput = document.getElementById('search-input');
     const searchButton = document.getElementById('search-button');
     const reloadNewsFeedButton = document.getElementById('reloadNewsFeed');
     const reportContent = document.getElementById('reportContent');
