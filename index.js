@@ -100,7 +100,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function performSearch() {
         autoFetchingEnabled = false; // Pause auto-fetching
-        const searchInput = document.getElementById('search-input');
         if (!searchInput) {
             console.error("Search input element not found");
             return;
@@ -380,7 +379,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     function resumeAutoFetching() {
         autoFetchingEnabled = true;
         const reloadButton = document.getElementById('reloadNewsFeed');
-        const searchInput = document.getElementById('search-input');
         if (reloadButton) reloadButton.style.display = 'none';
         if (searchInput) searchInput.value = ''; // Clear search input
         loadNewsFeed(); // Immediately fetch new data
@@ -399,12 +397,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     const publishButton = document.getElementById('publishStory');
     const searchButton = document.getElementById('search-button');
     const reloadNewsFeedButton = document.getElementById('reloadNewsFeed');
-    const reportContent = document.getElementById('reportContent');
 
-    reportContent.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-    });
+    if (reportContent) {
+        reportContent.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    } else {
+        console.error("Report content textarea not found in the DOM");
+    }
 
     if (connectWalletButton) {
         connectWalletButton.addEventListener('click', connectWallet);
@@ -415,14 +416,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     
     if (publishButton) {
         publishButton.addEventListener('click', submitStory);
+        publishButton.disabled = true;
         console.log("Publish Story button event listener added");
+        console.log("Publish button initial state:", publishButton.disabled ? "disabled" : "enabled");
     } else {
         console.error("Publish Story button not found in the DOM");
-    }
-    
-    if (publishButton) {
-        publishButton.disabled = true;
-        console.log("Publish button initial state:", publishButton.disabled ? "disabled" : "enabled");
     }
     
     if (searchInput) {
