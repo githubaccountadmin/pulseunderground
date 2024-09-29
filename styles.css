@@ -23,16 +23,18 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
 }
 
 .sidebar-content {
     display: flex;
     flex-direction: column;
     padding-top: 12px;
+    flex-grow: 1;
 }
 
 #sidebar-left h1 {
-    font-size: 24px;
+    font-size: 22px;
     margin-bottom: 20px;
     padding-left: 12px;
 }
@@ -49,10 +51,10 @@ body {
 #sidebar-left nav ul li a {
     color: #ffffff;
     text-decoration: none;
-    font-size: 20px;
+    font-size: 18px;
     display: flex;
     align-items: center;
-    padding: 12px;
+    padding: 10px 12px;
     border-radius: 9999px;
     transition: background-color 0.2s;
 }
@@ -62,21 +64,28 @@ body {
 }
 
 #sidebar-left nav ul li a .icon {
-    margin-right: 20px;
-    font-size: 24px;
+    margin-right: 16px;
+    font-size: 22px;
+}
+
+.bottom-buttons {
+    position: sticky;
+    bottom: 12px;
+    background-color: #000000;
+    padding-top: 12px;
 }
 
 #postButton, #connectWallet {
     width: 90%;
-    padding: 15px 0;
+    padding: 12px 0;
     background-color: #1d9bf0;
     color: #ffffff;
     border: none;
     border-radius: 9999px;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    margin-top: 16px;
+    margin-top: 12px;
     transition: background-color 0.2s;
 }
 
@@ -86,19 +95,19 @@ body {
 
 /* Profile Section */
 #profile-section {
-    margin-top: auto;
+    margin-top: 12px;
     padding: 12px;
     width: calc(100% - 24px);
 }
 
 #walletInfo {
     width: 100%;
-    padding: 12px;
+    padding: 10px;
     background-color: #16181c;
     color: #ffffff;
     border: none;
     border-radius: 9999px;
-    font-size: 15px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -113,7 +122,7 @@ body {
 }
 
 #walletAddress {
-    font-size: 14px;
+    font-size: 13px;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -366,7 +375,7 @@ main {
     
     #sidebar-left h1::before {
         content: "PU";
-        font-size: 20px;
+        font-size: 18px;
     }
     
     #sidebar-left nav ul li a span:not(.icon) {
@@ -386,12 +395,12 @@ main {
     
     #postButton::after {
         content: "+";
-        font-size: 24px;
+        font-size: 22px;
     }
     
     #connectWallet::after {
         content: "🔗";
-        font-size: 24px;
+        font-size: 22px;
     }
 
     #walletInfo {
@@ -399,7 +408,7 @@ main {
     }
     #walletInfo::after {
         content: "🔗";
-        font-size: 24px;
+        font-size: 22px;
     }
     
     main {
