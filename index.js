@@ -228,10 +228,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     
     function disputeNews(reporterAddress, reportContent) {
         console.log(`Disputing news by reporter: ${reporterAddress}`);
-        // Call the disputeNews function from dispute.js
         window.disputeNews(reporterAddress, reportContent)
-            .then(() => {
-                displayStatusMessage("Dispute submitted successfully", false);
+            .then((txHash) => {
+                displayStatusMessage(`Dispute submitted successfully. Transaction hash: ${txHash}`, false);
             })
             .catch((error) => {
                 displayStatusMessage(`Error submitting dispute: ${error.message}`, true);
