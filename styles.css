@@ -335,14 +335,14 @@ main {
     cursor: pointer;
 }
 
-#trending-section, #who-to-follow {
+#trending-section, #who-to-follow, #disputes-section {
     background-color: #1a1327;
     border-radius: 12px;
     margin-top: 16px;
     padding: 16px;
 }
 
-#trending-section h3, #who-to-follow h3 {
+#trending-section h3, #who-to-follow h3, #disputes-section h3 {
     margin: 0;
     padding: 0 0 12px 0;
     font-size: 20px;
