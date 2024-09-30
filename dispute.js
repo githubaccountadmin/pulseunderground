@@ -1,8 +1,7 @@
 // dispute.js
 
 const governanceContractAddress = '0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00';
-const tokenContractAddress = '0x7CDD7a0963a92BA1D98f6173214563EE0eBd9921'; // TRB token address on PulseChain
-
+const tokenContractAddress = '0x7CdD7a0963a92BA1D98f6173214563EE0eBd9921';
 const governanceContractABI = [
     {
         "inputs": [
