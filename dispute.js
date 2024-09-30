@@ -2,8 +2,25 @@
 
 const governanceContractAddress = '0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00';
 const tokenContractAddress = '0x7CDD7a0963a92BA1D98f6173214563EE0eBd9921'; // TRB token address on PulseChain
+
 const governanceContractABI = [
-    // Add the relevant ABI here from the govABI.json file
+    {
+        "inputs": [
+            {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+            {"internalType": "uint256", "name": "_timestamp", "type": "uint256"}
+        ],
+        "name": "beginDispute",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "disputeFee",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    }
 ];
 
 const tokenABI = [
@@ -28,14 +45,21 @@ async function initializeEthers() {
     }
 }
 
+async function getDisputeFee() {
+    await initializeEthers();
+    const fee = await governanceContract.disputeFee();
+    return fee;
+}
+
 async function beginDispute(queryId, timestamp) {
     try {
         await initializeEthers();
 
-        const trbAmount = ethers.utils.parseUnits('130', 18);
+        const disputeFee = await getDisputeFee();
+        console.log(`Dispute fee: ${ethers.utils.formatEther(disputeFee)} TRB`);
 
         // Approve transaction
-        const approveTx = await tokenContract.approve(governanceContractAddress, trbAmount);
+        const approveTx = await tokenContract.approve(governanceContractAddress, disputeFee);
         console.log(`Approval transaction sent. Transaction Hash: ${approveTx.hash}`);
         await approveTx.wait();
         console.log('Approval transaction confirmed.');
@@ -68,5 +92,6 @@ async function disputeNews(originalReporterAddress, queryId, timestamp) {
     }
 }
 
-// Export the function so it can be used in the main JavaScript file
+// Export the functions so they can be used in the main JavaScript file
 window.disputeNews = disputeNews;
+window.getDisputeFee = getDisputeFee;
