@@ -1,8 +1,7 @@
-// dispute.js
 const ethers = window.ethers;
 
-const governanceContractAddress = ethers.utils.getAddress('0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00');
-const tokenContractAddress = ethers.utils.getAddress('0x7CdD7a0963a92BA1D98f6173214563EE0eBd9921');
+const governanceContractAddress = '0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00';
+const tokenContractAddress = '0x7CdD7a0963a92BA1D98f6173214563EE0eBd9921';
 
 const governanceContractABI = [
     {
@@ -44,8 +43,8 @@ async function getEthers() {
 async function initializeEthers() {
     try {
         const { signer } = await getEthers();
-        governanceContract = new ethers.Contract(governanceContractAddress, governanceContractABI, signer);
-        tokenContract = new ethers.Contract(tokenContractAddress, tokenABI, signer);
+        governanceContract = new ethers.Contract(ethers.utils.getAddress(governanceContractAddress), governanceContractABI, signer);
+        tokenContract = new ethers.Contract(ethers.utils.getAddress(tokenContractAddress), tokenABI, signer);
     } catch (error) {
         console.error("Error initializing Ethers:", error);
         throw error;
