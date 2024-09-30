@@ -53,13 +53,9 @@ async function beginDispute(queryId, timestamp) {
     }
 }
 
-async function disputeNews(reporterAddress, reportContent) {
+async function disputeNews(reporterAddress, queryId, timestamp) {
     try {
         await initializeEthers();
-        
-        // Extract queryId and timestamp from the report content
-        // This is a placeholder - you'll need to implement the actual logic to extract these
-        const { queryId, timestamp } = extractQueryIdAndTimestamp(reportContent);
         
         const disputeHash = await beginDispute(queryId, timestamp);
         
@@ -69,15 +65,6 @@ async function disputeNews(reporterAddress, reportContent) {
         console.error("Error submitting dispute:", error);
         throw error;
     }
-}
-
-function extractQueryIdAndTimestamp(reportContent) {
-    // Placeholder function - implement the actual logic to extract queryId and timestamp
-    // This might involve parsing the reportContent or making an API call
-    return {
-        queryId: "0x0000000000000000000000000000000000000000000000000000000000000000",
-        timestamp: Math.floor(Date.now() / 1000)
-    };
 }
 
 // Export the function so it can be used in the main JavaScript file
