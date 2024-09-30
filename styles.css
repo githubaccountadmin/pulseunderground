@@ -395,6 +395,39 @@ main {
     color: #ffffff;
 }
 
+/* Report Interaction Buttons */
+.report-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #2a2438;
+}
+
+.report-action-button {
+    background: none;
+    border: none;
+    color: #b388ff;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.report-action-button:hover {
+    background-color: rgba(179, 136, 255, 0.1);
+    color: #ffffff;
+}
+
+.report-action-button svg {
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     #sidebar-right {
