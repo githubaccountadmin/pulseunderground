@@ -53,10 +53,11 @@ async function beginDispute(queryId, timestamp) {
     }
 }
 
-async function disputeNews(reporterAddress, queryId, timestamp) {
+async function disputeNews(originalReporterAddress, queryId, timestamp) {
     try {
         await initializeEthers();
         
+        console.log(`Disputing report by: ${originalReporterAddress}`);
         const disputeHash = await beginDispute(queryId, timestamp);
         
         console.log("Dispute submitted successfully. Transaction hash:", disputeHash);
