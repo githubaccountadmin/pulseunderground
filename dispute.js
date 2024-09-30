@@ -99,19 +99,21 @@ async function beginDispute(queryId, timestamp) {
 }
 
 async function disputeNews(originalReporterAddress, queryId, timestamp) {
-    try {
-        await initializeEthers();
-        await checkNetwork();
-        
-        console.log(`Disputing report by: ${originalReporterAddress}`);
-        const disputeHash = await beginDispute(queryId, timestamp);
-        
-        console.log("Dispute submitted successfully. Transaction hash:", disputeHash);
-        return disputeHash;
-    } catch (error) {
-        console.error("Error submitting dispute:", error);
-        throw error;
-    }
+  try {
+    await initializeEthers();
+    await checkNetwork();
+    
+    console.log(`Disputing report by: ${originalReporterAddress}`);
+    const disputeHash = await beginDispute(queryId, timestamp);
+    
+    console.log("Dispute submitted successfully. Transaction hash:", disputeHash);
+    displayStatusMessage("Dispute submitted successfully.", false);
+    return disputeHash;
+  } catch (error) {
+    console.error("Error submitting dispute:", error);
+    displayStatusMessage(`Error submitting dispute: ${error.message}`, true);
+    throw error;
+  }
 }
 
 // Export the functions so they can be used in the main JavaScript file
