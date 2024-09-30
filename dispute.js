@@ -1,5 +1,5 @@
 // dispute.js
-const ethers = require('ethers');
+import { ethers } from 'https://cdn.ethers.io/lib/ethers-5.6.esm.min.js';
 
 const governanceContractAddress = ethers.utils.getAddress('0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00');
 const tokenContractAddress = ethers.utils.getAddress('0x7CdD7a0963a92BA1D98f6173214563EE0eBd9921');
@@ -28,30 +28,32 @@ const tokenABI = [
     "function approve(address spender, uint256 amount) public returns (bool)"
 ];
 
-let provider;
-let signer;
 let governanceContract;
 let tokenContract;
 
-async function initializeEthers() {
+async function getEthers() {
     if (typeof window.ethereum !== 'undefined') {
-        try {
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            await provider.send("eth_requestAccounts", []);
-            signer = provider.getSigner();
-            governanceContract = new ethers.Contract(governanceContractAddress, governanceContractABI, signer);
-            tokenContract = new ethers.Contract(tokenContractAddress, tokenABI, signer);
-        } catch (error) {
-            console.error("Error initializing Ethers:", error);
-            throw error;
-        }
-    } else {
-        console.error("Ethereum provider not found. Please install MetaMask.");
-        throw new Error("Ethereum provider not found");
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+        return { provider, signer };
+    }
+    throw new Error("Ethereum provider not found. Please install MetaMask.");
+}
+
+async function initializeEthers() {
+    try {
+        const { signer } = await getEthers();
+        governanceContract = new ethers.Contract(governanceContractAddress, governanceContractABI, signer);
+        tokenContract = new ethers.Contract(tokenContractAddress, tokenABI, signer);
+    } catch (error) {
+        console.error("Error initializing Ethers:", error);
+        throw error;
     }
 }
 
 async function checkNetwork() {
+    const { provider } = await getEthers();
     const network = await provider.getNetwork();
     if (network.chainId !== 369) { // PulseChain mainnet chainId
         throw new Error("Please connect to PulseChain network");
