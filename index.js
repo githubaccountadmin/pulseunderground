@@ -1,7 +1,7 @@
-import { ethers } from 'ethers';
-
 document.addEventListener('DOMContentLoaded', async function () {
     console.log("DOM fully loaded and parsed");
+
+    const ethers = window.ethers;
 
     let provider;
     let signer;
