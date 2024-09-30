@@ -40,6 +40,20 @@ document.addEventListener('DOMContentLoaded', async function () {
     let validTransactionsCount = 0;
     const validTransactionLimit = 100;
 
+    // Add the new code for dynamic textarea here
+    const textarea = document.getElementById('reportContent');
+    
+    function adjustHeight() {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    textarea.addEventListener('input', adjustHeight);
+    window.addEventListener('resize', adjustHeight);
+
+    // Initial call to set the correct height
+    adjustHeight();
+
     function displayStatusMessage(message, isError = false) {
         const statusMessage = document.getElementById('statusMessage');
         if (statusMessage) {
