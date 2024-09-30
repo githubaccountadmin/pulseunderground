@@ -1,7 +1,8 @@
+import { ethers } from 'ethers';
+
 document.addEventListener('DOMContentLoaded', async function () {
     console.log("DOM fully loaded and parsed");
 
-    import { ethers } from 'ethers';
     let provider;
     let signer;
     let contract;
@@ -146,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             const article = document.createElement('article');
             article.id = `news-item-${index}`;
             article.className = 'news-item';
-            article.innerHTML = displayNews(item.content, item.reporter, item.timestamp, item.queryID);
+            article.innerHTML = displayNews(item.content, item.reporter, item.timestamp, item.queryId);
             newsFeed.appendChild(article);
         });
     }
