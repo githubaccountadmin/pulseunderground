@@ -211,6 +211,7 @@ main {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+    position: relative;
 }
 
 #reportContent {
@@ -224,7 +225,7 @@ main {
     font-size: 18px;
     min-height: 80px;
     resize: none;
-    overflow-y: auto;
+    overflow-y: hidden;
     line-height: 1.5;
 }
 
@@ -240,19 +241,39 @@ main {
 }
 
 #publishStory {
-    padding: 8px 16px;
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
     background-color: #1d9bf0;
     color: #ffffff;
     border: none;
-    border-radius: 9999px;
-    font-size: 15px;
+    border-radius: 50%;
+    font-size: 16px;
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #publishStory:hover {
     background-color: #1a8cd8;
+}
+
+#publishStory:disabled {
+    background-color: #1d9bf0;
+    opacity: 0.5;
+    cursor: default;
+}
+
+#publishStory svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
 }
 
 /* Right Sidebar */
