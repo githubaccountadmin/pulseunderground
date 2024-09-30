@@ -1,5 +1,5 @@
 // dispute.js
-import { ethers } from 'https://cdn.ethers.io/lib/ethers-5.6.esm.min.js';
+const ethers = window.ethers;
 
 const governanceContractAddress = ethers.utils.getAddress('0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00');
 const tokenContractAddress = ethers.utils.getAddress('0x7CdD7a0963a92BA1D98f6173214563EE0eBd9921');
