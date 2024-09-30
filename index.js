@@ -226,15 +226,34 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Implement like functionality here
     }
     
-    function disputeNews(originalReporterAddress, queryId, timestamp) {
+    async function disputeNews(originalReporterAddress, queryId, timestamp) {
         console.log(`Initiating dispute for report by: ${originalReporterAddress}`);
-        window.disputeNews(originalReporterAddress, queryId, timestamp)
-            .then((txHash) => {
+        
+        // Fetch the current dispute fee
+        let disputeFee;
+        try {
+            disputeFee = await window.getDisputeFee();
+            disputeFee = ethers.utils.formatEther(disputeFee);
+        } catch (error) {
+            console.error("Error fetching dispute fee:", error);
+            displayStatusMessage(`Error fetching dispute fee: ${error.message}`, true);
+            return;
+        }
+    
+        // Confirmation dialog
+        const confirmMessage = `Are you sure you want to dispute this report?\n\nReporter: ${originalReporterAddress}\nDispute Fee: ${disputeFee} TRB\n\nThis action will require a transaction and gas fees.`;
+        
+        if (confirm(confirmMessage)) {
+            try {
+                const txHash = await window.disputeNews(originalReporterAddress, queryId, timestamp);
                 displayStatusMessage(`Dispute submitted successfully. Transaction hash: ${txHash}`, false);
-            })
-            .catch((error) => {
+            } catch (error) {
                 displayStatusMessage(`Error submitting dispute: ${error.message}`, true);
-            });
+            }
+        } else {
+            console.log("Dispute cancelled by user");
+            displayStatusMessage("Dispute cancelled", false);
+        }
     }
     
     function voteOnDispute(reporterAddress) {
