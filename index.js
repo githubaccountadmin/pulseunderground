@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', async function () {
     console.log("DOM fully loaded and parsed");
 
+    import { ethers } from 'ethers';
     let provider;
     let signer;
     let contract;
@@ -145,7 +146,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             const article = document.createElement('article');
             article.id = `news-item-${index}`;
             article.className = 'news-item';
-            article.innerHTML = displayNews(item.content, item.reporter, item.timestamp);
+            article.innerHTML = displayNews(item.content, item.reporter, item.timestamp, item.queryID);
             newsFeed.appendChild(article);
         });
     }
@@ -306,25 +307,25 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             for (let tx of data.items) {
                 console.log("Processing transaction:", tx.hash, "Method:", tx.method);
-
+        
                 if (tx.method === 'submitValue') {
                     let decodedParams = tx.decoded_input ? tx.decoded_input.parameters : null;
-
+        
                     if (decodedParams && decodedParams.length >= 4) {
                         const queryDataParam = decodedParams[3].value;
-
+        
                         try {
                             let decodedQueryData = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], queryDataParam);
                             const queryType = decodedQueryData[0];
                             const reportContentBytes = decodedQueryData[1];
-
+        
                             console.log("Decoded query type:", queryType);
-
+        
                             if (queryType === "StringQuery") {
                                 console.log("StringQuery found in transaction:", tx.hash);
-
+        
                                 let reportContent = '';
-
+        
                                 try {
                                     reportContent = ethers.utils.toUtf8String(reportContentBytes);
                                     console.log("Decoded report content (UTF-8):", reportContent);
@@ -332,14 +333,15 @@ document.addEventListener('DOMContentLoaded', async function () {
                                     console.warn("Error decoding report content as UTF-8 string:", utf8Error);
                                     reportContent = "<Invalid or non-readable content>";
                                 }
-
+        
                                 const newsItem = {
                                     content: reportContent,
                                     reporter: tx.from,
-                                    timestamp: tx.timestamp || tx.block_timestamp
+                                    timestamp: tx.timestamp || tx.block_timestamp,
+                                    queryId: decodedParams[0].value // Add this line to include queryId
                                 };
                                 allNewsItems.push(newsItem);
-
+        
                                 newValidTransactions++;
                                 validTransactionsCount++;
                             }
