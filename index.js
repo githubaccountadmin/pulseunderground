@@ -25,11 +25,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const shortenAddress = address => {
-        if (typeof address !== 'string') {
+        if (typeof address === 'string') {
+            return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
+        } else if (typeof address === 'object' && address.hash) {
+            return `${address.hash.slice(0, 6)}...${address.hash.slice(-4)}`;
+        } else {
             console.warn('Invalid address type:', typeof address, address);
             return 'Unknown';
         }
-        return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
     };
 
     const formatTimestamp = timestamp => new Date(timestamp).toLocaleString();
@@ -151,7 +154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         autoFetchingEnabled = false;
         const searchTerm = $('#search-input').value.toLowerCase();
         const filteredItems = allNewsItems.filter(item => 
-            item.reporter.toLowerCase().includes(searchTerm) || 
+            shortenAddress(item.reporter).toLowerCase().includes(searchTerm) || 
             item.content.toLowerCase().includes(searchTerm)
         );
         renderNews(filteredItems);
@@ -181,10 +184,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Expose necessary functions to global scope
-    window.commentNews = reporter => console.log(`Comment on news by reporter: ${reporter}`);
-    window.likeNews = reporter => console.log(`Like news by reporter: ${reporter}`);
-    window.voteNews = reporter => console.log(`Vote on news by reporter: ${reporter}`);
-    window.disputeNews = disputeNews;  // This function is defined in dispute.js
+    window.commentNews = reporter => console.log(`Comment on news by reporter: ${shortenAddress(reporter)}`);
+    window.likeNews = reporter => console.log(`Like news by reporter: ${shortenAddress(reporter)}`);
+    window.voteNews = reporter => console.log(`Vote on news by reporter: ${shortenAddress(reporter)}`);
+    window.disputeNews = (reporter, queryId, timestamp) => {
+        console.log(`Dispute news by reporter: ${shortenAddress(reporter)}, QueryID: ${queryId}, Timestamp: ${timestamp}`);
+        // Call the actual dispute function from dispute.js here
+    };
 
     loadNewsFeed();
 });
