@@ -1,6 +1,12 @@
-document.addEventListener('DOMContentLoaded', async function () {
+document.addEventListener('DOMContentLoaded', async () => {
+    const ethers = window.ethers;
     const $ = document.querySelector.bind(document);
-    const $$ = document.querySelectorAll.bind(document);
+    
+    let provider, signer, contract;
+    const allNewsItems = [];
+    let autoFetchingEnabled = true, loading = false, noMoreData = false, validTransactionsCount = 0;
+    const validTransactionLimit = 100;
+    let lastTransactionParams = null;
 
     const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
     const contractABI = [
@@ -8,55 +14,25 @@ document.addEventListener('DOMContentLoaded', async function () {
         {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
     ];
 
-    let provider, signer, contract;
-    let allNewsItems = [];
-    let lastTransactionParams = null;
-    let loading = false, noMoreData = false, validTransactionsCount = 0, autoFetchingEnabled = true;
-    const validTransactionLimit = 100;
-
-    function displayStatus(message, isError = false) {
-        const statusMessage = $('#statusMessage');
-        if (statusMessage) {
-            statusMessage.textContent = message;
-            statusMessage.style.color = isError ? 'red' : 'green';
-            statusMessage.style.display = 'block';
-            console.log(`Status Message: ${message}`);
+    const displayStatus = (message, isError = false) => {
+        const statusEl = $('#statusMessage');
+        if (statusEl) {
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? 'red' : 'green';
+            statusEl.style.display = 'block';
         }
-    }
+        console.log(`Status: ${message}`);
+    };
 
-    async function connectWallet() {
-        try {
-            if (typeof window.ethereum !== 'undefined') {
-                provider = new ethers.providers.Web3Provider(window.ethereum);
-                await provider.send("eth_requestAccounts", []);
-                signer = provider.getSigner();
-                const address = await signer.getAddress();
-                
-                $('#connectWallet').style.display = 'none';
-                $('#walletInfo').style.display = 'block';
-                $('#walletAddress').textContent = shortenAddress(address);
-                $('#publishStory').disabled = false;
-                
-                contract = new ethers.Contract(contractAddress, contractABI, signer);
-                displayStatus('Wallet connected.');
-            } else {
-                throw new Error("Ethereum provider not found. Please install MetaMask.");
-            }
-        } catch (e) {
-            console.error("Error connecting wallet:", e);
-            displayStatus('Could not connect to wallet: ' + e.message, true);
-        }
-    }
+    const shortenAddress = address => {
+        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    };
 
-    function shortenAddress(address) {
-        return `${address.slice(0,6)}...${address.slice(-4)}`;
-    }
-
-    function formatTimestamp(timestamp) {
+    const formatTimestamp = timestamp => {
         return new Date(timestamp).toLocaleString();
-    }
+    };
 
-    function renderNews(items = allNewsItems) {
+    const renderNews = (items = allNewsItems) => {
         $('#newsFeed').innerHTML = items.map((item, index) => `
             <article id="news-item-${index}" class="news-item">
                 <div class="reporter-info">Reporter: ${shortenAddress(item.reporter)} | ${formatTimestamp(item.timestamp)}</div>
@@ -69,9 +45,31 @@ document.addEventListener('DOMContentLoaded', async function () {
                 </div>
             </article>
         `).join('');
-    }
+    };
 
-    async function loadNewsFeed() {
+    const connectWallet = async () => {
+        try {
+            if (typeof window.ethereum !== 'undefined') {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                const address = await signer.getAddress();
+                $('#connectWallet').style.display = 'none';
+                $('#walletInfo').style.display = 'block';
+                $('#walletAddress').textContent = shortenAddress(address);
+                $('#publishStory').disabled = false;
+                contract = new ethers.Contract(contractAddress, contractABI, signer);
+                displayStatus('Wallet connected.');
+            } else {
+                throw new Error("Ethereum provider not found. Please install MetaMask.");
+            }
+        } catch (e) {
+            console.error("Error connecting wallet:", e);
+            displayStatus('Could not connect to wallet: ' + e.message, true);
+        }
+    };
+
+    const loadNewsFeed = async () => {
         if (!autoFetchingEnabled || loading || noMoreData || validTransactionsCount >= validTransactionLimit) return;
         loading = true;
         try {
@@ -106,9 +104,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         } finally {
             loading = false;
         }
-    }
+    };
 
-    async function submitStory() {
+    const submitStory = async () => {
         const content = $('#reportContent').value.trim();
         if (!content) return displayStatus('Please enter a story before submitting.', true);
         $('#publishStory').disabled = true;
@@ -131,9 +129,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         } finally {
             $('#publishStory').disabled = false;
         }
-    }
+    };
 
-    function performSearch() {
+    const performSearch = () => {
         autoFetchingEnabled = false;
         const searchTerm = $('#search-input').value.toLowerCase();
         const filteredItems = allNewsItems.filter(item => 
@@ -143,11 +141,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         renderNews(filteredItems);
         displayStatus(filteredItems.length ? `Found ${filteredItems.length} result(s).` : "No results found.");
         $('#reloadNewsFeed').style.display = 'block';
-    }
-
-    function commentNews(reporter) { console.log(`Comment on news by reporter: ${reporter}`); }
-    function likeNews(reporter) { console.log(`Like news by reporter: ${reporter}`); }
-    function voteNews(reporter) { console.log(`Vote on news by reporter: ${reporter}`); }
+    };
 
     // Event listeners and initialization
     const textarea = $('#reportContent');
@@ -171,10 +165,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     // Expose necessary functions to global scope
-    window.commentNews = commentNews;
-    window.likeNews = likeNews;
-    window.voteNews = voteNews;
-    window.disputeNews = disputeNews;
+    window.commentNews = reporter => console.log(`Comment on news by reporter: ${reporter}`);
+    window.likeNews = reporter => console.log(`Like news by reporter: ${reporter}`);
+    window.voteNews = reporter => console.log(`Vote on news by reporter: ${reporter}`);
+    window.disputeNews = disputeNews;  // This function is defined in dispute.js
 
     loadNewsFeed();
 });
