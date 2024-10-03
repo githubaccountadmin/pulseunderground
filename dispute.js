@@ -1,91 +1,55 @@
-const ethers = window.ethers;
-
-const governanceContractAddress = ethers.utils.getAddress('0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00');
-const tokenContractAddress = ethers.utils.getAddress('0x7CdD7a0963a92BA1D98f6173214563EE0eBd9921');
+// dispute.js (separate file)
+const governanceContractAddress = '0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00';
+const tokenContractAddress = '0x7CdD7A0963A92bA1D98f6173214563EE0EBd9921';  // Corrected checksum
 
 const governanceContractABI = [
-    {
-        "inputs": [
-            {"internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
-            {"internalType": "uint256", "name": "_timestamp", "type": "uint256"}
-        ],
-        "name": "beginDispute",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "disputeFee",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-    }
+    {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_timestamp","type":"uint256"}],"name":"beginDispute","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[],"name":"disputeFee","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
 ];
 
-const tokenABI = [
-    "function approve(address spender, uint256 amount) public returns (bool)"
-];
+const tokenABI = ["function approve(address spender, uint256 amount) public returns (bool)"];
 
-let governanceContract;
-let tokenContract;
+let governanceContract, tokenContract;
 
-async function getEthers() {
-    if (typeof window.ethereum !== 'undefined') {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-        return { provider, signer };
+const initializeEthers = async () => {
+    if (typeof window.ethereum === 'undefined') {
+        throw new Error("Ethereum provider not found. Please install MetaMask.");
     }
-    throw new Error("Ethereum provider not found. Please install MetaMask.");
-}
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    governanceContract = new ethers.Contract(governanceContractAddress, governanceContractABI, signer);
+    tokenContract = new ethers.Contract(tokenContractAddress, tokenABI, signer);
+};
 
-async function initializeEthers() {
-    try {
-        const { signer } = await getEthers();
-        governanceContract = new ethers.Contract(governanceContractAddress, governanceContractABI, signer);
-        tokenContract = new ethers.Contract(tokenContractAddress, tokenABI, signer);
-    } catch (error) {
-        console.error("Error initializing Ethers:", error);
-        throw error;
-    }
-}
-
-async function checkNetwork() {
-    const { provider } = await getEthers();
+const getDisputeFee = async () => {
+    await initializeEthers();
     const network = await provider.getNetwork();
-    if (network.chainId !== 369) { // PulseChain mainnet chainId
+    if (network.chainId !== 369) {
         throw new Error("Please connect to PulseChain network");
     }
-}
+    return governanceContract.disputeFee();
+};
 
-async function getDisputeFee() {
-    await initializeEthers();
-    await checkNetwork();
-    const fee = await governanceContract.disputeFee();
-    return fee;
-}
-
-async function beginDispute(queryId, timestamp) {
+const beginDispute = async (queryId, timestamp) => {
     try {
         await initializeEthers();
-        await checkNetwork();
+        const network = await provider.getNetwork();
+        if (network.chainId !== 369) {
+            throw new Error("Please connect to PulseChain network");
+        }
         const disputeFee = await getDisputeFee();
         console.log(`Dispute fee: ${ethers.utils.formatEther(disputeFee)} TRB`);
 
-        // Approve transaction
-        const approveTx = await tokenContract.approve(governanceContractAddress, ethers.BigNumber.from(disputeFee));
-        console.log(`Approval transaction sent. Transaction Hash: ${approveTx.hash}`);
+        const approveTx = await tokenContract.approve(governanceContractAddress, disputeFee);
         await approveTx.wait();
         console.log('Approval transaction confirmed.');
 
-        // Begin dispute on the governance contract
         const tx = await governanceContract.beginDispute(queryId, timestamp);
-        console.log(`Dispute initiated. Transaction Hash: ${tx.hash}`);
         await tx.wait();
         console.log('Dispute transaction confirmed.');
 
-        return tx.hash; // Return the transaction hash for UI updates
+        return tx.hash;
     } catch (error) {
         console.error('Error initiating dispute:', error);
         if (error.message.includes("insufficient funds")) {
@@ -96,26 +60,20 @@ async function beginDispute(queryId, timestamp) {
             throw error;
         }
     }
-}
+};
 
-async function disputeNews(originalReporterAddress, queryId, timestamp) {
-  try {
-    await initializeEthers();
-    await checkNetwork();
-    
-    console.log(`Disputing report by: ${originalReporterAddress}`);
-    const disputeHash = await beginDispute(queryId, timestamp);
-    
-    console.log("Dispute submitted successfully. Transaction hash:", disputeHash);
-    displayStatusMessage("Dispute submitted successfully.", false);
-    return disputeHash;
-  } catch (error) {
-    console.error("Error submitting dispute:", error);
-    displayStatusMessage(`Error submitting dispute: ${error.message}`, true);
-    throw error;
-  }
-}
+const disputeNews = async (originalReporterAddress, queryId, timestamp) => {
+    try {
+        const disputeFee = await getDisputeFee();
+        if (confirm(`Are you sure you want to dispute this report?\n\nReporter: ${originalReporterAddress}\nDispute Fee: ${ethers.utils.formatEther(disputeFee)} TRB\n\nThis action will require a transaction and gas fees.`)) {
+            const txHash = await beginDispute(queryId, timestamp);
+            displayStatus(`Dispute submitted successfully. Transaction hash: ${txHash}`);
+        } else {
+            displayStatus("Dispute cancelled");
+        }
+    } catch (error) {
+        displayStatus(`Error submitting dispute: ${error.message}`, true);
+    }
+};
 
-// Export the functions so they can be used in the main JavaScript file
 window.disputeNews = disputeNews;
-window.getDisputeFee = getDisputeFee;
