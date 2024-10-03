@@ -1,17 +1,15 @@
-// dispute.js content (to be in a separate file)
+const ethers = window.ethers;
 const governanceContractAddress = '0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00';
 const tokenContractAddress = '0x7CdD7A0963A92bA1D98f6173214563EE0EBd9921';
-
 const governanceContractABI = [
     {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_timestamp","type":"uint256"}],"name":"beginDispute","outputs":[],"stateMutability":"nonpayable","type":"function"},
     {"inputs":[],"name":"disputeFee","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
 ];
-
 const tokenABI = ["function approve(address spender, uint256 amount) public returns (bool)"];
 
 let governanceContract, tokenContract;
 
-async function initializeEthers() {
+const initializeEthers = async () => {
     if (typeof window.ethereum === 'undefined') {
         throw new Error("Ethereum provider not found. Please install MetaMask.");
     }
@@ -20,20 +18,21 @@ async function initializeEthers() {
     const signer = provider.getSigner();
     governanceContract = new ethers.Contract(governanceContractAddress, governanceContractABI, signer);
     tokenContract = new ethers.Contract(tokenContractAddress, tokenABI, signer);
-}
+    return { provider, signer };
+};
 
-async function getDisputeFee() {
-    await initializeEthers();
+const getDisputeFee = async () => {
+    const { provider } = await initializeEthers();
     const network = await provider.getNetwork();
     if (network.chainId !== 369) {
         throw new Error("Please connect to PulseChain network");
     }
     return governanceContract.disputeFee();
-}
+};
 
-async function beginDispute(queryId, timestamp) {
+const beginDispute = async (queryId, timestamp) => {
     try {
-        await initializeEthers();
+        const { provider } = await initializeEthers();
         const network = await provider.getNetwork();
         if (network.chainId !== 369) {
             throw new Error("Please connect to PulseChain network");
@@ -57,9 +56,9 @@ async function beginDispute(queryId, timestamp) {
             throw error;
         }
     }
-}
+};
 
-async function disputeNews(originalReporterAddress, queryId, timestamp) {
+const disputeNews = async (originalReporterAddress, queryId, timestamp) => {
     try {
         const disputeFee = await getDisputeFee();
         if (confirm(`Are you sure you want to dispute this report?\n\nReporter: ${originalReporterAddress}\nDispute Fee: ${ethers.utils.formatEther(disputeFee)} TRB\n\nThis action will require a transaction and gas fees.`)) {
@@ -71,4 +70,8 @@ async function disputeNews(originalReporterAddress, queryId, timestamp) {
     } catch (error) {
         displayStatus(`Error submitting dispute: ${error.message}`, true);
     }
-}
+};
+
+// Expose necessary functions to global scope
+window.getDisputeFee = getDisputeFee;
+window.disputeNews = disputeNews;
