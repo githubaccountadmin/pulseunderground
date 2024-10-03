@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     let provider, signer, contract;
     const allNewsItems = [];
-    let autoFetchingEnabled = true, loading = false, noMoreData = false, validTransactionsCount = 0;
+    let autoFetchingEnabled = true, isLoading = false, noMoreData = false, validTransactionsCount = 0;
     const validTransactionLimit = 100;
     let lastTransactionParams = null;
 
@@ -25,23 +25,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const shortenAddress = address => {
-        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+        if (typeof address !== 'string') {
+            console.warn('Invalid address type:', typeof address, address);
+            return 'Unknown';
+        }
+        return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
     };
 
-    const formatTimestamp = timestamp => {
-        return new Date(timestamp).toLocaleString();
-    };
+    const formatTimestamp = timestamp => new Date(timestamp).toLocaleString();
 
     const renderNews = (items = allNewsItems) => {
-        $('#newsFeed').innerHTML = items.map((item, index) => `
+        const newsFeed = $('#newsFeed');
+        if (!items.length) {
+            newsFeed.innerHTML = '';
+            return;
+        }
+        newsFeed.innerHTML = items.map((item, index) => `
             <article id="news-item-${index}" class="news-item">
                 <div class="reporter-info">Reporter: ${shortenAddress(item.reporter)} | ${formatTimestamp(item.timestamp)}</div>
                 ${item.content.split('\n\n').map(p => `<p class="mb-4">${p.replace(/\n/g, '<br>')}</p>`).join('')}
                 <div class="report-actions">
-                    <button onclick="commentNews('${item.reporter}')">Comment</button>
-                    <button onclick="likeNews('${item.reporter}')">Like</button>
-                    <button onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
-                    <button onclick="voteNews('${item.reporter}')">Vote</button>
+                    ${['Comment', 'Like', 'Dispute', 'Vote'].map(action => 
+                        `<button onclick="${action.toLowerCase()}News('${item.reporter}'${action === 'Dispute' ? `, '${item.queryId}', '${item.timestamp}'` : ''})">${action}</button>`
+                    ).join('')}
                 </div>
             </article>
         `).join('');
@@ -69,9 +75,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    const showLoadingIndicator = () => {
+        $('#newsFeed').innerHTML = '<div class="loading">Loading news feed...</div>';
+    };
+
+    const hideLoadingIndicator = () => {
+        $('.loading')?.remove();
+    };
+
     const loadNewsFeed = async () => {
-        if (!autoFetchingEnabled || loading || noMoreData || validTransactionsCount >= validTransactionLimit) return;
-        loading = true;
+        if (!autoFetchingEnabled || isLoading || noMoreData || validTransactionsCount >= validTransactionLimit) return;
+        isLoading = true;
+        showLoadingIndicator();
         try {
             const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
             const data = await response.json();
@@ -102,7 +117,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error("Error in loadNewsFeed:", error);
             displayStatus('Error loading news feed: ' + error.message, true);
         } finally {
-            loading = false;
+            isLoading = false;
+            hideLoadingIndicator();
         }
     };
 
