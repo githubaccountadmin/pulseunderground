@@ -1,8 +1,9 @@
+// Main script (index.js)
 const $ = document.querySelector.bind(document);
 const addr = {
     c: '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0',
     g: '0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00',
-    t: '0x7CdD7a0963a92BA1D98f6173214563EE0eBd9921'  // Corrected checksum
+    t: '0x7CdD7A0963A92bA1D98f6173214563EE0EBd9921'  // Corrected checksum
 };
 const ABI = {
     c: [{"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}],
@@ -129,45 +130,6 @@ const search = () => {
 
 const commentNews = r => console.log(`Comment on news by reporter: ${r}`);
 const likeNews = r => console.log(`Like news by reporter: ${r}`);
-
-const getDisputeFee = async () => {
-    await init();
-    if ((await p.getNetwork()).chainId !== 369) throw new Error("Please connect to PulseChain network");
-    return c.g.disputeFee();
-};
-
-const beginDispute = async (qid, ts) => {
-    try {
-        await init();
-        if ((await p.getNetwork()).chainId !== 369) throw new Error("Please connect to PulseChain network");
-        const df = await getDisputeFee();
-        console.log(`Dispute fee: ${ethers.utils.formatEther(df)} TRB`);
-        await (await c.t.approve(addr.g, df)).wait();
-        const tx = await c.g.beginDispute(qid, ts);
-        await tx.wait();
-        return tx.hash;
-    } catch (e) {
-        console.error('Error initiating dispute:', e);
-        throw e.message.includes("insufficient funds") ? new Error("Insufficient TRB balance for dispute fee") 
-            : e.message.includes("user rejected") ? new Error("Transaction rejected by user") 
-            : e;
-    }
-};
-
-const disputeNews = async (ora, qid, ts) => {
-    try {
-        const df = await getDisputeFee();
-        if (confirm(`Are you sure you want to dispute this report?\n\nReporter: ${ora}\nDispute Fee: ${ethers.utils.formatEther(df)} TRB\n\nThis action will require a transaction and gas fees.`)) {
-            const txh = await beginDispute(qid, ts);
-            status(`Dispute submitted successfully. Transaction hash: ${txh}`);
-        } else {
-            status("Dispute cancelled");
-        }
-    } catch (e) {
-        status(`Error submitting dispute: ${e.message}`, true);
-    }
-};
-
 const voteNews = r => console.log(`Vote on news by reporter: ${r}`);
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -191,7 +153,48 @@ document.addEventListener('DOMContentLoaded', () => {
     load();
 });
 
+// Expose necessary functions to global scope
 window.commentNews = commentNews;
 window.likeNews = likeNews;
-window.disputeNews = disputeNews;
 window.voteNews = voteNews;
+
+// Dispute functionality (separate file or scope)
+(function() {
+    const getDisputeFee = async () => {
+        await init();
+        if ((await p.getNetwork()).chainId !== 369) throw new Error("Please connect to PulseChain network");
+        return c.g.disputeFee();
+    };
+
+    const beginDispute = async (qid, ts) => {
+        try {
+            await init();
+            if ((await p.getNetwork()).chainId !== 369) throw new Error("Please connect to PulseChain network");
+            const df = await getDisputeFee();
+            console.log(`Dispute fee: ${ethers.utils.formatEther(df)} TRB`);
+            await (await c.t.approve(addr.g, df)).wait();
+            const tx = await c.g.beginDispute(qid, ts);
+            await tx.wait();
+            return tx.hash;
+        } catch (e) {
+            console.error('Error initiating dispute:', e);
+            throw e.message.includes("insufficient funds") ? new Error("Insufficient TRB balance for dispute fee") 
+                : e.message.includes("user rejected") ? new Error("Transaction rejected by user") 
+                : e;
+        }
+    };
+
+    window.disputeNews = async (ora, qid, ts) => {
+        try {
+            const df = await getDisputeFee();
+            if (confirm(`Are you sure you want to dispute this report?\n\nReporter: ${ora}\nDispute Fee: ${ethers.utils.formatEther(df)} TRB\n\nThis action will require a transaction and gas fees.`)) {
+                const txh = await beginDispute(qid, ts);
+                status(`Dispute submitted successfully. Transaction hash: ${txh}`);
+            } else {
+                status("Dispute cancelled");
+            }
+        } catch (e) {
+            status(`Error submitting dispute: ${e.message}`, true);
+        }
+    };
+})();
