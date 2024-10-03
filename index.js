@@ -38,22 +38,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     const formatTimestamp = timestamp => new Date(timestamp).toLocaleString();
 
     const renderNews = (items = allNewsItems) => {
+        console.log(`Rendering news. Items count: ${items.length}`);
         const newsFeed = $('#newsFeed');
         if (!items.length) {
+            console.log('No items to render, clearing newsFeed');
             newsFeed.innerHTML = '';
             return;
         }
-        newsFeed.innerHTML = items.map((item, index) => `
+        const newContent = items.map((item, index) => `
             <article id="news-item-${index}" class="news-item">
                 <div class="reporter-info">Reporter: ${shortenAddress(item.reporter)} | ${formatTimestamp(item.timestamp)}</div>
-                ${item.content.split('\n\n').map(p => `<p class="mb-4">${p.replace(/\n/g, '<br>')}</p>`).join('')}
+                ${item.content.split('\n\n').map(p => `<p class="mb-4">${p.split('\n').map(line => line.trim()).join('<br>')}</p>`).join('')}
                 <div class="report-actions">
-                    ${['Comment', 'Like', 'Dispute', 'Vote'].map(action => 
-                        `<button onclick="${action.toLowerCase()}News('${item.reporter}'${action === 'Dispute' ? `, '${item.queryId}', '${item.timestamp}'` : ''})">${action}</button>`
-                    ).join('')}
+                    <button class="report-action-button comment-button" onclick="commentNews('${item.reporter}')">Comment</button>
+                    <button class="report-action-button like-button" onclick="likeNews('${item.reporter}')">Like</button>
+                    <button class="report-action-button dispute-button" onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
+                    <button class="report-action-button vote-button" onclick="voteNews('${item.reporter}')">Vote</button>
                 </div>
             </article>
         `).join('');
+        
+        if (newsFeed.innerHTML !== newContent) {
+            console.log('Updating newsFeed content');
+            newsFeed.innerHTML = newContent;
+        } else {
+            console.log('Content unchanged, skipping render');
+        }
     };
 
     const connectWallet = async () => {
@@ -79,24 +89,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const showLoadingIndicator = () => {
-        $('#newsFeed').innerHTML = '<div class="loading">Loading news feed...</div>';
+        const newsFeed = $('#newsFeed');
+        if (!newsFeed.querySelector('.loading')) {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.textContent = 'Loading news feed...';
+            newsFeed.appendChild(loadingDiv);
+        }
     };
 
     const hideLoadingIndicator = () => {
-        $('.loading')?.remove();
+        const loadingDiv = $('#newsFeed .loading');
+        if (loadingDiv) loadingDiv.remove();
     };
 
     const loadNewsFeed = async () => {
-        if (!autoFetchingEnabled || isLoading || noMoreData || validTransactionsCount >= validTransactionLimit) return;
+        console.log(`loadNewsFeed called. State: autoFetchingEnabled=${autoFetchingEnabled}, isLoading=${isLoading}, noMoreData=${noMoreData}, validTransactionsCount=${validTransactionsCount}`);
+        
+        if (!autoFetchingEnabled || isLoading || noMoreData || validTransactionsCount >= validTransactionLimit) {
+            console.log('Exiting loadNewsFeed early');
+            return;
+        }
+        
         isLoading = true;
         showLoadingIndicator();
+        
         try {
             const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
             const data = await response.json();
+            console.log(`Fetched ${data.items.length} transactions`);
+            
             if (data.items.length === 0) {
                 noMoreData = true;
-                return displayStatus("No more transactions available.");
+                displayStatus("No more transactions available.");
+                return;
             }
+            
+            let newItemsCount = 0;
             data.items.forEach(tx => {
                 if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
                     const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
@@ -108,14 +137,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                             queryId: tx.decoded_input.parameters[0].value
                         });
                         validTransactionsCount++;
+                        newItemsCount++;
                     }
                 }
             });
+            
+            console.log(`Added ${newItemsCount} new items to allNewsItems`);
             renderNews();
+            
             lastTransactionParams = data.next_page_params || null;
             noMoreData = !lastTransactionParams;
-            if (validTransactionsCount < validTransactionLimit && !noMoreData) setTimeout(loadNewsFeed, 1000);
-            else displayStatus("News feed fully loaded.");
+            
+            if (validTransactionsCount < validTransactionLimit && !noMoreData) {
+                console.log('Scheduling next loadNewsFeed call');
+                setTimeout(loadNewsFeed, 1000);
+            } else {
+                console.log('News feed fully loaded');
+                displayStatus("News feed fully loaded.");
+            }
         } catch (error) {
             console.error("Error in loadNewsFeed:", error);
             displayStatus('Error loading news feed: ' + error.message, true);
@@ -192,5 +231,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Call the actual dispute function from dispute.js here
     };
 
-    loadNewsFeed();
+    // Initialize news feed
+    let feedInitialized = false;
+    if (!feedInitialized) {
+        feedInitialized = true;
+        console.log('Initializing news feed');
+        loadNewsFeed();
+    } else {
+        console.log('News feed already initialized');
+    }
 });
