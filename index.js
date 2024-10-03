@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             statusEl.style.color = isError ? 'red' : 'green';
             statusEl.style.display = 'block';
         }
-        console.log(`Status: ${message}`);
     };
 
     const shortenAddress = address => {
@@ -29,19 +28,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
         } else if (typeof address === 'object' && address.hash) {
             return `${address.hash.slice(0, 6)}...${address.hash.slice(-4)}`;
-        } else {
-            console.warn('Invalid address type:', typeof address, address);
-            return 'Unknown';
         }
+        return 'Unknown';
     };
 
     const formatTimestamp = timestamp => new Date(timestamp).toLocaleString();
 
     const renderNews = (items = allNewsItems) => {
-        console.log(`Rendering news. Items count: ${items.length}`);
         const newsFeed = $('#newsFeed');
         if (!items.length) {
-            console.log('No items to render, clearing newsFeed');
             newsFeed.innerHTML = '';
             return;
         }
@@ -59,10 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         `).join('');
         
         if (newsFeed.innerHTML !== newContent) {
-            console.log('Updating newsFeed content');
             newsFeed.innerHTML = newContent;
-        } else {
-            console.log('Content unchanged, skipping render');
         }
     };
 
@@ -83,7 +75,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error("Ethereum provider not found. Please install MetaMask.");
             }
         } catch (e) {
-            console.error("Error connecting wallet:", e);
             displayStatus('Could not connect to wallet: ' + e.message, true);
         }
     };
@@ -91,25 +82,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showLoadingIndicator = () => {
         const newsFeed = $('#newsFeed');
         if (!newsFeed.querySelector('.loading')) {
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'loading';
-            loadingDiv.textContent = 'Loading news feed...';
-            newsFeed.appendChild(loadingDiv);
+            newsFeed.insertAdjacentHTML('afterbegin', '<div class="loading">Loading news feed...</div>');
         }
     };
 
-    const hideLoadingIndicator = () => {
-        const loadingDiv = $('#newsFeed .loading');
-        if (loadingDiv) loadingDiv.remove();
-    };
+    const hideLoadingIndicator = () => $('#newsFeed .loading')?.remove();
 
     const loadNewsFeed = async () => {
-        console.log(`loadNewsFeed called. State: autoFetchingEnabled=${autoFetchingEnabled}, isLoading=${isLoading}, noMoreData=${noMoreData}, validTransactionsCount=${validTransactionsCount}`);
-        
-        if (!autoFetchingEnabled || isLoading || noMoreData || validTransactionsCount >= validTransactionLimit) {
-            console.log('Exiting loadNewsFeed early');
-            return;
-        }
+        if (!autoFetchingEnabled || isLoading || noMoreData || validTransactionsCount >= validTransactionLimit) return;
         
         isLoading = true;
         showLoadingIndicator();
@@ -117,7 +97,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
             const data = await response.json();
-            console.log(`Fetched ${data.items.length} transactions`);
             
             if (data.items.length === 0) {
                 noMoreData = true;
@@ -125,7 +104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             
-            let newItemsCount = 0;
             data.items.forEach(tx => {
                 if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
                     const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
@@ -137,26 +115,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                             queryId: tx.decoded_input.parameters[0].value
                         });
                         validTransactionsCount++;
-                        newItemsCount++;
                     }
                 }
             });
             
-            console.log(`Added ${newItemsCount} new items to allNewsItems`);
             renderNews();
             
             lastTransactionParams = data.next_page_params || null;
             noMoreData = !lastTransactionParams;
             
             if (validTransactionsCount < validTransactionLimit && !noMoreData) {
-                console.log('Scheduling next loadNewsFeed call');
                 setTimeout(loadNewsFeed, 1000);
             } else {
-                console.log('News feed fully loaded');
                 displayStatus("News feed fully loaded.");
             }
         } catch (error) {
-            console.error("Error in loadNewsFeed:", error);
             displayStatus('Error loading news feed: ' + error.message, true);
         } finally {
             isLoading = false;
@@ -182,7 +155,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             $('#reportContent').value = '';
             loadNewsFeed();
         } catch (error) {
-            console.error("Error submitting story:", error);
             displayStatus('Error submitting story: ' + error.message, true);
         } finally {
             $('#publishStory').disabled = false;
@@ -232,12 +204,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // Initialize news feed
-    let feedInitialized = false;
-    if (!feedInitialized) {
-        feedInitialized = true;
-        console.log('Initializing news feed');
-        loadNewsFeed();
-    } else {
-        console.log('News feed already initialized');
-    }
+    loadNewsFeed();
 });
