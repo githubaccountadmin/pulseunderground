@@ -8,6 +8,24 @@
     <link rel="icon" type="image/jpeg" href="newTRBphoto.jpg">
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.6.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+        .popup-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: none;
+        }
+        .popup-content {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
     <div id="app-container">
@@ -106,6 +124,12 @@
             </div>
         </div>
     </div>
+
+    <!-- New popup container -->
+    <div id="popupContainer" class="popup-container">
+        <div id="popupContent" class="popup-content"></div>
+    </div>
+
     <script src="dispute.js"></script>
     <script src="index.js"></script>
 </body>
