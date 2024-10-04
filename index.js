@@ -136,9 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 for (const tx of data.items) {
                     if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
-                        try {
-                            const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
-                            if (queryType === "StringQuery") {
+                        const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
+                        if (queryType === "StringQuery") {
+                            try {
                                 const newsItem = {
                                     content: ethers.utils.toUtf8String(reportContentBytes),
                                     reporter: tx.from.hash || tx.from,
@@ -153,10 +153,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
 
                                 if (newItems.length >= minItemsToFetch) break;
+                            } catch (decodeError) {
+                                console.warn("Failed to decode news item:", decodeError);
+                                // Continue to the next item without incrementing validTransactionsCount
                             }
-                        } catch (decodeError) {
-                            console.warn("Failed to decode news item:", decodeError);
-                            // Continue to the next item without incrementing validTransactionsCount
                         }
                     }
                 }
