@@ -1,14 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const ethers = window.ethers;
     const $ = id => document.getElementById(id);
-    const $$ = selector => document.querySelectorAll(selector);
-
     let provider, signer, contract;
     const allNewsItems = [];
-    let isLoading = false, noMoreData = false, validTransactionsCount = 0;
+    let isLoading = false, noMoreData = false, validTransactionsCount = 0, isSearchActive = false;
     const validTransactionLimit = 100;
     let lastTransactionParams = null;
-    let isSearchActive = false;
 
     const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
     const contractABI = [
@@ -18,31 +15,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const newsFeed = $('newsFeed');
     const reloadButton = $('reloadNewsFeed');
-
-    const init = () => {
-        newsFeed.style.visibility = 'hidden';
-        loadNewsFeed();
-        window.addEventListener('scroll', handleScroll);
-    };
+    const popupContainer = $('popupContainer');
+    const popupContent = $('popupContent');
 
     const showPopup = (message, duration = 3000) => {
-        const popupContainer = $('popupContainer');
-        const popupContent = $('popupContent');
         if (popupContainer && popupContent) {
             popupContent.textContent = message;
             popupContainer.style.display = 'block';
-            if (duration > 0) {
-                setTimeout(() => popupContainer.style.display = 'none', duration);
-            }
+            duration > 0 && setTimeout(() => popupContainer.style.display = 'none', duration);
         }
     };
-
-    const hidePopup = () => {
-        $('popupContainer').style.display = 'none';
-    };
-
-    const showLoading = () => showPopup('Loading...', 0);
-    const hideLoading = hidePopup;
 
     const displayStatus = (message, isError = false) => {
         showPopup(message, 3000);
@@ -52,22 +34,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const shortenAddress = address => {
         if (typeof address === 'string') {
             return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
-        } else if (typeof address === 'object' && address.hash) {
-            return `${address.hash.slice(0, 6)}...${address.hash.slice(-4)}`;
         }
-        return 'Unknown';
+        return address?.hash ? `${address.hash.slice(0, 6)}...${address.hash.slice(-4)}` : 'Unknown';
     };
-
-    const formatTimestamp = timestamp => new Date(timestamp).toLocaleString();
 
     const renderNews = (items = allNewsItems, append = false) => {
         if (!newsFeed) return;
-
         if (!items.length && !append) {
             newsFeed.innerHTML = '<p>No news items to display.</p>';
             return;
         }
-
         const fragment = document.createDocumentFragment();
         items.forEach((item, index) => {
             const article = document.createElement('article');
@@ -77,28 +53,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="reporter-info">
                     <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
                     <span class="reporter-name">${shortenAddress(item.reporter)}</span>
-                    <span class="report-timestamp">${formatTimestamp(item.timestamp)}</span>
+                    <span class="report-timestamp">${new Date(item.timestamp).toLocaleString()}</span>
                 </div>
                 <div class="report-content">
                     ${item.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
                 </div>
                 <div class="report-actions">
-                    <button class="report-action-button comment-button" onclick="commentNews('${item.reporter}')">Comment</button>
-                    <button class="report-action-button like-button" onclick="likeNews('${item.reporter}')">Like</button>
-                    <button class="report-action-button dispute-button" onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
-                    <button class="report-action-button vote-button" onclick="voteNews('${item.reporter}')">Vote</button>
+                    <button onclick="commentNews('${item.reporter}')">Comment</button>
+                    <button onclick="likeNews('${item.reporter}')">Like</button>
+                    <button onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
+                    <button onclick="voteNews('${item.reporter}')">Vote</button>
                 </div>
             `;
             fragment.appendChild(article);
         });
-
-        if (append) {
-            newsFeed.appendChild(fragment);
-        } else {
-            newsFeed.innerHTML = '';
-            newsFeed.appendChild(fragment);
-        }
-        
+        if (!append) newsFeed.innerHTML = '';
+        newsFeed.appendChild(fragment);
         newsFeed.style.visibility = 'visible';
     };
 
@@ -126,10 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadNewsFeed = async (reset = false) => {
         if (isLoading || (noMoreData && !reset) || validTransactionsCount >= validTransactionLimit) return;
-        
         isLoading = true;
-        showLoading();
-        
+        showPopup('Loading...', 0);
         if (reset) {
             allNewsItems.length = 0;
             validTransactionsCount = 0;
@@ -137,23 +105,19 @@ document.addEventListener('DOMContentLoaded', () => {
             lastTransactionParams = null;
             newsFeed.innerHTML = '';
         }
-        
         try {
             const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
             const data = await response.json();
-            
             if (data.items.length === 0) {
                 noMoreData = true;
                 displayStatus("No more transactions available.");
                 return;
             }
-            
-            let newItems = [];
-            data.items.forEach(tx => {
+            const newItems = data.items.reduce((acc, tx) => {
                 if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
                     const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
                     if (queryType === "StringQuery") {
-                        newItems.push({
+                        acc.push({
                             content: ethers.utils.toUtf8String(reportContentBytes),
                             reporter: tx.from,
                             timestamp: tx.timestamp || tx.block_timestamp,
@@ -162,31 +126,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         validTransactionsCount++;
                     }
                 }
-            });
-            
+                return acc;
+            }, []);
             if (newItems.length) {
                 allNewsItems.push(...newItems);
                 renderNews(newItems, !reset);
             }
-            
             lastTransactionParams = data.next_page_params || null;
-            noMoreData = !lastTransactionParams;
-            
-            if (validTransactionsCount >= validTransactionLimit) {
-                noMoreData = true;
-                displayStatus("Maximum number of news items reached.");
-            }
+            noMoreData = !lastTransactionParams || validTransactionsCount >= validTransactionLimit;
+            if (noMoreData) displayStatus("All available news items loaded.");
         } catch (error) {
             displayStatus('Error loading news feed: ' + error.message, true);
         } finally {
             isLoading = false;
-            hideLoading();
-        }
-    };
-
-    const handleScroll = () => {
-        if (!isSearchActive && (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
-            loadNewsFeed();
+            popupContainer.style.display = 'none';
         }
     };
 
@@ -194,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = $('reportContent').value.trim();
         if (!content) return displayStatus('Please enter a story before submitting.', true);
         $('publishStory').disabled = true;
-        showLoading();
+        showPopup('Submitting story...', 0);
         try {
             if (!signer) throw new Error("Wallet not connected.");
             const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(content)]);
@@ -218,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
             displayStatus('Error submitting story: ' + error.message, true);
         } finally {
             $('publishStory').disabled = false;
-            hideLoading();
+            popupContainer.style.display = 'none';
         }
     };
 
@@ -241,33 +194,28 @@ document.addEventListener('DOMContentLoaded', () => {
         loadNewsFeed(true);
     };
 
-    // Event listeners
     $('connectWallet').addEventListener('click', connectWallet);
     $('publishStory').addEventListener('click', submitStory);
     $('search-input').addEventListener('keypress', e => e.key === 'Enter' && performSearch());
     $('search-button').addEventListener('click', performSearch);
     reloadButton.addEventListener('click', reloadNewsFeed);
     $('postButton').addEventListener('click', () => $('reportContent').focus());
+    $('reportContent').addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+    });
+    window.addEventListener('scroll', () => {
+        if (!isSearchActive && (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+            loadNewsFeed();
+        }
+    });
 
-    // Textarea auto-resize
-    const textarea = $('reportContent');
-    const adjustHeight = () => {
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-    };
-    textarea.addEventListener('input', adjustHeight);
-    window.addEventListener('resize', adjustHeight);
-    adjustHeight();
-
-    // Expose necessary functions to global scope
     window.commentNews = reporter => console.log(`Comment on news by reporter: ${shortenAddress(reporter)}`);
     window.likeNews = reporter => console.log(`Like news by reporter: ${shortenAddress(reporter)}`);
     window.voteNews = reporter => console.log(`Vote on news by reporter: ${shortenAddress(reporter)}`);
     window.disputeNews = (reporter, queryId, timestamp) => {
         console.log(`Dispute news by reporter: ${shortenAddress(reporter)}, QueryID: ${queryId}, Timestamp: ${timestamp}`);
-        // Call the actual dispute function from dispute.js here
     };
 
-    // Initialize
-    window.addEventListener('load', init);
+    loadNewsFeed();
 });
