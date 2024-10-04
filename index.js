@@ -15,27 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const newsFeed = $('newsFeed');
     const reloadButton = $('reloadNewsFeed');
-    const popupContainer = $('popupContainer');
-    const popupContent = $('popupContent');
+    const loadingOverlay = $('loadingOverlay');
+    const reportContent = $('reportContent');
+    const searchInput = $('search-input');
+    const publishStory = $('publishStory');
 
-    const showPopup = (message, duration = 3000) => {
-        if (popupContainer && popupContent) {
-            popupContent.textContent = message;
-            popupContainer.style.display = 'block';
-            duration > 0 && setTimeout(() => popupContainer.style.display = 'none', duration);
-        }
-    };
+    const showLoading = show => loadingOverlay.style.display = show ? 'flex' : 'none';
 
     const displayStatus = (message, isError = false) => {
-        showPopup(message, 3000);
         console.log(isError ? `Error: ${message}` : message);
+        // You can implement a more visible status display here if needed
     };
 
     const shortenAddress = address => {
-        if (typeof address === 'string') {
-            return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
-        }
-        return address?.hash ? `${address.hash.slice(0, 6)}...${address.hash.slice(-4)}` : 'Unknown';
+        if (typeof address !== 'string') return 'Unknown';
+        return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
     };
 
     const renderNews = (items, append = false) => {
@@ -81,8 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('connectWallet').style.display = 'none';
                 $('walletInfo').style.display = 'block';
                 $('walletAddress').textContent = shortenAddress(address);
-                $('publishStory').disabled = false;
-                $('reportContent').placeholder = "What's happening?";
+                publishStory.disabled = false;
+                reportContent.placeholder = "What's happening?";
                 contract = new ethers.Contract(contractAddress, contractABI, signer);
                 displayStatus('Wallet connected.');
             } else {
@@ -96,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadNewsFeed = async (reset = false) => {
         if (isLoading || (noMoreData && !reset) || validTransactionsCount >= validTransactionLimit) return;
         isLoading = true;
-        showPopup('Loading...', 0);
+        showLoading(true);
         
         if (reset) {
             allNewsItems.length = 0;
@@ -119,20 +113,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
 
-                data.items.forEach(tx => {
+                for (const tx of data.items) {
                     if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
                         const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
                         if (queryType === "StringQuery") {
-                            newItems.push({
+                            const newsItem = {
                                 content: ethers.utils.toUtf8String(reportContentBytes),
                                 reporter: tx.from,
                                 timestamp: tx.timestamp || tx.block_timestamp,
                                 queryId: tx.decoded_input.parameters[0].value
-                            });
+                            };
+                            newItems.push(newsItem);
                             validTransactionsCount++;
+
+                            // Render the first item immediately
+                            if (newItems.length === 1 && !reset) {
+                                renderNews([newsItem], true);
+                            }
+
+                            if (newItems.length >= minItemsToFetch) break;
                         }
                     }
-                });
+                }
 
                 lastTransactionParams = data.next_page_params || null;
                 noMoreData = !lastTransactionParams || validTransactionsCount >= validTransactionLimit;
@@ -140,7 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (newItems.length > 0) {
                 allNewsItems.push(...newItems);
-                renderNews(newItems, !reset);
+                if (newItems.length > 1 || reset) {
+                    renderNews(newItems, !reset);
+                }
                 displayStatus(`Loaded ${newItems.length} new items.`);
             } else {
                 displayStatus("No new items available.");
@@ -153,15 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
             displayStatus('Error loading news feed: ' + error.message, true);
         } finally {
             isLoading = false;
-            popupContainer.style.display = 'none';
+            showLoading(false);
         }
     };
 
     const submitStory = async () => {
-        const content = $('reportContent').value.trim();
+        const content = reportContent.value.trim();
         if (!content) return displayStatus('Please enter a story before submitting.', true);
-        $('publishStory').disabled = true;
-        showPopup('Submitting story...', 0);
+        publishStory.disabled = true;
+        showLoading(true);
         try {
             if (!signer) throw new Error("Wallet not connected.");
             const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(content)]);
@@ -172,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.mul(120).div(100) });
             await tx.wait();
             displayStatus("Story successfully submitted!");
-            $('reportContent').value = '';
+            reportContent.value = '';
             const newStory = {
                 content: content,
                 reporter: await signer.getAddress(),
@@ -184,13 +188,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             displayStatus('Error submitting story: ' + error.message, true);
         } finally {
-            $('publishStory').disabled = false;
-            popupContainer.style.display = 'none';
+            publishStory.disabled = false;
+            showLoading(false);
         }
     };
 
     const performSearch = () => {
-        const searchTerm = $('search-input').value.toLowerCase();
+        const searchTerm = searchInput.value.toLowerCase();
         const filteredItems = allNewsItems.filter(item => 
             shortenAddress(item.reporter).toLowerCase().includes(searchTerm) || 
             item.content.toLowerCase().includes(searchTerm)
@@ -204,26 +208,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const reloadNewsFeed = () => {
         isSearchActive = false;
         reloadButton.style.display = 'none';
-        $('search-input').value = '';
+        searchInput.value = '';
         loadNewsFeed(true);
     };
 
+    // Event Listeners
     $('connectWallet').addEventListener('click', connectWallet);
-    $('publishStory').addEventListener('click', submitStory);
-    $('search-input').addEventListener('keypress', e => e.key === 'Enter' && performSearch());
+    publishStory.addEventListener('click', submitStory);
+    searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch());
     $('search-button').addEventListener('click', performSearch);
     reloadButton.addEventListener('click', reloadNewsFeed);
-    $('postButton').addEventListener('click', () => $('reportContent').focus());
-    $('reportContent').addEventListener('input', function() {
+    $('postButton').addEventListener('click', () => reportContent.focus());
+    reportContent.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
     });
+
     window.addEventListener('scroll', () => {
         if (!isSearchActive && (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
             loadNewsFeed();
         }
     });
 
+    // Global functions
     window.commentNews = reporter => console.log(`Comment on news by reporter: ${shortenAddress(reporter)}`);
     window.likeNews = reporter => console.log(`Like news by reporter: ${shortenAddress(reporter)}`);
     window.voteNews = reporter => console.log(`Vote on news by reporter: ${shortenAddress(reporter)}`);
@@ -231,5 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Dispute news by reporter: ${shortenAddress(reporter)}, QueryID: ${queryId}, Timestamp: ${timestamp}`);
     };
 
+    // Initial load
     loadNewsFeed();
 });
