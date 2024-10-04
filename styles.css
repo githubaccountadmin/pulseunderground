@@ -84,7 +84,7 @@ body {
     padding-top: 12px;
 }
 
-#postButton, #connectWallet {
+#postButton, #connectWallet, #loadMoreButton {
     width: 90%;
     padding: 12px 0;
     background: linear-gradient(45deg, #7c4dff, #b388ff);
@@ -98,8 +98,16 @@ body {
     transition: background 0.3s;
 }
 
-#postButton:hover, #connectWallet:hover {
+#postButton:hover, #connectWallet:hover, #loadMoreButton:hover {
     background: linear-gradient(45deg, #6a3fff, #a370ff);
+}
+
+/* Load More Button */
+#loadMoreButton {
+    display: block;
+    width: 200px;
+    margin: 20px auto;
+    text-align: center;
 }
 
 /* Profile Section */
@@ -271,24 +279,6 @@ main {
     fill: currentColor;
 }
 
-#reloadNewsFeed {
-    display: none;
-    width: 100%;
-    padding: 8px 16px;
-    background: linear-gradient(45deg, #7c4dff, #b388ff);
-    color: white;
-    border: none;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.3s;
-    margin-bottom: 12px;
-}
-
-#reloadNewsFeed:hover {
-    background: linear-gradient(45deg, #6a3fff, #a370ff);
-}
-
 /* Right Sidebar */
 #sidebar-right {
     width: 350px;
@@ -380,13 +370,6 @@ main {
 .report-timestamp {
     color: #8899a6;
     font-size: 0.9em;
-}
-
-.reporter-info .avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    margin-right: 12px;
 }
 
 /* Status Message */
