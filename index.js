@@ -39,6 +39,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
     };
 
+    const formatDate = timestamp => {
+        const date = new Date(timestamp);
+        return date.toLocaleString('en-US', { 
+            month: 'numeric', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: 'numeric', 
+            minute: 'numeric',
+            hour12: true 
+        });
+    };
+
     const renderNews = (items, append = false) => {
         if (!items.length && !append) {
             elements.newsFeed.innerHTML = '<p>No news items to display.</p>';
@@ -49,11 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const article = document.createElement('article');
             article.id = `news-item-${append ? allNewsItems.length + index : index}`;
             article.className = 'news-item';
+            
             article.innerHTML = `
                 <div class="reporter-info">
                     <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
-                    <span class="reporter-name">${shortenAddress(item.reporter)}</span>
-                    <span class="report-timestamp">${new Date(item.timestamp).toLocaleString()}</span>
+                    <div class="reporter-details">
+                        <span class="reporter-name">${shortenAddress(item.reporter)}</span>
+                        <span class="report-timestamp">· ${formatDate(item.timestamp)}</span>
+                    </div>
                 </div>
                 <div class="report-content">
                     ${item.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
@@ -126,14 +141,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (queryType === "StringQuery") {
                             const newsItem = {
                                 content: ethers.utils.toUtf8String(reportContentBytes),
-                                reporter: tx.from.hash || tx.from, // Ensure we're getting the address correctly
+                                reporter: tx.from.hash || tx.from,
                                 timestamp: tx.timestamp || tx.block_timestamp,
                                 queryId: tx.decoded_input.parameters[0].value
                             };
                             newItems.push(newsItem);
                             validTransactionsCount++;
 
-                            // Render the first item immediately
                             if (newItems.length === 1 && !reset) {
                                 renderNews([newsItem], true);
                             }
@@ -150,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (newItems.length > 0) {
                 allNewsItems.push(...newItems);
                 if (newItems.length > 1) {
-                    // Remove the first item if it's already displayed
                     const itemsToRender = reset ? newItems : newItems.slice(1);
                     renderNews(itemsToRender, !reset);
                 }
