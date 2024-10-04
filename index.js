@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const shortenAddress = address => {
-        if (!address || typeof address !== 'string') return 'Unknown';
+        if (typeof address !== 'string') return 'Unknown';
         return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
     };
 
@@ -61,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const article = document.createElement('article');
             article.id = `news-item-${append ? allNewsItems.length + index : index}`;
             article.className = 'news-item';
-            
             article.innerHTML = `
                 <div class="reporter-info">
                     <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
