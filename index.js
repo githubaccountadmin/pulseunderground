@@ -109,6 +109,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const fetchTransactions = async (retryCount = 3) => {
+        for (let i = 0; i < retryCount; i++) {
+            try {
+                const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.warn(`Attempt ${i + 1} failed: ${error.message}`);
+                if (i === retryCount - 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+            }
+        }
+    };
+
     const loadNewsFeed = async (reset = false) => {
         if (isLoading || (noMoreData && !reset) || validTransactionsCount >= validTransactionLimit) return;
         isLoading = true;
@@ -127,8 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             while (newItems.length < minItemsToFetch && !noMoreData) {
-                const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
-                const data = await response.json();
+                const data = await fetchTransactions();
 
                 if (!data.items || data.items.length === 0) {
                     noMoreData = true;
@@ -140,20 +153,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
                             if (queryType === "StringQuery") {
-                                const newsItem = {
-                                    content: ethers.utils.toUtf8String(reportContentBytes),
-                                    reporter: tx.from.hash || tx.from,
-                                    timestamp: tx.timestamp || tx.block_timestamp,
-                                    queryId: tx.decoded_input.parameters[0].value
-                                };
-                                newItems.push(newsItem);
-                                validTransactionsCount++;
+                                const content = ethers.utils.toUtf8String(reportContentBytes);
+                                if (content.trim()) {  // Check if content is not empty
+                                    const newsItem = {
+                                        content,
+                                        reporter: tx.from.hash || tx.from,
+                                        timestamp: tx.timestamp || tx.block_timestamp,
+                                        queryId: tx.decoded_input.parameters[0].value
+                                    };
+                                    newItems.push(newsItem);
+                                    validTransactionsCount++;
 
-                                if (newItems.length === 1 && !reset) {
-                                    renderNews([newsItem], true);
+                                    if (newItems.length === 1 && !reset) {
+                                        renderNews([newsItem], true);
+                                    }
+
+                                    if (newItems.length >= minItemsToFetch) break;
                                 }
-
-                                if (newItems.length >= minItemsToFetch) break;
                             }
                         } catch (decodeError) {
                             console.warn("Failed to decode news item:", decodeError);
