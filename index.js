@@ -15,21 +15,40 @@ document.addEventListener('DOMContentLoaded', () => {
         {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
     ];
 
-    // Prevent flash of unstyled content
-    document.body.style.visibility = 'hidden';
+    const newsFeed = $('newsFeed');
+    newsFeed.style.visibility = 'hidden';
 
     const init = () => {
-        document.body.style.visibility = 'visible';
         loadNewsFeed();
     };
 
-    const displayStatus = (message, isError = false) => {
-        const statusEl = $('statusMessage');
-        if (statusEl) {
-            statusEl.textContent = message;
-            statusEl.style.color = isError ? 'red' : 'green';
-            statusEl.style.display = 'block';
+    const showPopup = (message, duration = 3000) => {
+        const popupContainer = $('popupContainer');
+        const popupContent = $('popupContent');
+        if (popupContainer && popupContent) {
+            popupContent.textContent = message;
+            popupContainer.style.display = 'block';
+            if (duration > 0) {
+                setTimeout(() => {
+                    popupContainer.style.display = 'none';
+                }, duration);
+            }
         }
+    };
+
+    const hidePopup = () => {
+        const popupContainer = $('popupContainer');
+        if (popupContainer) {
+            popupContainer.style.display = 'none';
+        }
+    };
+
+    const showLoading = () => showPopup('Loading...', 0);
+    const hideLoading = hidePopup;
+
+    const displayStatus = (message, isError = false) => {
+        showPopup(message, 3000);
+        console.log(isError ? `Error: ${message}` : message);
     };
 
     const shortenAddress = address => {
@@ -44,36 +63,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatTimestamp = timestamp => new Date(timestamp).toLocaleString();
 
     const renderNews = (items = allNewsItems) => {
-        const newsFeed = $('newsFeed');
+        if (!newsFeed) return;
+
         if (!items.length) {
             newsFeed.innerHTML = '<p>No news items to display.</p>';
-            return;
+        } else {
+            const fragment = document.createDocumentFragment();
+            items.forEach((item, index) => {
+                const article = document.createElement('article');
+                article.id = `news-item-${index}`;
+                article.className = 'news-item';
+                article.innerHTML = `
+                    <div class="reporter-info">
+                        <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
+                        <span class="reporter-name">${shortenAddress(item.reporter)}</span>
+                        <span class="report-timestamp">${formatTimestamp(item.timestamp)}</span>
+                    </div>
+                    <div class="report-content">
+                        ${item.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
+                    </div>
+                    <div class="report-actions">
+                        <button class="report-action-button comment-button" onclick="commentNews('${item.reporter}')">Comment</button>
+                        <button class="report-action-button like-button" onclick="likeNews('${item.reporter}')">Like</button>
+                        <button class="report-action-button dispute-button" onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
+                        <button class="report-action-button vote-button" onclick="voteNews('${item.reporter}')">Vote</button>
+                    </div>
+                `;
+                fragment.appendChild(article);
+            });
+            newsFeed.innerHTML = '';
+            newsFeed.appendChild(fragment);
         }
-        const fragment = document.createDocumentFragment();
-        items.forEach((item, index) => {
-            const article = document.createElement('article');
-            article.id = `news-item-${index}`;
-            article.className = 'news-item';
-            article.innerHTML = `
-                <div class="reporter-info">
-                    <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
-                    <span class="reporter-name">${shortenAddress(item.reporter)}</span>
-                    <span class="report-timestamp">${formatTimestamp(item.timestamp)}</span>
-                </div>
-                <div class="report-content">
-                    ${item.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
-                </div>
-                <div class="report-actions">
-                    <button class="report-action-button comment-button" onclick="commentNews('${item.reporter}')">Comment</button>
-                    <button class="report-action-button like-button" onclick="likeNews('${item.reporter}')">Like</button>
-                    <button class="report-action-button dispute-button" onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
-                    <button class="report-action-button vote-button" onclick="voteNews('${item.reporter}')">Vote</button>
-                </div>
-            `;
-            fragment.appendChild(article);
-        });
-        newsFeed.innerHTML = '';
-        newsFeed.appendChild(fragment);
+        
+        newsFeed.style.visibility = 'visible';
     };
 
     const connectWallet = async () => {
@@ -103,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         isLoading = true;
         $('reloadNewsFeed').style.display = 'none';
+        showLoading();
         
         try {
             const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
@@ -111,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.items.length === 0) {
                 noMoreData = true;
                 displayStatus("No more transactions available.");
+                renderNews();
                 return;
             }
             
@@ -145,8 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             displayStatus('Error loading news feed: ' + error.message, true);
+            renderNews();
         } finally {
             isLoading = false;
+            hideLoading();
         }
     };
 
@@ -154,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = $('reportContent').value.trim();
         if (!content) return displayStatus('Please enter a story before submitting.', true);
         $('publishStory').disabled = true;
-        displayStatus('Submitting story...');
+        showLoading();
         try {
             if (!signer) throw new Error("Wallet not connected.");
             const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(content)]);
@@ -171,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             displayStatus('Error submitting story: ' + error.message, true);
         } finally {
             $('publishStory').disabled = false;
+            hideLoading();
         }
     };
 
