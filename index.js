@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let provider, signer, contract;
     const allNewsItems = [];
     let isLoading = false, noMoreData = false, validTransactionsCount = 0, isSearchActive = false;
-    const validTransactionLimit = 100;
+    const validTransactionLimit = 1000; // Increased limit for more items
     let lastTransactionParams = null;
 
     const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
@@ -49,6 +49,22 @@ document.addEventListener('DOMContentLoaded', () => {
             minute: 'numeric',
             hour12: true 
         });
+    };
+
+    const decodeContent = (bytes) => {
+        // Remove null bytes from the end
+        while (bytes.length > 0 && bytes[bytes.length - 1] === 0) {
+            bytes = bytes.slice(0, -1);
+        }
+        
+        // Try to decode as UTF-8
+        try {
+            return new TextDecoder().decode(bytes);
+        } catch (error) {
+            console.warn("Failed to decode as UTF-8, falling back to ASCII decoding:", error);
+            // If UTF-8 decoding fails, fall back to ASCII decoding
+            return bytes.reduce((str, byte) => str + String.fromCharCode(byte), '');
+        }
     };
 
     const renderNews = (items, append = false) => {
@@ -122,11 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const newItems = [];
-        const minItemsToFetch = 10;
+        const batchSize = 500; // Increased batch size
 
         try {
-            while (newItems.length < minItemsToFetch && !noMoreData) {
-                const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
+            while (newItems.length < batchSize && !noMoreData) {
+                const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=${batchSize}${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
                 const data = await response.json();
 
                 if (!data.items || data.items.length === 0) {
@@ -134,32 +150,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
 
-                for (const tx of data.items) {
+                const decodedItems = await Promise.all(data.items.map(async (tx) => {
                     if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
-                        const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
-                        if (queryType === "StringQuery") {
-                            try {
-                                const newsItem = {
-                                    content: ethers.utils.toUtf8String(reportContentBytes),
-                                    reporter: tx.from.hash || tx.from,
-                                    timestamp: tx.timestamp || tx.block_timestamp,
-                                    queryId: tx.decoded_input.parameters[0].value
-                                };
-                                newItems.push(newsItem);
-                                validTransactionsCount++;
-
-                                if (newItems.length === 1 && !reset) {
-                                    renderNews([newsItem], true);
+                        try {
+                            const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
+                            if (queryType === "StringQuery") {
+                                const content = decodeContent(reportContentBytes);
+                                if (content.trim()) {
+                                    return {
+                                        content: content,
+                                        reporter: tx.from.hash || tx.from,
+                                        timestamp: tx.timestamp || tx.block_timestamp,
+                                        queryId: tx.decoded_input.parameters[0].value
+                                    };
                                 }
-
-                                if (newItems.length >= minItemsToFetch) break;
-                            } catch (decodeError) {
-                                console.warn("Failed to decode news item:", decodeError);
-                                // Continue to the next item without incrementing validTransactionsCount
                             }
+                        } catch (decodeError) {
+                            console.warn("Failed to decode news item:", decodeError);
                         }
                     }
-                }
+                    return null;
+                }));
+
+                const validItems = decodedItems.filter(item => item !== null);
+                newItems.push(...validItems);
+                validTransactionsCount += validItems.length;
 
                 lastTransactionParams = data.next_page_params || null;
                 noMoreData = !lastTransactionParams || validTransactionsCount >= validTransactionLimit;
@@ -167,10 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (newItems.length > 0) {
                 allNewsItems.push(...newItems);
-                if (newItems.length > 1) {
-                    const itemsToRender = reset ? newItems : newItems.slice(1);
-                    renderNews(itemsToRender, !reset);
-                }
+                renderNews(newItems, !reset);
                 displayStatus(`Loaded ${newItems.length} new items.`);
             } else {
                 displayStatus("No new items available.");
@@ -250,10 +262,14 @@ document.addEventListener('DOMContentLoaded', () => {
         this.style.height = this.scrollHeight + 'px';
     });
 
+    let scrollTimeout;
     window.addEventListener('scroll', () => {
-        if (!isSearchActive && (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
-            loadNewsFeed();
-        }
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            if (!isSearchActive && (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 1000) {
+                loadNewsFeed();
+            }
+        }, 200);
     });
 
     // Global functions
