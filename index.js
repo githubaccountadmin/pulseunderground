@@ -5,9 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let provider, signer, contract;
     const allNewsItems = [];
-    let autoFetchingEnabled = true, isLoading = false, noMoreData = false, validTransactionsCount = 0;
+    let isLoading = false, noMoreData = false, validTransactionsCount = 0;
     const validTransactionLimit = 100;
     let lastTransactionParams = null;
+    let isSearchActive = false;
 
     const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
     const contractABI = [
@@ -16,10 +17,12 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     const newsFeed = $('newsFeed');
-    newsFeed.style.visibility = 'hidden';
+    const reloadButton = $('reloadNewsFeed');
 
     const init = () => {
+        newsFeed.style.visibility = 'hidden';
         loadNewsFeed();
+        window.addEventListener('scroll', handleScroll);
     };
 
     const showPopup = (message, duration = 3000) => {
@@ -29,18 +32,13 @@ document.addEventListener('DOMContentLoaded', () => {
             popupContent.textContent = message;
             popupContainer.style.display = 'block';
             if (duration > 0) {
-                setTimeout(() => {
-                    popupContainer.style.display = 'none';
-                }, duration);
+                setTimeout(() => popupContainer.style.display = 'none', duration);
             }
         }
     };
 
     const hidePopup = () => {
-        const popupContainer = $('popupContainer');
-        if (popupContainer) {
-            popupContainer.style.display = 'none';
-        }
+        $('popupContainer').style.display = 'none';
     };
 
     const showLoading = () => showPopup('Loading...', 0);
@@ -62,35 +60,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formatTimestamp = timestamp => new Date(timestamp).toLocaleString();
 
-    const renderNews = (items = allNewsItems) => {
+    const renderNews = (items = allNewsItems, append = false) => {
         if (!newsFeed) return;
 
-        if (!items.length) {
+        if (!items.length && !append) {
             newsFeed.innerHTML = '<p>No news items to display.</p>';
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        items.forEach((item, index) => {
+            const article = document.createElement('article');
+            article.id = `news-item-${append ? allNewsItems.length + index : index}`;
+            article.className = 'news-item';
+            article.innerHTML = `
+                <div class="reporter-info">
+                    <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
+                    <span class="reporter-name">${shortenAddress(item.reporter)}</span>
+                    <span class="report-timestamp">${formatTimestamp(item.timestamp)}</span>
+                </div>
+                <div class="report-content">
+                    ${item.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
+                </div>
+                <div class="report-actions">
+                    <button class="report-action-button comment-button" onclick="commentNews('${item.reporter}')">Comment</button>
+                    <button class="report-action-button like-button" onclick="likeNews('${item.reporter}')">Like</button>
+                    <button class="report-action-button dispute-button" onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
+                    <button class="report-action-button vote-button" onclick="voteNews('${item.reporter}')">Vote</button>
+                </div>
+            `;
+            fragment.appendChild(article);
+        });
+
+        if (append) {
+            newsFeed.appendChild(fragment);
         } else {
-            const fragment = document.createDocumentFragment();
-            items.forEach((item, index) => {
-                const article = document.createElement('article');
-                article.id = `news-item-${index}`;
-                article.className = 'news-item';
-                article.innerHTML = `
-                    <div class="reporter-info">
-                        <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
-                        <span class="reporter-name">${shortenAddress(item.reporter)}</span>
-                        <span class="report-timestamp">${formatTimestamp(item.timestamp)}</span>
-                    </div>
-                    <div class="report-content">
-                        ${item.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
-                    </div>
-                    <div class="report-actions">
-                        <button class="report-action-button comment-button" onclick="commentNews('${item.reporter}')">Comment</button>
-                        <button class="report-action-button like-button" onclick="likeNews('${item.reporter}')">Like</button>
-                        <button class="report-action-button dispute-button" onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
-                        <button class="report-action-button vote-button" onclick="voteNews('${item.reporter}')">Vote</button>
-                    </div>
-                `;
-                fragment.appendChild(article);
-            });
             newsFeed.innerHTML = '';
             newsFeed.appendChild(fragment);
         }
@@ -120,12 +124,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const loadNewsFeed = async () => {
-        if (!autoFetchingEnabled || isLoading || noMoreData || validTransactionsCount >= validTransactionLimit) return;
+    const loadNewsFeed = async (reset = false) => {
+        if (isLoading || (noMoreData && !reset) || validTransactionsCount >= validTransactionLimit) return;
         
         isLoading = true;
-        $('reloadNewsFeed').style.display = 'none';
         showLoading();
+        
+        if (reset) {
+            allNewsItems.length = 0;
+            validTransactionsCount = 0;
+            noMoreData = false;
+            lastTransactionParams = null;
+            newsFeed.innerHTML = '';
+        }
         
         try {
             const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
@@ -134,45 +145,48 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.items.length === 0) {
                 noMoreData = true;
                 displayStatus("No more transactions available.");
-                renderNews();
                 return;
             }
             
-            let newItemsAdded = false;
+            let newItems = [];
             data.items.forEach(tx => {
                 if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
                     const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
                     if (queryType === "StringQuery") {
-                        allNewsItems.push({
+                        newItems.push({
                             content: ethers.utils.toUtf8String(reportContentBytes),
                             reporter: tx.from,
                             timestamp: tx.timestamp || tx.block_timestamp,
                             queryId: tx.decoded_input.parameters[0].value
                         });
                         validTransactionsCount++;
-                        newItemsAdded = true;
                     }
                 }
             });
             
-            if (newItemsAdded) {
-                renderNews();
+            if (newItems.length) {
+                allNewsItems.push(...newItems);
+                renderNews(newItems, !reset);
             }
             
             lastTransactionParams = data.next_page_params || null;
             noMoreData = !lastTransactionParams;
             
-            if (validTransactionsCount < validTransactionLimit && !noMoreData) {
-                setTimeout(loadNewsFeed, 1000);
-            } else {
-                displayStatus("News feed fully loaded.");
+            if (validTransactionsCount >= validTransactionLimit) {
+                noMoreData = true;
+                displayStatus("Maximum number of news items reached.");
             }
         } catch (error) {
             displayStatus('Error loading news feed: ' + error.message, true);
-            renderNews();
         } finally {
             isLoading = false;
             hideLoading();
+        }
+    };
+
+    const handleScroll = () => {
+        if (!isSearchActive && (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+            loadNewsFeed();
         }
     };
 
@@ -192,7 +206,14 @@ document.addEventListener('DOMContentLoaded', () => {
             await tx.wait();
             displayStatus("Story successfully submitted!");
             $('reportContent').value = '';
-            loadNewsFeed();
+            const newStory = {
+                content: content,
+                reporter: await signer.getAddress(),
+                timestamp: new Date().toISOString(),
+                queryId: queryId
+            };
+            allNewsItems.unshift(newStory);
+            renderNews([newStory], true);
         } catch (error) {
             displayStatus('Error submitting story: ' + error.message, true);
         } finally {
@@ -202,7 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const performSearch = () => {
-        autoFetchingEnabled = false;
         const searchTerm = $('search-input').value.toLowerCase();
         const filteredItems = allNewsItems.filter(item => 
             shortenAddress(item.reporter).toLowerCase().includes(searchTerm) || 
@@ -210,7 +230,15 @@ document.addEventListener('DOMContentLoaded', () => {
         );
         renderNews(filteredItems);
         displayStatus(filteredItems.length ? `Found ${filteredItems.length} result(s).` : "No results found.");
-        $('reloadNewsFeed').style.display = 'block';
+        isSearchActive = true;
+        reloadButton.style.display = 'block';
+    };
+
+    const reloadNewsFeed = () => {
+        isSearchActive = false;
+        reloadButton.style.display = 'none';
+        $('search-input').value = '';
+        loadNewsFeed(true);
     };
 
     // Event listeners
@@ -218,12 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('publishStory').addEventListener('click', submitStory);
     $('search-input').addEventListener('keypress', e => e.key === 'Enter' && performSearch());
     $('search-button').addEventListener('click', performSearch);
-    $('reloadNewsFeed').addEventListener('click', () => {
-        autoFetchingEnabled = true;
-        $('reloadNewsFeed').style.display = 'none';
-        $('search-input').value = '';
-        loadNewsFeed();
-    });
+    reloadButton.addEventListener('click', reloadNewsFeed);
     $('postButton').addEventListener('click', () => $('reportContent').focus());
 
     // Textarea auto-resize
