@@ -3,8 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const $ = id => document.getElementById(id);
     let provider, signer, contract;
     const allNewsItems = [];
-    let isLoading = false, noMoreData = false, validTransactionsCount = 0, isSearchActive = false;
-    const validTransactionLimit = 1000; // Increased limit for more items
+    let isLoading = false, noMoreData = false, isSearchActive = false;
     let lastTransactionParams = null;
 
     const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
@@ -15,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const elements = {
         newsFeed: $('newsFeed'),
-        reloadButton: $('reloadNewsFeed'),
+        loadMoreButton: $('loadMoreButton'),
         loadingOverlay: $('loadingOverlay'),
         reportContent: $('reportContent'),
         searchInput: $('search-input'),
@@ -53,10 +52,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const decodeContent = (reportContentBytes) => {
         try {
+            // Remove null bytes from the end
+            while (reportContentBytes.length > 0 && reportContentBytes[reportContentBytes.length - 1] === 0) {
+                reportContentBytes = reportContentBytes.slice(0, -1);
+            }
             return ethers.utils.toUtf8String(reportContentBytes);
         } catch (error) {
             console.warn("Failed to decode content:", error);
-            return ""; // Return empty string for invalid content
+            // Attempt to decode as much as possible
+            return ethers.utils.toUtf8String(reportContentBytes.slice(0, error.offset), true);
         }
     };
 
@@ -118,75 +122,91 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const loadNewsFeed = async (reset = false) => {
-        if (isLoading || (noMoreData && !reset) || validTransactionsCount >= validTransactionLimit) return;
+        if (isLoading || (noMoreData && !reset)) return;
         isLoading = true;
         showLoading(true);
         
         if (reset) {
             allNewsItems.length = 0;
-            validTransactionsCount = 0;
             noMoreData = false;
             lastTransactionParams = null;
             elements.newsFeed.innerHTML = '';
         }
 
-        const newItems = [];
-        const batchSize = 500; // Increased batch size
+        const batchSize = 50; // Reduced batch size for quicker initial load
 
         try {
-            while (newItems.length < batchSize && !noMoreData) {
-                const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=${batchSize}${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
-                const data = await response.json();
+            const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=${batchSize}${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
+            const data = await response.json();
 
-                if (!data.items || data.items.length === 0) {
-                    noMoreData = true;
-                    break;
-                }
-
-                for (const tx of data.items) {
-                    if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
-                        try {
-                            const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
-                            if (queryType === "StringQuery") {
-                                const content = decodeContent(reportContentBytes);
-                                if (content.trim()) {
-                                    newItems.push({
-                                        content: content,
-                                        reporter: tx.from.hash || tx.from,
-                                        timestamp: tx.timestamp || tx.block_timestamp,
-                                        queryId: tx.decoded_input.parameters[0].value
-                                    });
-                                    validTransactionsCount++;
-
-                                    if (newItems.length >= batchSize) break;
-                                }
-                            }
-                        } catch (decodeError) {
-                            console.warn("Failed to decode news item:", decodeError);
-                        }
-                    }
-                }
-
-                lastTransactionParams = data.next_page_params || null;
-                noMoreData = !lastTransactionParams || validTransactionsCount >= validTransactionLimit;
+            if (!data.items || data.items.length === 0) {
+                noMoreData = true;
+                displayStatus("No new items available.");
+                return;
             }
 
-            if (newItems.length > 0) {
-                allNewsItems.push(...newItems);
-                renderNews(newItems, !reset);
-                displayStatus(`Loaded ${newItems.length} new items.`);
+            let newItemsCount = 0;
+
+            for (const tx of data.items) {
+                if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
+                    try {
+                        const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
+                        if (queryType === "StringQuery") {
+                            const content = decodeContent(reportContentBytes);
+                            if (content.trim()) {
+                                const newsItem = {
+                                    content: content,
+                                    reporter: tx.from.hash || tx.from,
+                                    timestamp: tx.timestamp || tx.block_timestamp,
+                                    queryId: tx.decoded_input.parameters[0].value
+                                };
+                                allNewsItems.push(newsItem);
+                                renderNews([newsItem], true);
+                                newItemsCount++;
+                            }
+                        }
+                    } catch (decodeError) {
+                        console.warn("Failed to decode news item:", decodeError);
+                    }
+                }
+            }
+
+            lastTransactionParams = data.next_page_params || null;
+            noMoreData = !lastTransactionParams;
+
+            if (newItemsCount > 0) {
+                displayStatus(`Loaded ${newItemsCount} new items.`);
+                saveToLocalStorage();
             } else {
                 displayStatus("No new items available.");
             }
 
             if (noMoreData) {
                 displayStatus("All available news items loaded.");
+                elements.loadMoreButton.style.display = 'none';
+            } else {
+                elements.loadMoreButton.style.display = 'block';
             }
         } catch (error) {
             displayStatus('Error loading news feed: ' + error.message, true);
         } finally {
             isLoading = false;
             showLoading(false);
+        }
+    };
+
+    const saveToLocalStorage = () => {
+        const itemsToSave = allNewsItems.slice(0, 50); // Save only the 50 most recent items
+        localStorage.setItem('newsItems', JSON.stringify(itemsToSave));
+    };
+
+    const loadFromLocalStorage = () => {
+        const savedItems = localStorage.getItem('newsItems');
+        if (savedItems) {
+            const parsedItems = JSON.parse(savedItems);
+            allNewsItems.push(...parsedItems);
+            renderNews(parsedItems);
+            displayStatus(`Loaded ${parsedItems.length} items from cache.`);
         }
     };
 
@@ -214,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             allNewsItems.unshift(newStory);
             renderNews([newStory], true);
+            saveToLocalStorage();
         } catch (error) {
             displayStatus('Error submitting story: ' + error.message, true);
         } finally {
@@ -231,14 +252,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderNews(filteredItems);
         displayStatus(filteredItems.length ? `Found ${filteredItems.length} result(s).` : "No results found.");
         isSearchActive = true;
-        elements.reloadButton.style.display = 'block';
+        elements.loadMoreButton.style.display = 'none';
     };
 
-    const reloadNewsFeed = () => {
+    const clearSearch = () => {
         isSearchActive = false;
-        elements.reloadButton.style.display = 'none';
         elements.searchInput.value = '';
-        loadNewsFeed(true);
+        renderNews(allNewsItems);
+        elements.loadMoreButton.style.display = 'block';
     };
 
     // Event Listeners
@@ -246,21 +267,11 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.publishStory.addEventListener('click', submitStory);
     elements.searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch());
     elements.searchButton.addEventListener('click', performSearch);
-    elements.reloadButton.addEventListener('click', reloadNewsFeed);
+    elements.loadMoreButton.addEventListener('click', () => loadNewsFeed());
     elements.postButton.addEventListener('click', () => elements.reportContent.focus());
     elements.reportContent.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
-    });
-
-    let scrollTimeout;
-    window.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            if (!isSearchActive && (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 1000) {
-                loadNewsFeed();
-            }
-        }, 200);
     });
 
     // Global functions
@@ -272,5 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Initial load
+    loadFromLocalStorage();
     loadNewsFeed();
 });
