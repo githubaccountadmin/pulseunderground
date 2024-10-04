@@ -137,22 +137,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 for (const tx of data.items) {
                     if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
-                        const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
-                        if (queryType === "StringQuery") {
-                            const newsItem = {
-                                content: ethers.utils.toUtf8String(reportContentBytes),
-                                reporter: tx.from.hash || tx.from,
-                                timestamp: tx.timestamp || tx.block_timestamp,
-                                queryId: tx.decoded_input.parameters[0].value
-                            };
-                            newItems.push(newsItem);
-                            validTransactionsCount++;
+                        try {
+                            const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
+                            if (queryType === "StringQuery") {
+                                const newsItem = {
+                                    content: ethers.utils.toUtf8String(reportContentBytes),
+                                    reporter: tx.from.hash || tx.from,
+                                    timestamp: tx.timestamp || tx.block_timestamp,
+                                    queryId: tx.decoded_input.parameters[0].value
+                                };
+                                newItems.push(newsItem);
+                                validTransactionsCount++;
 
-                            if (newItems.length === 1 && !reset) {
-                                renderNews([newsItem], true);
+                                if (newItems.length === 1 && !reset) {
+                                    renderNews([newsItem], true);
+                                }
+
+                                if (newItems.length >= minItemsToFetch) break;
                             }
-
-                            if (newItems.length >= minItemsToFetch) break;
+                        } catch (decodeError) {
+                            console.warn("Failed to decode news item:", decodeError);
+                            // Continue to the next item without incrementing validTransactionsCount
                         }
                     }
                 }
