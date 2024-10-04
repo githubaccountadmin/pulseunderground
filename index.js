@@ -51,19 +51,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const decodeContent = (bytes) => {
-        // Remove null bytes from the end
-        while (bytes.length > 0 && bytes[bytes.length - 1] === 0) {
-            bytes = bytes.slice(0, -1);
-        }
-        
-        // Try to decode as UTF-8
+    const decodeContent = (reportContentBytes) => {
         try {
-            return new TextDecoder().decode(bytes);
+            return ethers.utils.toUtf8String(reportContentBytes);
         } catch (error) {
-            console.warn("Failed to decode as UTF-8, falling back to ASCII decoding:", error);
-            // If UTF-8 decoding fails, fall back to ASCII decoding
-            return bytes.reduce((str, byte) => str + String.fromCharCode(byte), '');
+            console.warn("Failed to decode content:", error);
+            return ""; // Return empty string for invalid content
         }
     };
 
@@ -150,31 +143,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
 
-                const decodedItems = await Promise.all(data.items.map(async (tx) => {
+                for (const tx of data.items) {
                     if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
                         try {
                             const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
                             if (queryType === "StringQuery") {
                                 const content = decodeContent(reportContentBytes);
                                 if (content.trim()) {
-                                    return {
+                                    newItems.push({
                                         content: content,
                                         reporter: tx.from.hash || tx.from,
                                         timestamp: tx.timestamp || tx.block_timestamp,
                                         queryId: tx.decoded_input.parameters[0].value
-                                    };
+                                    });
+                                    validTransactionsCount++;
+
+                                    if (newItems.length >= batchSize) break;
                                 }
                             }
                         } catch (decodeError) {
                             console.warn("Failed to decode news item:", decodeError);
                         }
                     }
-                    return null;
-                }));
-
-                const validItems = decodedItems.filter(item => item !== null);
-                newItems.push(...validItems);
-                validTransactionsCount += validItems.length;
+                }
 
                 lastTransactionParams = data.next_page_params || null;
                 noMoreData = !lastTransactionParams || validTransactionsCount >= validTransactionLimit;
