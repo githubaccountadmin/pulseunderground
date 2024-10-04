@@ -38,8 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return address?.hash ? `${address.hash.slice(0, 6)}...${address.hash.slice(-4)}` : 'Unknown';
     };
 
-    const renderNews = (items = allNewsItems, append = false) => {
-        if (!newsFeed) return;
+    const renderNews = (items, append = false) => {
         if (!items.length && !append) {
             newsFeed.innerHTML = '<p>No news items to display.</p>';
             return;
@@ -98,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isLoading || (noMoreData && !reset) || validTransactionsCount >= validTransactionLimit) return;
         isLoading = true;
         showPopup('Loading...', 0);
+        
         if (reset) {
             allNewsItems.length = 0;
             validTransactionsCount = 0;
@@ -105,36 +105,50 @@ document.addEventListener('DOMContentLoaded', () => {
             lastTransactionParams = null;
             newsFeed.innerHTML = '';
         }
+
+        const newItems = [];
+        const minItemsToFetch = 10;
+
         try {
-            const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
-            const data = await response.json();
-            if (data.items.length === 0) {
-                noMoreData = true;
-                displayStatus("No more transactions available.");
-                return;
-            }
-            const newItems = data.items.reduce((acc, tx) => {
-                if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
-                    const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
-                    if (queryType === "StringQuery") {
-                        acc.push({
-                            content: ethers.utils.toUtf8String(reportContentBytes),
-                            reporter: tx.from,
-                            timestamp: tx.timestamp || tx.block_timestamp,
-                            queryId: tx.decoded_input.parameters[0].value
-                        });
-                        validTransactionsCount++;
-                    }
+            while (newItems.length < minItemsToFetch && !noMoreData) {
+                const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
+                const data = await response.json();
+
+                if (data.items.length === 0) {
+                    noMoreData = true;
+                    break;
                 }
-                return acc;
-            }, []);
-            if (newItems.length) {
+
+                data.items.forEach(tx => {
+                    if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
+                        const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
+                        if (queryType === "StringQuery") {
+                            newItems.push({
+                                content: ethers.utils.toUtf8String(reportContentBytes),
+                                reporter: tx.from,
+                                timestamp: tx.timestamp || tx.block_timestamp,
+                                queryId: tx.decoded_input.parameters[0].value
+                            });
+                            validTransactionsCount++;
+                        }
+                    }
+                });
+
+                lastTransactionParams = data.next_page_params || null;
+                noMoreData = !lastTransactionParams || validTransactionsCount >= validTransactionLimit;
+            }
+
+            if (newItems.length > 0) {
                 allNewsItems.push(...newItems);
                 renderNews(newItems, !reset);
+                displayStatus(`Loaded ${newItems.length} new items.`);
+            } else {
+                displayStatus("No new items available.");
             }
-            lastTransactionParams = data.next_page_params || null;
-            noMoreData = !lastTransactionParams || validTransactionsCount >= validTransactionLimit;
-            if (noMoreData) displayStatus("All available news items loaded.");
+
+            if (noMoreData) {
+                displayStatus("All available news items loaded.");
+            }
         } catch (error) {
             displayStatus('Error loading news feed: ' + error.message, true);
         } finally {
