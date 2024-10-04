@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const shortenAddress = address => {
-        if (typeof address !== 'string') return 'Unknown';
+        if (!address || typeof address !== 'string') return 'Unknown';
         return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
     };
 
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=100${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
                 const data = await response.json();
 
-                if (data.items.length === 0) {
+                if (!data.items || data.items.length === 0) {
                     noMoreData = true;
                     break;
                 }
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (queryType === "StringQuery") {
                             const newsItem = {
                                 content: ethers.utils.toUtf8String(reportContentBytes),
-                                reporter: tx.from,
+                                reporter: tx.from.hash || tx.from, // Ensure we're getting the address correctly
                                 timestamp: tx.timestamp || tx.block_timestamp,
                                 queryId: tx.decoded_input.parameters[0].value
                             };
