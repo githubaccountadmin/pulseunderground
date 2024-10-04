@@ -13,18 +13,25 @@ document.addEventListener('DOMContentLoaded', () => {
         {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
     ];
 
-    const newsFeed = $('newsFeed');
-    const reloadButton = $('reloadNewsFeed');
-    const loadingOverlay = $('loadingOverlay');
-    const reportContent = $('reportContent');
-    const searchInput = $('search-input');
-    const publishStory = $('publishStory');
+    const elements = {
+        newsFeed: $('newsFeed'),
+        reloadButton: $('reloadNewsFeed'),
+        loadingOverlay: $('loadingOverlay'),
+        reportContent: $('reportContent'),
+        searchInput: $('search-input'),
+        publishStory: $('publishStory'),
+        connectWallet: $('connectWallet'),
+        walletInfo: $('walletInfo'),
+        walletAddress: $('walletAddress'),
+        postButton: $('postButton'),
+        searchButton: $('search-button')
+    };
 
-    const showLoading = show => loadingOverlay.style.display = show ? 'flex' : 'none';
+    const showLoading = show => elements.loadingOverlay.style.display = show ? 'flex' : 'none';
 
     const displayStatus = (message, isError = false) => {
         console.log(isError ? `Error: ${message}` : message);
-        // You can implement a more visible status display here if needed
+        // Implement a more visible status display here if needed
     };
 
     const shortenAddress = address => {
@@ -34,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderNews = (items, append = false) => {
         if (!items.length && !append) {
-            newsFeed.innerHTML = '<p>No news items to display.</p>';
+            elements.newsFeed.innerHTML = '<p>No news items to display.</p>';
             return;
         }
         const fragment = document.createDocumentFragment();
@@ -60,9 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             fragment.appendChild(article);
         });
-        if (!append) newsFeed.innerHTML = '';
-        newsFeed.appendChild(fragment);
-        newsFeed.style.visibility = 'visible';
+        if (!append) elements.newsFeed.innerHTML = '';
+        elements.newsFeed.appendChild(fragment);
+        elements.newsFeed.style.visibility = 'visible';
     };
 
     const connectWallet = async () => {
@@ -72,11 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 await provider.send("eth_requestAccounts", []);
                 signer = provider.getSigner();
                 const address = await signer.getAddress();
-                $('connectWallet').style.display = 'none';
-                $('walletInfo').style.display = 'block';
-                $('walletAddress').textContent = shortenAddress(address);
-                publishStory.disabled = false;
-                reportContent.placeholder = "What's happening?";
+                elements.connectWallet.style.display = 'none';
+                elements.walletInfo.style.display = 'block';
+                elements.walletAddress.textContent = shortenAddress(address);
+                elements.publishStory.disabled = false;
+                elements.reportContent.placeholder = "What's happening?";
                 contract = new ethers.Contract(contractAddress, contractABI, signer);
                 displayStatus('Wallet connected.');
             } else {
@@ -97,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             validTransactionsCount = 0;
             noMoreData = false;
             lastTransactionParams = null;
-            newsFeed.innerHTML = '';
+            elements.newsFeed.innerHTML = '';
         }
 
         const newItems = [];
@@ -142,8 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (newItems.length > 0) {
                 allNewsItems.push(...newItems);
-                if (newItems.length > 1 || reset) {
-                    renderNews(newItems, !reset);
+                if (newItems.length > 1) {
+                    // Remove the first item if it's already displayed
+                    const itemsToRender = reset ? newItems : newItems.slice(1);
+                    renderNews(itemsToRender, !reset);
                 }
                 displayStatus(`Loaded ${newItems.length} new items.`);
             } else {
@@ -162,9 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const submitStory = async () => {
-        const content = reportContent.value.trim();
+        const content = elements.reportContent.value.trim();
         if (!content) return displayStatus('Please enter a story before submitting.', true);
-        publishStory.disabled = true;
+        elements.publishStory.disabled = true;
         showLoading(true);
         try {
             if (!signer) throw new Error("Wallet not connected.");
@@ -176,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.mul(120).div(100) });
             await tx.wait();
             displayStatus("Story successfully submitted!");
-            reportContent.value = '';
+            elements.reportContent.value = '';
             const newStory = {
                 content: content,
                 reporter: await signer.getAddress(),
@@ -188,13 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             displayStatus('Error submitting story: ' + error.message, true);
         } finally {
-            publishStory.disabled = false;
+            elements.publishStory.disabled = false;
             showLoading(false);
         }
     };
 
     const performSearch = () => {
-        const searchTerm = searchInput.value.toLowerCase();
+        const searchTerm = elements.searchInput.value.toLowerCase();
         const filteredItems = allNewsItems.filter(item => 
             shortenAddress(item.reporter).toLowerCase().includes(searchTerm) || 
             item.content.toLowerCase().includes(searchTerm)
@@ -202,24 +211,24 @@ document.addEventListener('DOMContentLoaded', () => {
         renderNews(filteredItems);
         displayStatus(filteredItems.length ? `Found ${filteredItems.length} result(s).` : "No results found.");
         isSearchActive = true;
-        reloadButton.style.display = 'block';
+        elements.reloadButton.style.display = 'block';
     };
 
     const reloadNewsFeed = () => {
         isSearchActive = false;
-        reloadButton.style.display = 'none';
-        searchInput.value = '';
+        elements.reloadButton.style.display = 'none';
+        elements.searchInput.value = '';
         loadNewsFeed(true);
     };
 
     // Event Listeners
-    $('connectWallet').addEventListener('click', connectWallet);
-    publishStory.addEventListener('click', submitStory);
-    searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch());
-    $('search-button').addEventListener('click', performSearch);
-    reloadButton.addEventListener('click', reloadNewsFeed);
-    $('postButton').addEventListener('click', () => reportContent.focus());
-    reportContent.addEventListener('input', function() {
+    elements.connectWallet.addEventListener('click', connectWallet);
+    elements.publishStory.addEventListener('click', submitStory);
+    elements.searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch());
+    elements.searchButton.addEventListener('click', performSearch);
+    elements.reloadButton.addEventListener('click', reloadNewsFeed);
+    elements.postButton.addEventListener('click', () => elements.reportContent.focus());
+    elements.reportContent.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
     });
