@@ -16,17 +16,21 @@ body {
     background: linear-gradient(to bottom right, #0d0b14, #1a1327);
 }
 
+/* Sidebar Common Styles */
+#sidebar-left, #sidebar-right {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background-color: #13101c;
+}
+
 /* Left Sidebar */
 #sidebar-left {
     width: 275px;
     padding: 0 12px;
-    position: sticky;
-    top: 0;
-    height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    background-color: #13101c;
     border-right: 1px solid #2a2438;
 }
 
@@ -289,11 +293,6 @@ main {
 #sidebar-right {
     width: 350px;
     padding: 0 16px;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
-    background-color: #13101c;
     border-left: 1px solid #2a2438;
 }
 
@@ -426,6 +425,40 @@ main {
     width: 16px;
     height: 16px;
     margin-right: 4px;
+}
+
+/* Loading Overlay */
+#loadingOverlay {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(26, 19, 39, 0.8);
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#loadingOverlay::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid #b388ff;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    margin-left: 10px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Responsive Design */
