@@ -10,7 +10,6 @@
         },
         U='0xd9157453e2668b2fc45b7a803d3fef3642430cc0',
         A=[{"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}],
-        // DOM Elements cache
         e={
             n:$('#newsFeed'),
             l:$('#loadingOverlay'),
@@ -45,11 +44,11 @@
             e.n.innerHTML='';
         }
 
-        let n=[],c=0;
+        let n=[],c=0,processedTxs=new Set();
         try{
             const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=${S.b}${S.q?'&'+new URLSearchParams(S.q):''}`
-            const r=await fetch(u);
-            const d=await r.json();
+            console.log('Fetching:', u);
+            const d=await(await fetch(u)).json();
             
             if(!d?.items?.length){
                 S.m=1;
@@ -58,35 +57,59 @@
             }
             
             for(let t of d.items){
+                if(processedTxs.has(t.hash))continue;
+                processedTxs.add(t.hash);
                 c++;
-                if(t.method==='submitValue'&&t.decoded_input?.parameters?.length>=4)try{
-                    // Fix: Only decode queryData parameter first
-                    const[q,b]=E.utils.defaultAbiCoder.decode(['string','bytes'],t.decoded_input.parameters[3].value);
-                    if(q==="StringQuery"){
-                        const c=D(b).trim();
-                        if(c)n.push({
-                            content:c,
-                            reporter:t.from.hash||t.from,
-                            timestamp:t.timestamp||t.block_timestamp,
-                            queryId:t.decoded_input.parameters[0].value
-                        });
+
+                if(t.method==='submitValue' && t.decoded_input?.parameters?.length >= 4){
+                    try{
+                        // Debug logging
+                        console.log('Processing tx:', t.hash, 'Method:', t.method);
+                        console.log('Parameters:', t.decoded_input.parameters);
+                        
+                        // Important: Changed to extract content from queryData parameter
+                        const [queryType, contentBytes] = E.utils.defaultAbiCoder.decode(
+                            ['string', 'bytes'],
+                            t.decoded_input.parameters[3].value
+                        );
+
+                        // Debug logging
+                        console.log('Query type:', queryType);
+
+                        if(queryType === "StringQuery"){
+                            const content = D(contentBytes);
+                            if(content.trim()){
+                                const item = {
+                                    content: content,
+                                    reporter: t.from.hash || t.from,
+                                    timestamp: t.timestamp || t.block_timestamp,
+                                    queryId: t.decoded_input.parameters[0].value
+                                };
+                                console.log('Found news item:', item);
+                                n.push(item);
+                            }
+                        }
+                    }catch(e){
+                        console.warn('Decode error for tx', t.hash, ':', e);
                     }
-                }catch(e){console.warn('Decode error:',e)}
+                }
             }
+            
+            console.log(`Processed ${c} transactions, found ${n.length} news items`);
             
             if(n.length){
                 n.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
                 S.n.push(...n);
                 R(n,!r);
                 L(S.n.slice(0,50),'news');
-            }else if(!S.n.length)R([]);
+                console.log('Rendered news items:', n);
+            }else if(!S.n.length){
+                R([]);
+            }
             
-            // Fix: Pagination handling
             S.q=d.next_page_params||null;
             S.m=!S.q;
             e.m.style.display=S.m?'none':'block';
-            
-            console.log(`Processed ${c} txs, found ${n.length} items`);
             
         }catch(e){
             console.error('Feed error:',e);
@@ -164,7 +187,7 @@
             }else el.addEventListener('click',()=>F());
         });
 
-        // Click handler
+        // Click handler for action buttons
         d.addEventListener('click',e=>{
             const t=e.target;
             if(t.tagName==='BUTTON'){
@@ -175,7 +198,11 @@
 
         // Initialize feed
         const c=L(0,'news');
-        c&&(S.n=c,R(c));
+        if(c){
+            console.log('Loaded from cache:', c);
+            S.n=c;
+            R(c);
+        }
         await F(1);
     });
 })();
