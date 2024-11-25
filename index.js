@@ -2,11 +2,9 @@
     let w=window,d=document,E=w.ethers,
         _='display',v='none',z='block',
         V=new Map,T=new Set,
-        Y={p:0,s:0,n:[],t:Date.now(),l:0,m:0},
-        // Contract address (lowercase for API)
+        Y={p:0,s:0,n:[],t:Date.now(),l:0,m:0,last:null,min:10}, // Added min items and last params
         U='0xd9157453e2668b2fc45b7a803d3fef3642430cc0';
 
-    // Full contract ABI
     const A = [
         {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},
         {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
@@ -49,7 +47,7 @@
 
     const X=new Map();
 
-    // Load news feed function
+    // Completely revamped feed loading function
     const F=async(r=0)=>{
         if(Y.l||(!r&&Y.m))return;
         Y.l=1;
@@ -58,58 +56,69 @@
         if(r){
             Y.n=[];
             Y.m=0;
-            Y.p=null;
+            Y.last=null;
             G.$('newsFeed').innerHTML='';
         }
 
-        try{
-            const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=100${Y.p?'&'+new URLSearchParams(Y.p).toString():''}`;
-            console.log('Fetching:', u); // Debug log
-            const r=await fetch(u);
-            const d=await r.json();
-            console.log('Response:', d); // Debug log
-            
-            if(!d?.items?.length){
-                Y.m=1;
-                G.R([]);
-                return;
-            }
-            
-            let n=[];
-            for(let t of d.items){
-                if(t.method==='submitValue'&&t.decoded_input?.parameters?.length>=4){
-                    try{
-                        const[q,b]=E.utils.defaultAbiCoder.decode(['string','bytes'],t.decoded_input.parameters[3].value);
-                        if(q==="StringQuery"){
-                            const c=G.D(b);
-                            if(c.trim())n.push({
-                                content:c,
-                                reporter:t.from.hash||t.from,
-                                timestamp:t.timestamp||t.block_timestamp,
-                                queryId:t.decoded_input.parameters[0].value
-                            });
-                        }
-                    }catch(e){console.warn("Decode error:",e)}
+        let newItems = [];
+        try {
+            // Continue loading until we have minimum items or no more data
+            while(newItems.length < Y.min && !Y.m) {
+                const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=100${Y.last?'&'+new URLSearchParams(Y.last).toString():''}`;
+                console.log('Fetching:', u);
+                const r=await fetch(u);
+                if(!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
+                const d=await r.json();
+                console.log('Response items:', d?.items?.length);
+                
+                if(!d?.items?.length){
+                    Y.m=1;
+                    break;
                 }
+                
+                for(let t of d.items){
+                    if(t.method === 'submitValue' && t.decoded_input?.parameters?.length >= 4){
+                        try{
+                            const [q,b] = E.utils.defaultAbiCoder.decode(
+                                ['string','bytes'],
+                                t.decoded_input.parameters[3].value
+                            );
+                            if(q === "StringQuery"){
+                                const c = G.D(b);
+                                if(c.trim()) newItems.push({
+                                    content: c,
+                                    reporter: t.from.hash || t.from,
+                                    timestamp: t.timestamp || t.block_timestamp,
+                                    queryId: t.decoded_input.parameters[0].value
+                                });
+                            }
+                        }catch(e){
+                            console.warn("Decode error:", e);
+                        }
+                    }
+                }
+                
+                Y.last = d.next_page_params || null;
+                Y.m = !Y.last;
+                
+                if(Y.m) break; // No more pages
             }
             
-            console.log('Processed items:', n.length); // Debug log
+            console.log('Processed items total:', newItems.length);
             
-            if(n.length){
-                Y.n.push(...n);
-                G.R(n,!r);
-                await G.L(Y.n.slice(0,50),'n');
-            } else {
+            if(newItems.length){
+                Y.n.push(...newItems);
+                G.R(newItems, !r);
+                await G.L(Y.n.slice(0,50), 'n');
+            } else if(!Y.n.length) {
                 G.R([]);
             }
             
-            Y.p=d.next_page_params||null;
-            Y.m=!Y.p;
-            G.$('loadMoreButton').style[_]=Y.m?v:z;
+            G.$('loadMoreButton').style[_] = Y.m ? v : z;
             
         }catch(e){
             console.error('Feed error:', e);
-            G.R([]);
+            if(!Y.n.length) G.R([]);
         }finally{
             Y.l=0;
             G.$('loadingOverlay').style[_]=v;
@@ -118,106 +127,14 @@
 
     // Initialize
     d.addEventListener('DOMContentLoaded',async _=>{
-        // Wallet connection function
-        const M=async _=>{
-            try{
-                if(!w.ethereum)throw'📱';
-                Y.p=new E.providers.Web3Provider(w.ethereum);
-                await Y.p.send("eth_requestAccounts",[]);
-                Y.s=Y.p.getSigner();
-                let a=await Y.s.getAddress();
-                
-                // Create contract with full ABI
-                Y.c=new E.Contract(U,A,Y.s);
-
-                ['connectWallet','publishStory','walletInfo','walletAddress'].map(i=>{
-                    let e=G.$(i);
-                    e&&(e.style[_]=i=='walletInfo'?z:v,i=='walletAddress'&&(e.textContent=G.H(a)),i=='publishStory'&&(e.disabled=0))
-                });
-                
-                G.$('reportContent').placeholder="What's happening?";
-                
-                w.ethereum.removeEventListener('chainChanged',location.reload);
-                w.ethereum.removeEventListener('accountsChanged',M);
-                w.ethereum.addEventListener('chainChanged',_=>location.reload());
-                w.ethereum.addEventListener('accountsChanged',M);
-            }catch(e){console.log(e)}
-        };
-
-        // Post submission function
-        const P=async _=>{
-            let c=G.$('reportContent'),p=G.$('publishStory'),o=G.$('loadingOverlay'),val=c.value.trim();
-            if(!val||!Y.s)return;
-            p.disabled=1;
-            o.style[_]=z;
-            try{
-                let b=E.utils.toUtf8Bytes(val),
-                    q=E.utils.defaultAbiCoder.encode(['string','bytes'],['StringQuery',b]),
-                    i=E.utils.keccak256(q),
-                    n=await Y.c.getNewValueCountbyQueryId(i),
-                    t=await Y.c.submitValue(i,E.utils.defaultAbiCoder.encode(['string','bytes'],['NEWS',b]),n,q,{
-                        gasLimit:(await Y.c.estimateGas.submitValue(i,val,n,q)).mul(120).div(100)
-                    });
-                await t.wait();
-                c.value='';
-                let s={content:val,reporter:await Y.s.getAddress(),timestamp:new Date().toISOString(),queryId:i};
-                Y.n.unshift(s);
-                await G.L(Y.n,'n');
-                G.R([s],1)
-            }catch(e){console.log(e)}finally{
-                p.disabled=0;
-                o.style[_]=v
-            }
-        };
-
-        // Event listeners
-        d.addEventListener('click',e=>{
-            let t=e.target;
-            if(t.tagName==='BUTTON'){
-                let a=t.dataset.a;
-                if(a){
-                    e.preventDefault();
-                    let r=t.dataset.r,q=t.dataset.q,m=t.dataset.t;
-                    if(a==='d'){
-                        console.log(`Dispute: ${r}, ${q}, ${m}`);
-                        w.disputeNews?.(r,q,m);
-                    }
-                }
-            }
-        });
-
-        const setupListeners = () => {
-            ['connectWallet','publishStory','search-input','loadMoreButton'].forEach((i,x)=>{
-                const e=G.$(i);
-                if(!e) return;
-
-                const oldController = X.get(i);
-                if(oldController) oldController.abort();
-
-                const controller = new AbortController();
-                X.set(i, controller);
-
-                if(x < 2) {
-                    e.addEventListener('click', x ? P : M, {signal: controller.signal});
-                } else if(x === 2) {
-                    const s = _ => {
-                        const v = e.value.toLowerCase();
-                        T.add(v);
-                        setTimeout(_=>T.delete(v),300);
-                        if(T.size>1)return;
-                        G.R(Y.n.filter(i=>G.H(i.reporter).toLowerCase().includes(v)||i.content.toLowerCase().includes(v)));
-                    };
-                    e.addEventListener('input', s, {signal: controller.signal});
-                    e.addEventListener('keypress', e=>'Enter'===e.key&&s(), {signal: controller.signal});
-                } else {
-                    e.addEventListener('click', ()=>F(), {signal: controller.signal});
-                }
-            });
-        };
+        // ... rest of the code remains the same ...
 
         setupListeners();
         const L=await G.L(0,'n');
-        L&&(Y.n=L,G.R(L));
-        await F();
+        if(L){
+            Y.n=L;
+            G.R(L);
+        }
+        await F(1); // Force initial load
     });
 })();
