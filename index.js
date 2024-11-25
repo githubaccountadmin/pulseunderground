@@ -3,20 +3,24 @@
         _='display',v='none',z='block',
         V=new Map,T=new Set,
         Y={p:0,s:0,n:[],t:Date.now(),l:0,m:0},
-        U=new Uint8Array(32);
-
-    // Contract address initialization
-    for(let i=0;i<32;i++)U[i]=parseInt('D9157453E2668B2fc45b7A803D3FEF3642430cC0'.slice(i*2,i*2+2),16);
+        // Fixed: Contract address as string instead of Uint8Array
+        U='0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
 
     // Utility functions
     const G={
-        // Changed: Simple element cache using Map instead of WeakMap
         $:(()=>{
             const cache = new Map();
             return i => cache.get(i) || cache.set(i, d.querySelector('#'+i)).get(i);
         })(),
-        L:(k,d,a=w.ethereum?.selectedAddress)=>{
-            try{return k?localStorage.setItem(`p${a}${d}`,JSON.stringify(k)):JSON.parse(localStorage.getItem(`p${a}${d}`))}catch(e){}
+        // Fixed: Using eth_accounts instead of selectedAddress
+        L:async(k,d)=>{
+            try{
+                const accounts = await w.ethereum?.request({method: 'eth_accounts'});
+                const a = accounts?.[0];
+                return k ? 
+                    localStorage.setItem(`p${a}${d}`,JSON.stringify(k)) : 
+                    JSON.parse(localStorage.getItem(`p${a}${d}`));
+            }catch(e){}
         },
         H:s=>s?.slice(0,6)+'...'+s?.slice(-4)||'?',
         R:(function(){
@@ -39,7 +43,6 @@
         }
     };
 
-    // Changed: Simplified event controller management
     const X=new Map();
 
     // Load news feed function
@@ -56,7 +59,8 @@
         }
 
         try{
-            const u=`https://api.scan.pulsechain.com/api/v2/addresses/${E.utils.getAddress(U)}/transactions?filter=to&sort=desc&limit=100${Y.p?'&'+new URLSearchParams(Y.p).toString():''}`;
+            // Fixed: Using contract address directly
+            const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=100${Y.p?'&'+new URLSearchParams(Y.p).toString():''}`;
             const r=await fetch(u);
             const d=await r.json();
             
@@ -83,7 +87,7 @@
             if(n.length){
                 Y.n.push(...n);
                 G.R(n,!r);
-                G.L(Y.n.slice(0,50),'n');
+                await G.L(Y.n.slice(0,50),'n');
             }
             
             Y.p=d.next_page_params||null;
@@ -146,7 +150,7 @@
                 c.value='';
                 let s={content:val,reporter:await Y.s.getAddress(),timestamp:new Date().toISOString(),queryId:i};
                 Y.n.unshift(s);
-                G.L(Y.n,'n');
+                await G.L(Y.n,'n');
                 G.R([s],1)
             }catch(e){console.log(e)}finally{
                 p.disabled=0;
@@ -167,13 +171,11 @@
             }
         });
 
-        // Changed: Simplified event listener setup
         const setupListeners = () => {
             ['connectWallet','publishStory','search-input','loadMoreButton'].forEach((i,x)=>{
                 const e=G.$(i);
                 if(!e) return;
 
-                // Clean up existing listeners
                 const oldController = X.get(i);
                 if(oldController) oldController.abort();
 
@@ -198,9 +200,8 @@
             });
         };
 
-        // Initial setup
         setupListeners();
-        let L=G.L(0,'n');
+        const L=await G.L(0,'n');
         L&&(Y.n=L,G.R(L));
         F();
     });
