@@ -2,7 +2,7 @@
     let w=window,d=document,E=w.ethers,
         _='display',v='none',z='block',
         V=new Map,T=new Set,
-        Y={p:0,s:0,n:[],t:Date.now(),l:0,m:0,last:null,min:10}, // Added min items and last params
+        Y={p:0,s:0,n:[],t:Date.now(),l:0,m:0,last:null,min:10},
         U='0xd9157453e2668b2fc45b7a803d3fef3642430cc0';
 
     const A = [
@@ -47,11 +47,11 @@
 
     const X=new Map();
 
-    // Completely revamped feed loading function
     const F=async(r=0)=>{
         if(Y.l||(!r&&Y.m))return;
         Y.l=1;
-        G.$('loadingOverlay').style[_]=z;
+        const o=G.$('loadingOverlay');
+        o.style[_]=z;
         
         if(r){
             Y.n=[];
@@ -62,7 +62,6 @@
 
         let newItems = [];
         try {
-            // Continue loading until we have minimum items or no more data
             while(newItems.length < Y.min && !Y.m) {
                 const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=100${Y.last?'&'+new URLSearchParams(Y.last).toString():''}`;
                 console.log('Fetching:', u);
@@ -101,7 +100,7 @@
                 Y.last = d.next_page_params || null;
                 Y.m = !Y.last;
                 
-                if(Y.m) break; // No more pages
+                if(Y.m) break;
             }
             
             console.log('Processed items total:', newItems.length);
@@ -121,15 +120,108 @@
             if(!Y.n.length) G.R([]);
         }finally{
             Y.l=0;
-            G.$('loadingOverlay').style[_]=v;
+            o.style[_]=v;
         }
     };
 
     // Initialize
-    d.addEventListener('DOMContentLoaded',async _=>{
-        // ... rest of the code remains the same ...
+    d.addEventListener('DOMContentLoaded',async()=>{
+        const M=async()=>{
+            try{
+                if(!w.ethereum)throw'📱';
+                Y.p=new E.providers.Web3Provider(w.ethereum);
+                await Y.p.send("eth_requestAccounts",[]);
+                Y.s=Y.p.getSigner();
+                let a=await Y.s.getAddress();
+                
+                Y.c=new E.Contract(U,A,Y.s);
 
-        setupListeners();
+                ['connectWallet','publishStory','walletInfo','walletAddress'].map(i=>{
+                    let e=G.$(i);
+                    e&&(e.style[_]=i=='walletInfo'?z:v,i=='walletAddress'&&(e.textContent=G.H(a)),i=='publishStory'&&(e.disabled=0))
+                });
+                
+                G.$('reportContent').placeholder="What's happening?";
+                
+                w.ethereum.removeEventListener('chainChanged',location.reload);
+                w.ethereum.removeEventListener('accountsChanged',M);
+                w.ethereum.addEventListener('chainChanged',()=>location.reload());
+                w.ethereum.addEventListener('accountsChanged',M);
+            }catch(e){console.log(e)}
+        };
+
+        const P=async()=>{
+            let c=G.$('reportContent'),p=G.$('publishStory'),o=G.$('loadingOverlay'),val=c.value.trim();
+            if(!val||!Y.s)return;
+            p.disabled=1;
+            o.style[_]=z;
+            try{
+                let b=E.utils.toUtf8Bytes(val),
+                    q=E.utils.defaultAbiCoder.encode(['string','bytes'],['StringQuery',b]),
+                    i=E.utils.keccak256(q),
+                    n=await Y.c.getNewValueCountbyQueryId(i),
+                    t=await Y.c.submitValue(i,E.utils.defaultAbiCoder.encode(['string','bytes'],['NEWS',b]),n,q,{
+                        gasLimit:(await Y.c.estimateGas.submitValue(i,val,n,q)).mul(120).div(100)
+                    });
+                await t.wait();
+                c.value='';
+                let s={content:val,reporter:await Y.s.getAddress(),timestamp:new Date().toISOString(),queryId:i};
+                Y.n.unshift(s);
+                await G.L(Y.n,'n');
+                G.R([s],1)
+            }catch(e){console.log(e)}finally{
+                p.disabled=0;
+                o.style[_]=v
+            }
+        };
+
+        d.addEventListener('click',e=>{
+            let t=e.target;
+            if(t.tagName==='BUTTON'){
+                let a=t.dataset.a;
+                if(a){
+                    e.preventDefault();
+                    let r=t.dataset.r,q=t.dataset.q,m=t.dataset.t;
+                    if(a==='d'){
+                        console.log(`Dispute: ${r}, ${q}, ${m}`);
+                        w.disputeNews?.(r,q,m);
+                    }
+                }
+            }
+        });
+
+        // Setup event listeners - moved inside DOMContentLoaded
+        const setupEventListeners = () => {
+            ['connectWallet','publishStory','search-input','loadMoreButton'].forEach((i,x)=>{
+                const e=G.$(i);
+                if(!e) return;
+
+                const oldController = X.get(i);
+                if(oldController) oldController.abort();
+
+                const controller = new AbortController();
+                X.set(i, controller);
+
+                if(x < 2) {
+                    e.addEventListener('click', x ? P : M, {signal: controller.signal});
+                } else if(x === 2) {
+                    const s = _ => {
+                        const v = e.value.toLowerCase();
+                        T.add(v);
+                        setTimeout(_=>T.delete(v),300);
+                        if(T.size>1)return;
+                        G.R(Y.n.filter(i=>G.H(i.reporter).toLowerCase().includes(v)||i.content.toLowerCase().includes(v)));
+                    };
+                    e.addEventListener('input', s, {signal: controller.signal});
+                    e.addEventListener('keypress', e=>'Enter'===e.key&&s(), {signal: controller.signal});
+                } else {
+                    e.addEventListener('click', ()=>F(), {signal: controller.signal});
+                }
+            });
+        };
+
+        // Initial setup
+        setupEventListeners();
         const L=await G.L(0,'n');
         if(L){
             Y.n=L;
