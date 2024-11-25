@@ -1,7 +1,7 @@
 (()=>{
-    let w=window,d=document,E=w.ethers,q=d.querySelector.bind(d),
+    let w=window,d=document,E=w.ethers,
         _='display',v='none',z='block',
-        V=new Map,T=new Set,C=new WeakMap,
+        V=new Map,T=new Set,
         Y={p:0,s:0,n:[],t:Date.now(),l:0,m:0},
         U=new Uint8Array(32);
 
@@ -10,12 +10,15 @@
 
     // Utility functions
     const G={
-        $:i=>C.get(i)||C.set(i,q('#'+i)).get(i),
+        // Changed: Simple element cache using Map instead of WeakMap
+        $:(()=>{
+            const cache = new Map();
+            return i => cache.get(i) || cache.set(i, d.querySelector('#'+i)).get(i);
+        })(),
         L:(k,d,a=w.ethereum?.selectedAddress)=>{
             try{return k?localStorage.setItem(`p${a}${d}`,JSON.stringify(k)):JSON.parse(localStorage.getItem(`p${a}${d}`))}catch(e){}
         },
         H:s=>s?.slice(0,6)+'...'+s?.slice(-4)||'?',
-        // Optimized render function
         R:(function(){
             let t,f;
             return(m,x)=>{
@@ -30,15 +33,16 @@
                 requestAnimationFrame(()=>{f.appendChild(t.cloneNode(true));f.style.visibility='visible'})
             }
         })(),
-        // Added: Decode content function
         D:b=>{
             while(b.length>0&&b[b.length-1]===0)b=b.slice(0,-1);
             try{return E.utils.toUtf8String(b)}catch(e){return E.utils.toUtf8String(b.slice(0,e.offset),true)}
         }
-    },
-    X=new Proxy({},{get:(_,p)=>V.get(p)||V.set(p,new AbortController).get(p)});
+    };
 
-    // Load news feed function (restored)
+    // Changed: Simplified event controller management
+    const X=new Map();
+
+    // Load news feed function
     const F=async(r=0)=>{
         if(Y.l||(!r&&Y.m))return;
         Y.l=1;
@@ -105,7 +109,6 @@
                 Y.s=Y.p.getSigner();
                 let a=await Y.s.getAddress();
                 
-                // Create contract instance with full ABI
                 Y.c=new E.Contract(U,[[
                     {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},
                     {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
@@ -118,7 +121,6 @@
                 
                 G.$('reportContent').placeholder="What's happening?";
                 
-                // Wallet event listeners
                 w.ethereum.removeEventListener('chainChanged',location.reload);
                 w.ethereum.removeEventListener('accountsChanged',M);
                 w.ethereum.addEventListener('chainChanged',_=>location.reload());
@@ -128,21 +130,21 @@
 
         // Post submission function
         const P=async _=>{
-            let c=G.$('reportContent'),p=G.$('publishStory'),o=G.$('loadingOverlay'),v=c.value.trim();
-            if(!v||!Y.s)return;
+            let c=G.$('reportContent'),p=G.$('publishStory'),o=G.$('loadingOverlay'),val=c.value.trim();
+            if(!val||!Y.s)return;
             p.disabled=1;
             o.style[_]=z;
             try{
-                let b=E.utils.toUtf8Bytes(v),
+                let b=E.utils.toUtf8Bytes(val),
                     q=E.utils.defaultAbiCoder.encode(['string','bytes'],['StringQuery',b]),
                     i=E.utils.keccak256(q),
                     n=await Y.c.getNewValueCountbyQueryId(i),
                     t=await Y.c.submitValue(i,E.utils.defaultAbiCoder.encode(['string','bytes'],['NEWS',b]),n,q,{
-                        gasLimit:(await Y.c.estimateGas.submitValue(i,v,n,q)).mul(120).div(100)
+                        gasLimit:(await Y.c.estimateGas.submitValue(i,val,n,q)).mul(120).div(100)
                     });
                 await t.wait();
                 c.value='';
-                let s={content:v,reporter:await Y.s.getAddress(),timestamp:new Date().toISOString(),queryId:i};
+                let s={content:val,reporter:await Y.s.getAddress(),timestamp:new Date().toISOString(),queryId:i};
                 Y.n.unshift(s);
                 G.L(Y.n,'n');
                 G.R([s],1)
@@ -165,28 +167,39 @@
             }
         });
 
-        ['connectWallet','publishStory','search-input','loadMoreButton'].map((i,x)=>{
-            let e=G.$(i),h=X[i];
-            h&&h.abort();
-            if(e){
-                if(x<2)e.addEventListener('click',x?P:M,{signal:h.signal});
-                else if(x===2){
-                    let s=_=>{
-                        let v=e.value.toLowerCase();
+        // Changed: Simplified event listener setup
+        const setupListeners = () => {
+            ['connectWallet','publishStory','search-input','loadMoreButton'].forEach((i,x)=>{
+                const e=G.$(i);
+                if(!e) return;
+
+                // Clean up existing listeners
+                const oldController = X.get(i);
+                if(oldController) oldController.abort();
+
+                const controller = new AbortController();
+                X.set(i, controller);
+
+                if(x < 2) {
+                    e.addEventListener('click', x ? P : M, {signal: controller.signal});
+                } else if(x === 2) {
+                    const s = _ => {
+                        const v = e.value.toLowerCase();
                         T.add(v);
                         setTimeout(_=>T.delete(v),300);
                         if(T.size>1)return;
-                        G.R(Y.n.filter(i=>G.H(i.reporter).toLowerCase().includes(v)||i.content.toLowerCase().includes(v)))
+                        G.R(Y.n.filter(i=>G.H(i.reporter).toLowerCase().includes(v)||i.content.toLowerCase().includes(v)));
                     };
-                    e.addEventListener('input',s,{signal:h.signal});
-                    e.addEventListener('keypress',e=>'Enter'==e.key&&s(),{signal:h.signal})
-                }else{
-                    e.addEventListener('click',()=>F(),{signal:h.signal});
+                    e.addEventListener('input', s, {signal: controller.signal});
+                    e.addEventListener('keypress', e=>'Enter'===e.key&&s(), {signal: controller.signal});
+                } else {
+                    e.addEventListener('click', ()=>F(), {signal: controller.signal});
                 }
-            }
-        });
+            });
+        };
 
-        // Initial load
+        // Initial setup
+        setupListeners();
         let L=G.L(0,'n');
         L&&(Y.n=L,G.R(L));
         F();
