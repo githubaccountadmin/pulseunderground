@@ -3,16 +3,20 @@
         _='display',v='none',z='block',
         V=new Map,T=new Set,
         Y={p:0,s:0,n:[],t:Date.now(),l:0,m:0},
-        // Fixed: Contract address as string instead of Uint8Array
-        U='0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
+        // Contract address (lowercase for API)
+        U='0xd9157453e2668b2fc45b7a803d3fef3642430cc0';
 
-    // Utility functions
+    // Full contract ABI
+    const A = [
+        {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+    ];
+
     const G={
         $:(()=>{
             const cache = new Map();
             return i => cache.get(i) || cache.set(i, d.querySelector('#'+i)).get(i);
         })(),
-        // Fixed: Using eth_accounts instead of selectedAddress
         L:async(k,d)=>{
             try{
                 const accounts = await w.ethereum?.request({method: 'eth_accounts'});
@@ -26,7 +30,7 @@
         R:(function(){
             let t,f;
             return(m,x)=>{
-                if(f=G.$('newsFeed'),!m.length&&!x)return f.innerHTML='<p>No news</p>';
+                if(f=G.$('newsFeed'),!m?.length&&!x)return f.innerHTML='<p>No news items to display.</p>';
                 t=t||d.createDocumentFragment();
                 let h='';
                 m.map(i=>{
@@ -59,12 +63,17 @@
         }
 
         try{
-            // Fixed: Using contract address directly
             const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=100${Y.p?'&'+new URLSearchParams(Y.p).toString():''}`;
+            console.log('Fetching:', u); // Debug log
             const r=await fetch(u);
             const d=await r.json();
+            console.log('Response:', d); // Debug log
             
-            if(!d.items?.length){Y.m=1;return}
+            if(!d?.items?.length){
+                Y.m=1;
+                G.R([]);
+                return;
+            }
             
             let n=[];
             for(let t of d.items){
@@ -84,10 +93,14 @@
                 }
             }
             
+            console.log('Processed items:', n.length); // Debug log
+            
             if(n.length){
                 Y.n.push(...n);
                 G.R(n,!r);
                 await G.L(Y.n.slice(0,50),'n');
+            } else {
+                G.R([]);
             }
             
             Y.p=d.next_page_params||null;
@@ -95,7 +108,8 @@
             G.$('loadMoreButton').style[_]=Y.m?v:z;
             
         }catch(e){
-            console.error('Feed error:',e);
+            console.error('Feed error:', e);
+            G.R([]);
         }finally{
             Y.l=0;
             G.$('loadingOverlay').style[_]=v;
@@ -113,10 +127,8 @@
                 Y.s=Y.p.getSigner();
                 let a=await Y.s.getAddress();
                 
-                Y.c=new E.Contract(U,[[
-                    {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},
-                    {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
-                ][0]],Y.s);
+                // Create contract with full ABI
+                Y.c=new E.Contract(U,A,Y.s);
 
                 ['connectWallet','publishStory','walletInfo','walletAddress'].map(i=>{
                     let e=G.$(i);
@@ -166,7 +178,10 @@
                 if(a){
                     e.preventDefault();
                     let r=t.dataset.r,q=t.dataset.q,m=t.dataset.t;
-                    console.log(a,r,q,m)
+                    if(a==='d'){
+                        console.log(`Dispute: ${r}, ${q}, ${m}`);
+                        w.disputeNews?.(r,q,m);
+                    }
                 }
             }
         });
@@ -203,6 +218,6 @@
         setupListeners();
         const L=await G.L(0,'n');
         L&&(Y.n=L,G.R(L));
-        F();
+        await F();
     });
 })();
