@@ -1,52 +1,96 @@
 (()=>{
+    // Core variables with optimized naming
     let w=window,d=document,E=w.ethers,
         _='display',v='none',z='block',
-        V=new Map,T=new Set,
-        Y={p:0,s:0,n:[],t:Date.now(),l:0,m:0,last:null,min:10},
-        U='0xd9157453e2668b2fc45b7a803d3fef3642430cc0';
-
-    const A = [
-        {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},
-        {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
-    ];
-
-    const G={
-        $:(()=>{
-            const cache = new Map();
-            return i => cache.get(i) || cache.set(i, d.querySelector('#'+i)).get(i);
-        })(),
-        L:async(k,d)=>{
-            try{
-                const accounts = await w.ethereum?.request({method: 'eth_accounts'});
-                const a = accounts?.[0];
-                return k ? 
-                    localStorage.setItem(`p${a}${d}`,JSON.stringify(k)) : 
-                    JSON.parse(localStorage.getItem(`p${a}${d}`));
-            }catch(e){}
+        // State management
+        Y={
+            p:0,s:0,n:[],                  // Provider, signer, news array
+            t:Date.now(),                  // Timestamp
+            l:0,m:0,                       // Loading state, more data flag
+            last:null,                     // Pagination
+            min:10,                        // Minimum items to display
+            batch:250,                     // Batch size
+            cache:new Map(),               // Content cache
+            tx:new Set()                   // Processed tx tracker
         },
+        // Contract constants
+        U='0xd9157453e2668b2fc45b7a803d3fef3642430cc0',
+        A=[{"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}];
+
+    // Utility functions
+    const G={
+        // Optimized element cache
+        $:(()=>{
+            const c=new Map();
+            return i=>c.get(i)||(e=d.querySelector('#'+i),c.set(i,e),e)
+        })(),
+        // Async storage with retry
+        L:async(k,d,r=3)=>{
+            while(r--) try{
+                const a=(await w.ethereum?.request({method:'eth_accounts'}))?.[0];
+                return k?
+                    localStorage.setItem(`p${a}${d}`,JSON.stringify(k)):
+                    JSON.parse(localStorage.getItem(`p${a}${d}`));
+            }catch(e){if(!r)console.warn('Storage error:',e)}
+        },
+        // Address shortener
         H:s=>s?.slice(0,6)+'...'+s?.slice(-4)||'?',
-        R:(function(){
-            let t,f;
+        // Optimized renderer with virtualization
+        R:(()=>{
+            let t,f,v=[],p=0;
+            const chunk=20;
             return(m,x)=>{
-                if(f=G.$('newsFeed'),!m?.length&&!x)return f.innerHTML='<p>No news items to display.</p>';
-                t=t||d.createDocumentFragment();
-                let h='';
-                m.map(i=>{
-                    h+=`<article class="news-item"><div class="reporter-info"><img src="newTRBphoto.jpg" alt="" class="avatar"><div class="reporter-details"><span>${G.H(i.reporter)}</span><span>·${new Date(i.timestamp).toLocaleString()}</span></div></div><div>${i.content.replace(/[<>"'&]/g,c=>({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','&':'&amp;'}[c]))}</div><div class="report-actions">${['💬','👍','⚠️','✓'].map((e,j)=>`<button data-a="${'cldt'[j]}" data-r="${i.reporter}"${j==2?` data-q="${i.queryId}" data-t="${i.timestamp}"`:''}">${e}</button>`).join('')}</div></article>`
-                });
-                t.innerHTML=h;
-                x||(f.innerHTML='');
-                requestAnimationFrame(()=>{f.appendChild(t.cloneNode(true));f.style.visibility='visible'})
+                if(f=G.$('newsFeed'),!m?.length&&!x)
+                    return f.innerHTML='<p>No news items to display.</p>';
+                
+                if(!x)v=m;
+                else v=v.concat(m);
+                
+                const render=()=>{
+                    t=t||d.createDocumentFragment();
+                    const end=Math.min(p+chunk,v.length);
+                    let h='';
+                    
+                    for(let i=p;i<end;i++){
+                        const item=v[i];
+                        if(!item)continue;
+                        h+=`<article class="news-item"><div class="reporter-info"><img src="newTRBphoto.jpg" alt="" class="avatar"><div class="reporter-details"><span>${G.H(item.reporter)}</span><span>·${new Date(item.timestamp).toLocaleString()}</span></div></div><div>${item.content.replace(/[<>"'&]/g,c=>({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','&':'&amp;'}[c]))}</div><div class="report-actions">${['💬','👍','⚠️','✓'].map((e,j)=>`<button data-a="${'cldt'[j]}" data-r="${item.reporter}"${j==2?` data-q="${item.queryId}" data-t="${item.timestamp}"`:''}">${e}</button>`).join('')}</div></article>`;
+                    }
+                    
+                    t.innerHTML=h;
+                    if(!x&&p===0)f.innerHTML='';
+                    requestAnimationFrame(()=>{
+                        f.appendChild(t.cloneNode(true));
+                        f.style.visibility='visible';
+                        p=end;
+                        if(p<v.length)setTimeout(render,50);
+                    });
+                };
+                p=0;
+                render();
             }
         })(),
+        // Content decoder with cache
         D:b=>{
-            while(b.length>0&&b[b.length-1]===0)b=b.slice(0,-1);
-            try{return E.utils.toUtf8String(b)}catch(e){return E.utils.toUtf8String(b.slice(0,e.offset),true)}
+            const k=b.toString();
+            if(Y.cache.has(k))return Y.cache.get(k);
+            try{
+                while(b.length>0&&b[b.length-1]===0)b=b.slice(0,-1);
+                const r=E.utils.toUtf8String(b);
+                Y.cache.set(k,r);
+                return r;
+            }catch(e){
+                const r=E.utils.toUtf8String(b.slice(0,e.offset),true);
+                Y.cache.set(k,r);
+                return r;
+            }
         }
     };
 
+    // Event controller
     const X=new Map();
 
+    // Optimized feed loader
     const F=async(r=0)=>{
         if(Y.l||(!r&&Y.m))return;
         Y.l=1;
@@ -57,67 +101,84 @@
             Y.n=[];
             Y.m=0;
             Y.last=null;
+            Y.tx.clear();
             G.$('newsFeed').innerHTML='';
         }
 
-        let newItems = [];
-        try {
-            while(newItems.length < Y.min && !Y.m) {
-                const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=100${Y.last?'&'+new URLSearchParams(Y.last).toString():''}`;
-                console.log('Fetching:', u);
+        let newItems=[],processedCount=0;
+        try{
+            const loadBatch=async()=>{
+                const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=${Y.batch}${Y.last?'&'+new URLSearchParams(Y.last).toString():''}`;
+                console.log('Fetching batch:',processedCount);
                 const r=await fetch(u);
-                if(!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
+                if(!r.ok)throw new Error(`HTTP error! status: ${r.status}`);
                 const d=await r.json();
-                console.log('Response items:', d?.items?.length);
                 
-                if(!d?.items?.length){
-                    Y.m=1;
-                    break;
-                }
+                if(!d?.items?.length)return false;
                 
                 for(let t of d.items){
-                    if(t.method === 'submitValue' && t.decoded_input?.parameters?.length >= 4){
+                    if(Y.tx.has(t.hash))continue;
+                    Y.tx.add(t.hash);
+                    
+                    if(t.method==='submitValue'&&t.decoded_input?.parameters?.length>=4){
                         try{
-                            const [q,b] = E.utils.defaultAbiCoder.decode(
-                                ['string','bytes'],
-                                t.decoded_input.parameters[3].value
-                            );
-                            if(q === "StringQuery"){
-                                const c = G.D(b);
-                                if(c.trim()) newItems.push({
-                                    content: c,
-                                    reporter: t.from.hash || t.from,
-                                    timestamp: t.timestamp || t.block_timestamp,
-                                    queryId: t.decoded_input.parameters[0].value
-                                });
+                            const valueData=t.decoded_input.parameters[1].value;
+                            const [newsType]=E.utils.defaultAbiCoder.decode(['string','bytes'],valueData);
+                            
+                            if(newsType==="NEWS"){
+                                const [queryType,contentBytes]=E.utils.defaultAbiCoder.decode(
+                                    ['string','bytes'],
+                                    t.decoded_input.parameters[3].value
+                                );
+                                if(queryType==="StringQuery"){
+                                    const content=G.D(contentBytes);
+                                    if(content.trim())newItems.push({
+                                        content,
+                                        reporter:t.from.hash||t.from,
+                                        timestamp:t.timestamp||t.block_timestamp,
+                                        queryId:t.decoded_input.parameters[0].value
+                                    });
+                                }
                             }
                         }catch(e){
-                            console.warn("Decode error:", e);
+                            console.warn("Decode error:",e);
                         }
                     }
                 }
                 
-                Y.last = d.next_page_params || null;
-                Y.m = !Y.last;
-                
-                if(Y.m) break;
+                processedCount+=d.items.length;
+                Y.last=d.next_page_params||null;
+                return !Y.m;
+            };
+
+            let hasMore=await loadBatch();
+            console.log(`Initial batch: ${newItems.length} news items from ${processedCount} transactions`);
+
+            if(newItems.length<Y.min&&hasMore){
+                const batchPromises=[];
+                const maxParallelBatches=3;
+                for(let i=0;i<maxParallelBatches&&hasMore;i++){
+                    batchPromises.push(loadBatch());
+                }
+                await Promise.all(batchPromises);
             }
             
-            console.log('Processed items total:', newItems.length);
+            console.log(`Total processed: ${processedCount} txs, found ${newItems.length} news items`);
             
             if(newItems.length){
+                newItems.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
                 Y.n.push(...newItems);
-                G.R(newItems, !r);
-                await G.L(Y.n.slice(0,50), 'n');
-            } else if(!Y.n.length) {
+                G.R(newItems,!r);
+                await G.L(Y.n.slice(0,50),'n');
+            }else if(!Y.n.length){
                 G.R([]);
             }
             
-            G.$('loadMoreButton').style[_] = Y.m ? v : z;
+            G.$('loadMoreButton').style[_]=Y.m?v:z;
             
         }catch(e){
-            console.error('Feed error:', e);
-            if(!Y.n.length) G.R([]);
+            console.error('Feed error:',e);
+            if(!Y.n.length)G.R([]);
         }finally{
             Y.l=0;
             o.style[_]=v;
@@ -138,7 +199,9 @@
 
                 ['connectWallet','publishStory','walletInfo','walletAddress'].map(i=>{
                     let e=G.$(i);
-                    e&&(e.style[_]=i=='walletInfo'?z:v,i=='walletAddress'&&(e.textContent=G.H(a)),i=='publishStory'&&(e.disabled=0))
+                    e&&(e.style[_]=i=='walletInfo'?z:v,
+                        i=='walletAddress'&&(e.textContent=G.H(a)),
+                        i=='publishStory'&&(e.disabled=0))
                 });
                 
                 G.$('reportContent').placeholder="What's happening?";
@@ -147,7 +210,7 @@
                 w.ethereum.removeEventListener('accountsChanged',M);
                 w.ethereum.addEventListener('chainChanged',()=>location.reload());
                 w.ethereum.addEventListener('accountsChanged',M);
-            }catch(e){console.log(e)}
+            }catch(e){console.warn('Wallet error:',e)}
         };
 
         const P=async()=>{
@@ -169,7 +232,7 @@
                 Y.n.unshift(s);
                 await G.L(Y.n,'n');
                 G.R([s],1)
-            }catch(e){console.log(e)}finally{
+            }catch(e){console.warn('Post error:',e)}finally{
                 p.disabled=0;
                 o.style[_]=v
             }
@@ -190,43 +253,45 @@
             }
         });
 
-        // Setup event listeners - moved inside DOMContentLoaded
-        const setupEventListeners = () => {
+        const setupEventListeners=()=>{
             ['connectWallet','publishStory','search-input','loadMoreButton'].forEach((i,x)=>{
                 const e=G.$(i);
-                if(!e) return;
+                if(!e)return;
 
-                const oldController = X.get(i);
-                if(oldController) oldController.abort();
+                const oldController=X.get(i);
+                if(oldController)oldController.abort();
 
-                const controller = new AbortController();
-                X.set(i, controller);
+                const controller=new AbortController();
+                X.set(i,controller);
 
-                if(x < 2) {
-                    e.addEventListener('click', x ? P : M, {signal: controller.signal});
-                } else if(x === 2) {
-                    const s = _ => {
-                        const v = e.value.toLowerCase();
-                        T.add(v);
-                        setTimeout(_=>T.delete(v),300);
-                        if(T.size>1)return;
-                        G.R(Y.n.filter(i=>G.H(i.reporter).toLowerCase().includes(v)||i.content.toLowerCase().includes(v)));
+                if(x<2){
+                    e.addEventListener('click',x?P:M,{signal:controller.signal});
+                }else if(x===2){
+                    let debounceTimeout;
+                    const s=_=>{
+                        clearTimeout(debounceTimeout);
+                        debounceTimeout=setTimeout(()=>{
+                            const v=e.value.toLowerCase();
+                            G.R(Y.n.filter(i=>
+                                G.H(i.reporter).toLowerCase().includes(v)||
+                                i.content.toLowerCase().includes(v)
+                            ));
+                        },300);
                     };
-                    e.addEventListener('input', s, {signal: controller.signal});
-                    e.addEventListener('keypress', e=>'Enter'===e.key&&s(), {signal: controller.signal});
-                } else {
-                    e.addEventListener('click', ()=>F(), {signal: controller.signal});
+                    e.addEventListener('input',s,{signal:controller.signal});
+                    e.addEventListener('keypress',e=>'Enter'===e.key&&s(),{signal:controller.signal});
+                }else{
+                    e.addEventListener('click',()=>F(),{signal:controller.signal});
                 }
             });
         };
 
-        // Initial setup
         setupEventListeners();
         const L=await G.L(0,'n');
         if(L){
             Y.n=L;
             G.R(L);
         }
-        await F(1); // Force initial load
+        await F(1);
     });
 })();
