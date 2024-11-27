@@ -1,208 +1,283 @@
-(()=>{
-    let w=window,d=document,E=w.ethers,T=new Set,
-        $=d.querySelector.bind(d),
-        S={
-            p:0,s:0,n:[],           // provider, signer, news
-            l:0,                     // loading flag
-            m:0,                     // no more data flag
-            q:null,                  // last query params
-            b:100                    // batch size
-        },
-        U='0xd9157453e2668b2fc45b7a803d3fef3642430cc0',
-        A=[{"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}],
-        e={
-            n:$('#newsFeed'),
-            l:$('#loadingOverlay'),
-            c:$('#reportContent'),
-            p:$('#publishStory'),
-            w:$('#walletInfo'),
-            a:$('#walletAddress'),
-            m:$('#loadMoreButton')
-        };
+document.addEventListener('DOMContentLoaded', () => {
+    const ethers = window.ethers;
+    const $ = id => document.getElementById(id);
+    let provider, signer, contract;
+    const allNewsItems = [];
+    let isLoading = false, noMoreData = false, isSearchActive = false;
+    let lastTransactionParams = null;
 
-    // Utility functions
-    const H=s=>s?.slice(0,6)+'...'+s?.slice(-4)||'?',
-          D=b=>{try{while(b.length>0&&b[b.length-1]===0)b=b.slice(0,-1);return E.utils.toUtf8String(b)}catch(e){return E.utils.toUtf8String(b.slice(0,e.offset),true)}},
-          L=(k,d)=>k?localStorage.setItem(d,JSON.stringify(k)):JSON.parse(localStorage.getItem(d)),
-          R=(m,x)=>{
-              if(!m?.length&&!x)return e.n.innerHTML='<p>No news items to display.</p>';
-              const h=m.map(i=>`<article class="news-item"><div class="reporter-info"><img src="newTRBphoto.jpg" alt="" class="avatar"><div class="reporter-details"><span>${H(i.reporter)}</span><span>·${new Date(i.timestamp).toLocaleString()}</span></div></div><div>${i.content.replace(/[<>"'&]/g,c=>({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','&':'&amp;'}[c]))}</div><div class="report-actions">${['💬','👍','⚠️','✓'].map((e,j)=>`<button data-a="${'cldt'[j]}" data-r="${i.reporter}"${j==2?` data-q="${i.queryId}" data-t="${i.timestamp}"`:''}">${e}</button>`).join('')}</div></article>`).join('');
-              x||(e.n.innerHTML='');
-              requestAnimationFrame(()=>{e.n.insertAdjacentHTML('beforeend',h);e.n.style.visibility='visible'});
-          };
+    const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
+    const contractABI = [
+        {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+    ];
 
-    // Load news feed
-    const F=async(r=0)=>{
-        if(S.l||(!r&&S.m))return;
-        S.l=1;
-        e.l.style.display='block';
+    const elements = {
+        newsFeed: $('newsFeed'),
+        loadMoreButton: $('loadMoreButton'),
+        loadingOverlay: $('loadingOverlay'),
+        reportContent: $('reportContent'),
+        searchInput: $('search-input'),
+        publishStory: $('publishStory'),
+        connectWallet: $('connectWallet'),
+        walletInfo: $('walletInfo'),
+        walletAddress: $('walletAddress'),
+        postButton: $('postButton'),
+        searchButton: $('search-button')
+    };
+
+    const showLoading = show => elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+
+    const displayStatus = (message, isError = false) => {
+        console.log(isError ? `Error: ${message}` : message);
+        // Implement a more visible status display here if needed
+    };
+
+    const shortenAddress = address => {
+        if (typeof address !== 'string') return 'Unknown';
+        return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
+    };
+
+    const formatDate = timestamp => {
+        const date = new Date(timestamp);
+        return date.toLocaleString('en-US', { 
+            month: 'numeric', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: 'numeric', 
+            minute: 'numeric',
+            hour12: true 
+        });
+    };
+
+    const decodeContent = (reportContentBytes) => {
+        try {
+            // Remove null bytes from the end
+            while (reportContentBytes.length > 0 && reportContentBytes[reportContentBytes.length - 1] === 0) {
+                reportContentBytes = reportContentBytes.slice(0, -1);
+            }
+            return ethers.utils.toUtf8String(reportContentBytes);
+        } catch (error) {
+            console.warn("Failed to decode content:", error);
+            // Attempt to decode as much as possible
+            return ethers.utils.toUtf8String(reportContentBytes.slice(0, error.offset), true);
+        }
+    };
+
+    const renderNews = (items, append = false) => {
+        if (!items.length && !append) {
+            elements.newsFeed.innerHTML = '<p>No news items to display.</p>';
+            return;
+        }
+        const fragment = document.createDocumentFragment();
+        items.forEach((item, index) => {
+            const article = document.createElement('article');
+            article.id = `news-item-${append ? allNewsItems.length + index : index}`;
+            article.className = 'news-item';
+            article.innerHTML = `
+                <div class="reporter-info">
+                    <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
+                    <div class="reporter-details">
+                        <span class="reporter-name">${shortenAddress(item.reporter)}</span>
+                        <span class="report-timestamp">· ${formatDate(item.timestamp)}</span>
+                    </div>
+                </div>
+                <div class="report-content">
+                    ${item.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
+                </div>
+                <div class="report-actions">
+                    <button onclick="commentNews('${item.reporter}')">Comment</button>
+                    <button onclick="likeNews('${item.reporter}')">Like</button>
+                    <button onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
+                    <button onclick="voteNews('${item.reporter}')">Vote</button>
+                </div>
+            `;
+            fragment.appendChild(article);
+        });
+        if (!append) elements.newsFeed.innerHTML = '';
+        elements.newsFeed.appendChild(fragment);
+        elements.newsFeed.style.visibility = 'visible';
+    };
+
+    const connectWallet = async () => {
+        try {
+            if (typeof window.ethereum !== 'undefined') {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                const address = await signer.getAddress();
+                elements.connectWallet.style.display = 'none';
+                elements.walletInfo.style.display = 'block';
+                elements.walletAddress.textContent = shortenAddress(address);
+                elements.publishStory.disabled = false;
+                elements.reportContent.placeholder = "What's happening?";
+                contract = new ethers.Contract(contractAddress, contractABI, signer);
+                displayStatus('Wallet connected.');
+            } else {
+                throw new Error("Ethereum provider not found. Please install MetaMask.");
+            }
+        } catch (e) {
+            displayStatus('Could not connect to wallet: ' + e.message, true);
+        }
+    };
+
+    const loadNewsFeed = async (reset = false) => {
+        if (isLoading || (noMoreData && !reset)) return;
+        isLoading = true;
+        showLoading(true);
         
-        if(r){
-            S.n=[];
-            S.m=0;
-            S.q=null;
-            e.n.innerHTML='';
+        if (reset) {
+            allNewsItems.length = 0;
+            noMoreData = false;
+            lastTransactionParams = null;
+            elements.newsFeed.innerHTML = '';
         }
 
-        let n=[],c=0,processedTxs=new Set();
-        try{
-            const u=`https://api.scan.pulsechain.com/api/v2/addresses/${U}/transactions?filter=to&sort=desc&limit=${S.b}${S.q?'&'+new URLSearchParams(S.q):''}`
-            console.log('Fetching:', u);
-            const d=await(await fetch(u)).json();
-            
-            if(!d?.items?.length){
-                S.m=1;
-                e.m.style.display='none';
-                return;
-            }
-            
-            for(let t of d.items){
-                if(processedTxs.has(t.hash))continue;
-                processedTxs.add(t.hash);
-                c++;
+        const batchSize = 100; // Increased batch size
+        const minReportsToLoad = 10;
+        let newItems = [];
 
-                if(t.method==='submitValue' && t.decoded_input?.parameters?.length >= 4){
-                    try{
-                        // Debug logging
-                        console.log('Processing tx:', t.hash, 'Method:', t.method);
-                        console.log('Parameters:', t.decoded_input.parameters);
-                        
-                        // Important: Changed to extract content from queryData parameter
-                        const [queryType, contentBytes] = E.utils.defaultAbiCoder.decode(
-                            ['string', 'bytes'],
-                            t.decoded_input.parameters[3].value
-                        );
+        try {
+            while (newItems.length < minReportsToLoad && !noMoreData) {
+                const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=${batchSize}${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
+                const data = await response.json();
 
-                        // Debug logging
-                        console.log('Query type:', queryType);
+                if (!data.items || data.items.length === 0) {
+                    noMoreData = true;
+                    break;
+                }
 
-                        if(queryType === "StringQuery"){
-                            const content = D(contentBytes);
-                            if(content.trim()){
-                                const item = {
-                                    content: content,
-                                    reporter: t.from.hash || t.from,
-                                    timestamp: t.timestamp || t.block_timestamp,
-                                    queryId: t.decoded_input.parameters[0].value
-                                };
-                                console.log('Found news item:', item);
-                                n.push(item);
+                for (const tx of data.items) {
+                    if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
+                        try {
+                            const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
+                            if (queryType === "StringQuery") {
+                                const content = decodeContent(reportContentBytes);
+                                if (content.trim()) {
+                                    newItems.push({
+                                        content: content,
+                                        reporter: tx.from.hash || tx.from,
+                                        timestamp: tx.timestamp || tx.block_timestamp,
+                                        queryId: tx.decoded_input.parameters[0].value
+                                    });
+                                }
                             }
+                        } catch (decodeError) {
+                            console.warn("Failed to decode news item:", decodeError);
                         }
-                    }catch(e){
-                        console.warn('Decode error for tx', t.hash, ':', e);
                     }
                 }
+
+                lastTransactionParams = data.next_page_params || null;
+                noMoreData = !lastTransactionParams;
             }
-            
-            console.log(`Processed ${c} transactions, found ${n.length} news items`);
-            
-            if(n.length){
-                n.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
-                S.n.push(...n);
-                R(n,!r);
-                L(S.n.slice(0,50),'news');
-                console.log('Rendered news items:', n);
-            }else if(!S.n.length){
-                R([]);
+
+            if (newItems.length > 0) {
+                allNewsItems.push(...newItems);
+                renderNews(newItems, !reset);
+                displayStatus(`Loaded ${newItems.length} new items.`);
+                saveToLocalStorage();
+            } else {
+                displayStatus("No new items available.");
             }
-            
-            S.q=d.next_page_params||null;
-            S.m=!S.q;
-            e.m.style.display=S.m?'none':'block';
-            
-        }catch(e){
-            console.error('Feed error:',e);
-            R([]);
-        }finally{
-            S.l=0;
-            e.l.style.display='none';
+
+            elements.loadMoreButton.style.display = noMoreData ? 'none' : 'block';
+        } catch (error) {
+            displayStatus('Error loading news feed: ' + error.message, true);
+        } finally {
+            isLoading = false;
+            showLoading(false);
         }
     };
 
-    // Submit news
-    const P=async()=>{
-        const v=e.c.value.trim();
-        if(!v||!S.s)return;
-        e.p.disabled=1;
-        e.l.style.display='block';
-        try{
-            const b=E.utils.toUtf8Bytes(v),
-                  q=E.utils.defaultAbiCoder.encode(['string','bytes'],['StringQuery',b]),
-                  i=E.utils.keccak256(q),
-                  n=await S.c.getNewValueCountbyQueryId(i),
-                  t=await S.c.submitValue(i,E.utils.defaultAbiCoder.encode(['string','bytes'],['NEWS',b]),n,q,{
-                      gasLimit:(await S.c.estimateGas.submitValue(i,v,n,q)).mul(120).div(100)
-                  });
-            await t.wait();
-            e.c.value='';
-            const s={content:v,reporter:await S.s.getAddress(),timestamp:new Date().toISOString(),queryId:i};
-            S.n.unshift(s);
-            L(S.n,'news');
-            R([s],1);
-        }catch(e){console.warn('Post error:',e)}
-        finally{
-            e.p.disabled=0;
-            e.l.style.display='none';
+    const saveToLocalStorage = () => {
+        const itemsToSave = allNewsItems.slice(0, 50); // Save only the 50 most recent items
+        localStorage.setItem('newsItems', JSON.stringify(itemsToSave));
+    };
+
+    const loadFromLocalStorage = () => {
+        const savedItems = localStorage.getItem('newsItems');
+        if (savedItems) {
+            const parsedItems = JSON.parse(savedItems);
+            allNewsItems.push(...parsedItems);
+            renderNews(parsedItems);
+            displayStatus(`Loaded ${parsedItems.length} items from cache.`);
         }
     };
 
-    // Connect wallet
-    const M=async()=>{
-        try{
-            if(!w.ethereum)throw'📱';
-            S.p=new E.providers.Web3Provider(w.ethereum);
-            await S.p.send("eth_requestAccounts",[]);
-            S.s=S.p.getSigner();
-            const a=await S.s.getAddress();
-            S.c=new E.Contract(U,A,S.s);
-            $('#connectWallet').style.display='none';
-            e.w.style.display='block';
-            e.a.textContent=H(a);
-            e.p.disabled=0;
-            e.c.placeholder="What's happening?";
-            w.ethereum.removeEventListener('chainChanged',location.reload);
-            w.ethereum.removeEventListener('accountsChanged',M);
-            w.ethereum.addEventListener('chainChanged',()=>location.reload());
-            w.ethereum.addEventListener('accountsChanged',M);
-        }catch(e){console.warn('Wallet error:',e)}
+    const submitStory = async () => {
+        const content = elements.reportContent.value.trim();
+        if (!content) return displayStatus('Please enter a story before submitting.', true);
+        elements.publishStory.disabled = true;
+        showLoading(true);
+        try {
+            if (!signer) throw new Error("Wallet not connected.");
+            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(content)]);
+            const queryId = ethers.utils.keccak256(queryData);
+            const nonce = await contract.getNewValueCountbyQueryId(queryId);
+            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(content)]);
+            const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
+            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.mul(120).div(100) });
+            await tx.wait();
+            displayStatus("Story successfully submitted!");
+            elements.reportContent.value = '';
+            const newStory = {
+                content: content,
+                reporter: await signer.getAddress(),
+                timestamp: new Date().toISOString(),
+                queryId: queryId
+            };
+            allNewsItems.unshift(newStory);
+            renderNews([newStory], true);
+            saveToLocalStorage();
+        } catch (error) {
+            displayStatus('Error submitting story: ' + error.message, true);
+        } finally {
+            elements.publishStory.disabled = false;
+            showLoading(false);
+        }
     };
 
-    // Initialize
-    d.addEventListener('DOMContentLoaded',async()=>{
-        // Event listeners setup
-        ['connectWallet','publishStory','search-input','loadMoreButton'].forEach((i,x)=>{
-            const el=$(i);
-            if(!el)return;
-            if(x<2)el.addEventListener('click',x?P:M);
-            else if(x===2){
-                let t;
-                el.addEventListener('input',_=>{
-                    clearTimeout(t);
-                    t=setTimeout(()=>{
-                        const v=el.value.toLowerCase();
-                        R(S.n.filter(i=>H(i.reporter).toLowerCase().includes(v)||i.content.toLowerCase().includes(v)));
-                    },300);
-                });
-            }else el.addEventListener('click',()=>F());
-        });
+    const performSearch = () => {
+        const searchTerm = elements.searchInput.value.toLowerCase();
+        const filteredItems = allNewsItems.filter(item => 
+            shortenAddress(item.reporter).toLowerCase().includes(searchTerm) || 
+            item.content.toLowerCase().includes(searchTerm)
+        );
+        renderNews(filteredItems);
+        displayStatus(filteredItems.length ? `Found ${filteredItems.length} result(s).` : "No results found.");
+        isSearchActive = true;
+        elements.loadMoreButton.style.display = 'none';
+    };
 
-        // Click handler for action buttons
-        d.addEventListener('click',e=>{
-            const t=e.target;
-            if(t.tagName==='BUTTON'){
-                const{a,r,q,t:time}=t.dataset;
-                if(a==='d')w.disputeNews?.(r,q,time);
-            }
-        });
+    const clearSearch = () => {
+        isSearchActive = false;
+        elements.searchInput.value = '';
+        renderNews(allNewsItems);
+        elements.loadMoreButton.style.display = 'block';
+    };
 
-        // Initialize feed
-        const c=L(0,'news');
-        if(c){
-            console.log('Loaded from cache:', c);
-            S.n=c;
-            R(c);
-        }
-        await F(1);
+    // Event Listeners
+    elements.connectWallet.addEventListener('click', connectWallet);
+    elements.publishStory.addEventListener('click', submitStory);
+    elements.searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch());
+    elements.searchButton.addEventListener('click', performSearch);
+    elements.loadMoreButton.addEventListener('click', () => loadNewsFeed());
+    elements.postButton.addEventListener('click', () => elements.reportContent.focus());
+    elements.reportContent.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
     });
-})();
+
+    // Global functions
+    window.commentNews = reporter => console.log(`Comment on news by reporter: ${shortenAddress(reporter)}`);
+    window.likeNews = reporter => console.log(`Like news by reporter: ${shortenAddress(reporter)}`);
+    window.voteNews = reporter => console.log(`Vote on news by reporter: ${shortenAddress(reporter)}`);
+    window.disputeNews = (reporter, queryId, timestamp) => {
+        console.log(`Dispute news by reporter: ${shortenAddress(reporter)}, QueryID: ${queryId}, Timestamp: ${timestamp}`);
+    };
+
+    // Initial load
+    loadFromLocalStorage();
+    loadNewsFeed();
+});
