@@ -1,283 +1,291 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const ethers = window.ethers;
-    const $ = id => document.getElementById(id);
-    let provider, signer, contract;
-    const allNewsItems = [];
-    let isLoading = false, noMoreData = false, isSearchActive = false;
-    let lastTransactionParams = null;
+const CONFIG = {
+    CONTRACT: {
+        ADDR: '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0',
+        ABI: [
+            {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+        ]
+    },
+    API_URL: 'https://api.scan.pulsechain.com/api/v2/addresses/',
+    BATCH: 100,
+    MIN: 10,
+    MAX_REQ: 3,
+    TTL: 300000,
+    STORE: 'newsItems',
+    LIMIT: 50
+};
 
-    const contractAddress = '0xD9157453E2668B2fc45b7A803D3FEF3642430cC0';
-    const contractABI = [
-        {"inputs":[{"name":"_queryId","type":"bytes32"},{"name":"_value","type":"bytes"},{"name":"_nonce","type":"uint256"},{"name":"_queryData","type":"bytes"}],"name":"submitValue","outputs":[],"stateMutability":"nonpayable","type":"function"},
-        {"inputs":[{"name":"_queryId","type":"bytes32"}],"name":"getNewValueCountbyQueryId","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
-    ];
+class App {
+    constructor() {
+        this.eth = window.ethers;
+        this.cache = new Map();
+        this.state = { i: [], l: false, n: false, s: false, p: null, r: new Set() };
+        this.$ = id => this._els?.[id] || (this._els = {})[id] || (this._els[id] = document.getElementById(id));
+        this.init();
+    }
 
-    const elements = {
-        newsFeed: $('newsFeed'),
-        loadMoreButton: $('loadMoreButton'),
-        loadingOverlay: $('loadingOverlay'),
-        reportContent: $('reportContent'),
-        searchInput: $('search-input'),
-        publishStory: $('publishStory'),
-        connectWallet: $('connectWallet'),
-        walletInfo: $('walletInfo'),
-        walletAddress: $('walletAddress'),
-        postButton: $('postButton'),
-        searchButton: $('search-button')
-    };
+    async init() {
+        this.events();
+        await this.load();
+        this.feed();
+        setInterval(() => this.clean(), CONFIG.TTL);
+    }
 
-    const showLoading = show => elements.loadingOverlay.style.display = show ? 'flex' : 'none';
-
-    const displayStatus = (message, isError = false) => {
-        console.log(isError ? `Error: ${message}` : message);
-        // Implement a more visible status display here if needed
-    };
-
-    const shortenAddress = address => {
-        if (typeof address !== 'string') return 'Unknown';
-        return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
-    };
-
-    const formatDate = timestamp => {
-        const date = new Date(timestamp);
-        return date.toLocaleString('en-US', { 
-            month: 'numeric', 
-            day: 'numeric', 
-            year: 'numeric',
-            hour: 'numeric', 
-            minute: 'numeric',
-            hour12: true 
+    events() {
+        document.addEventListener('click', e => {
+            const t = e.target;
+            const acts = { connectWallet: this.connect, publishStory: this.submit, loadMoreButton: () => this.feed() };
+            if (acts[t.id]) acts[t.id].call(this);
+            else if (t.matches('.action-btn')) this.act(t);
         });
-    };
 
-    const decodeContent = (reportContentBytes) => {
-        try {
-            // Remove null bytes from the end
-            while (reportContentBytes.length > 0 && reportContentBytes[reportContentBytes.length - 1] === 0) {
-                reportContentBytes = reportContentBytes.slice(0, -1);
-            }
-            return ethers.utils.toUtf8String(reportContentBytes);
-        } catch (error) {
-            console.warn("Failed to decode content:", error);
-            // Attempt to decode as much as possible
-            return ethers.utils.toUtf8String(reportContentBytes.slice(0, error.offset), true);
+        const s = this.$('searchInput');
+        let st;
+        s?.addEventListener('input', () => {
+            clearTimeout(st);
+            st = setTimeout(() => this.search(), 300);
+        });
+
+        const r = this.$('reportContent');
+        r && new ResizeObserver(() => requestAnimationFrame(() => {
+            r.style.height = 'auto';
+            r.style.height = r.scrollHeight + 'px';
+        })).observe(r);
+    }
+
+    async getTx(p) {
+        const k = JSON.stringify(p);
+        if (this.cache.has(k)) return this.cache.get(k);
+
+        const url = `${CONFIG.API_URL}${CONFIG.CONTRACT.ADDR}/transactions?filter=to&sort=desc&limit=${CONFIG.BATCH}${p ? '&' + new URLSearchParams(p) : ''}`;
+        if (this.state.r.has(url)) {
+            await new Promise(r => setTimeout(r, 100));
+            return this.getTx(p);
         }
-    };
 
-    const renderNews = (items, append = false) => {
+        this.state.r.add(url);
+        try {
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const d = await r.json();
+            this.cache.set(k, d);
+            return d;
+        } finally {
+            this.state.r.delete(url);
+        }
+    }
+
+    async procTx(b) {
+        if (!b?.items?.length) {
+            this.state.n = true;
+            return [];
+        }
+
+        const items = await Promise.all(b.items
+            .filter(t => t.method === 'submitValue' && t.decoded_input?.parameters?.length >= 4)
+            .map(async t => {
+                try {
+                    const [y, b] = this.eth.utils.defaultAbiCoder.decode(['string', 'bytes'], t.decoded_input.parameters[3].value);
+                    if (y !== "StringQuery") return null;
+                    const c = await this.decode(b);
+                    return c.trim() ? {
+                        content: c,
+                        reporter: t.from.hash || t.from,
+                        timestamp: t.timestamp || t.block_timestamp,
+                        queryId: t.decoded_input.parameters[0].value
+                    } : null;
+                } catch (e) {
+                    console.warn("Tx error:", e);
+                    return null;
+                }
+            }));
+
+        this.state.p = b.next_page_params || null;
+        this.state.n = !this.state.p;
+        return items.filter(Boolean);
+    }
+
+    async decode(b) {
+        const k = b.toString();
+        if (this.cache.has(k)) return this.cache.get(k);
+        try {
+            let e = b.length;
+            while (e > 0 && b[e - 1] === 0) e--;
+            const c = this.eth.utils.toUtf8String(b.slice(0, e));
+            this.cache.set(k, c);
+            return c;
+        } catch (e) {
+            const c = this.eth.utils.toUtf8String(b.slice(0, e.offset), true);
+            this.cache.set(k, c);
+            return c;
+        }
+    }
+
+    async feed(reset) {
+        if (this.state.l || (this.state.n && !reset)) return;
+        
+        this.state.l = true;
+        this.toggle(true);
+
+        if (reset) {
+            this.state.i = [];
+            this.state.n = false;
+            this.state.p = null;
+            this.$('newsFeed').textContent = '';
+        }
+
+        try {
+            const q = [], ni = [];
+            while (ni.length < CONFIG.MIN && !this.state.n) {
+                q.push(this.getTx(this.state.p));
+                if (q.length >= CONFIG.MAX_REQ) {
+                    const i = await this.procTx(await q.shift());
+                    ni.push(...i);
+                }
+            }
+
+            while (q.length) {
+                const i = await this.procTx(await q.shift());
+                ni.push(...i);
+            }
+
+            if (ni.length) {
+                this.state.i = reset ? ni : [...this.state.i, ...ni];
+                await this.render(ni, !reset);
+                localStorage.setItem(CONFIG.STORE, JSON.stringify(this.state.i.slice(0, CONFIG.LIMIT)));
+            }
+            
+            this.$('loadMoreButton').style.display = this.state.n ? 'none' : 'block';
+        } catch (e) {
+            console.error('Feed:', e);
+        } finally {
+            this.state.l = false;
+            this.toggle(false);
+        }
+    }
+
+    render(items, append) {
         if (!items.length && !append) {
-            elements.newsFeed.innerHTML = '<p>No news items to display.</p>';
+            this.$('newsFeed').innerHTML = '<p>No items</p>';
             return;
         }
-        const fragment = document.createDocumentFragment();
-        items.forEach((item, index) => {
-            const article = document.createElement('article');
-            article.id = `news-item-${append ? allNewsItems.length + index : index}`;
-            article.className = 'news-item';
-            article.innerHTML = `
-                <div class="reporter-info">
-                    <img src="newTRBphoto.jpg" alt="Reporter Avatar" class="avatar">
-                    <div class="reporter-details">
-                        <span class="reporter-name">${shortenAddress(item.reporter)}</span>
-                        <span class="report-timestamp">· ${formatDate(item.timestamp)}</span>
+
+        const f = document.createDocumentFragment();
+        const t = document.createElement('template');
+
+        items.forEach(i => {
+            t.innerHTML = `
+                <article class="news-item">
+                    <div class="reporter-info">
+                        <img src="newTRBphoto.jpg" alt="Reporter" class="avatar">
+                        <div class="reporter-details">
+                            <span class="reporter-name">${this.short(i.reporter)}</span>
+                            <span class="report-timestamp">· ${this.date(i.timestamp)}</span>
+                        </div>
                     </div>
-                </div>
-                <div class="report-content">
-                    ${item.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
-                </div>
-                <div class="report-actions">
-                    <button onclick="commentNews('${item.reporter}')">Comment</button>
-                    <button onclick="likeNews('${item.reporter}')">Like</button>
-                    <button onclick="disputeNews('${item.reporter}', '${item.queryId}', '${item.timestamp}')">Dispute</button>
-                    <button onclick="voteNews('${item.reporter}')">Vote</button>
-                </div>
-            `;
-            fragment.appendChild(article);
+                    <div class="report-content">${i.content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}</div>
+                    <div class="report-actions" data-reporter="${i.reporter}" data-query-id="${i.queryId}" data-timestamp="${i.timestamp}">
+                        <button class="action-btn" data-action="comment">Comment</button>
+                        <button class="action-btn" data-action="like">Like</button>
+                        <button class="action-btn" data-action="dispute">Dispute</button>
+                        <button class="action-btn" data-action="vote">Vote</button>
+                    </div>
+                </article>
+            `.trim();
+            f.appendChild(t.content.firstChild);
         });
-        if (!append) elements.newsFeed.innerHTML = '';
-        elements.newsFeed.appendChild(fragment);
-        elements.newsFeed.style.visibility = 'visible';
-    };
 
-    const connectWallet = async () => {
-        try {
-            if (typeof window.ethereum !== 'undefined') {
-                provider = new ethers.providers.Web3Provider(window.ethereum);
-                await provider.send("eth_requestAccounts", []);
-                signer = provider.getSigner();
-                const address = await signer.getAddress();
-                elements.connectWallet.style.display = 'none';
-                elements.walletInfo.style.display = 'block';
-                elements.walletAddress.textContent = shortenAddress(address);
-                elements.publishStory.disabled = false;
-                elements.reportContent.placeholder = "What's happening?";
-                contract = new ethers.Contract(contractAddress, contractABI, signer);
-                displayStatus('Wallet connected.');
-            } else {
-                throw new Error("Ethereum provider not found. Please install MetaMask.");
-            }
-        } catch (e) {
-            displayStatus('Could not connect to wallet: ' + e.message, true);
-        }
-    };
+        requestAnimationFrame(() => {
+            const nf = this.$('newsFeed');
+            if (!append) nf.textContent = '';
+            nf.appendChild(f);
+            nf.style.visibility = 'visible';
+        });
+    }
 
-    const loadNewsFeed = async (reset = false) => {
-        if (isLoading || (noMoreData && !reset)) return;
-        isLoading = true;
-        showLoading(true);
-        
-        if (reset) {
-            allNewsItems.length = 0;
-            noMoreData = false;
-            lastTransactionParams = null;
-            elements.newsFeed.innerHTML = '';
+    search() {
+        const t = this.$('searchInput').value.toLowerCase();
+        if (!t) {
+            this.state.s = false;
+            this.render(this.state.i);
+            this.$('loadMoreButton').style.display = 'block';
+            return;
         }
 
-        const batchSize = 100; // Increased batch size
-        const minReportsToLoad = 10;
-        let newItems = [];
-
-        try {
-            while (newItems.length < minReportsToLoad && !noMoreData) {
-                const response = await fetch(`https://api.scan.pulsechain.com/api/v2/addresses/${contractAddress}/transactions?filter=to&sort=desc&limit=${batchSize}${lastTransactionParams ? '&' + new URLSearchParams(lastTransactionParams).toString() : ''}`);
-                const data = await response.json();
-
-                if (!data.items || data.items.length === 0) {
-                    noMoreData = true;
-                    break;
-                }
-
-                for (const tx of data.items) {
-                    if (tx.method === 'submitValue' && tx.decoded_input?.parameters?.length >= 4) {
-                        try {
-                            const [queryType, reportContentBytes] = ethers.utils.defaultAbiCoder.decode(['string', 'bytes'], tx.decoded_input.parameters[3].value);
-                            if (queryType === "StringQuery") {
-                                const content = decodeContent(reportContentBytes);
-                                if (content.trim()) {
-                                    newItems.push({
-                                        content: content,
-                                        reporter: tx.from.hash || tx.from,
-                                        timestamp: tx.timestamp || tx.block_timestamp,
-                                        queryId: tx.decoded_input.parameters[0].value
-                                    });
-                                }
-                            }
-                        } catch (decodeError) {
-                            console.warn("Failed to decode news item:", decodeError);
-                        }
-                    }
-                }
-
-                lastTransactionParams = data.next_page_params || null;
-                noMoreData = !lastTransactionParams;
-            }
-
-            if (newItems.length > 0) {
-                allNewsItems.push(...newItems);
-                renderNews(newItems, !reset);
-                displayStatus(`Loaded ${newItems.length} new items.`);
-                saveToLocalStorage();
-            } else {
-                displayStatus("No new items available.");
-            }
-
-            elements.loadMoreButton.style.display = noMoreData ? 'none' : 'block';
-        } catch (error) {
-            displayStatus('Error loading news feed: ' + error.message, true);
-        } finally {
-            isLoading = false;
-            showLoading(false);
-        }
-    };
-
-    const saveToLocalStorage = () => {
-        const itemsToSave = allNewsItems.slice(0, 50); // Save only the 50 most recent items
-        localStorage.setItem('newsItems', JSON.stringify(itemsToSave));
-    };
-
-    const loadFromLocalStorage = () => {
-        const savedItems = localStorage.getItem('newsItems');
-        if (savedItems) {
-            const parsedItems = JSON.parse(savedItems);
-            allNewsItems.push(...parsedItems);
-            renderNews(parsedItems);
-            displayStatus(`Loaded ${parsedItems.length} items from cache.`);
-        }
-    };
-
-    const submitStory = async () => {
-        const content = elements.reportContent.value.trim();
-        if (!content) return displayStatus('Please enter a story before submitting.', true);
-        elements.publishStory.disabled = true;
-        showLoading(true);
-        try {
-            if (!signer) throw new Error("Wallet not connected.");
-            const queryData = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", ethers.utils.toUtf8Bytes(content)]);
-            const queryId = ethers.utils.keccak256(queryData);
-            const nonce = await contract.getNewValueCountbyQueryId(queryId);
-            const value = ethers.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", ethers.utils.toUtf8Bytes(content)]);
-            const gasEstimate = await contract.estimateGas.submitValue(queryId, value, nonce, queryData);
-            const tx = await contract.submitValue(queryId, value, nonce, queryData, { gasLimit: gasEstimate.mul(120).div(100) });
-            await tx.wait();
-            displayStatus("Story successfully submitted!");
-            elements.reportContent.value = '';
-            const newStory = {
-                content: content,
-                reporter: await signer.getAddress(),
-                timestamp: new Date().toISOString(),
-                queryId: queryId
-            };
-            allNewsItems.unshift(newStory);
-            renderNews([newStory], true);
-            saveToLocalStorage();
-        } catch (error) {
-            displayStatus('Error submitting story: ' + error.message, true);
-        } finally {
-            elements.publishStory.disabled = false;
-            showLoading(false);
-        }
-    };
-
-    const performSearch = () => {
-        const searchTerm = elements.searchInput.value.toLowerCase();
-        const filteredItems = allNewsItems.filter(item => 
-            shortenAddress(item.reporter).toLowerCase().includes(searchTerm) || 
-            item.content.toLowerCase().includes(searchTerm)
+        const f = this.state.i.filter(i => 
+            this.short(i.reporter).toLowerCase().includes(t) || 
+            i.content.toLowerCase().includes(t)
         );
-        renderNews(filteredItems);
-        displayStatus(filteredItems.length ? `Found ${filteredItems.length} result(s).` : "No results found.");
-        isSearchActive = true;
-        elements.loadMoreButton.style.display = 'none';
+
+        this.render(f);
+        this.state.s = true;
+        this.$('loadMoreButton').style.display = 'none';
+    }
+
+    async connect() {
+        try {
+            if (!window.ethereum) throw new Error("Install MetaMask");
+            const p = new this.eth.providers.Web3Provider(window.ethereum);
+            await p.send("eth_requestAccounts", []);
+            const s = p.getSigner();
+            const a = await s.getAddress();
+            this.$('connectWallet').style.display = 'none';
+            this.$('walletInfo').style.display = 'block';
+            this.$('walletAddress').textContent = this.short(a);
+            this.$('publishStory').disabled = false;
+            this.contract = new this.eth.Contract(CONFIG.CONTRACT.ADDR, CONFIG.CONTRACT.ABI, s);
+        } catch (e) {
+            console.error('Wallet:', e);
+        }
+    }
+
+    async submit() {
+        const c = this.$('reportContent').value.trim();
+        if (!c) return;
+        
+        this.$('publishStory').disabled = true;
+        this.toggle(true);
+        
+        try {
+            if (!this.contract) throw new Error("Connect wallet");
+            const qd = this.eth.utils.defaultAbiCoder.encode(['string', 'bytes'], ["StringQuery", this.eth.utils.toUtf8Bytes(c)]);
+            const qid = this.eth.utils.keccak256(qd);
+            const n = await this.contract.getNewValueCountbyQueryId(qid);
+            const v = this.eth.utils.defaultAbiCoder.encode(['string', 'bytes'], ["NEWS", this.eth.utils.toUtf8Bytes(c)]);
+            const g = await this.contract.estimateGas.submitValue(qid, v, n, qd);
+            const tx = await this.contract.submitValue(qid, v, n, qd, { gasLimit: g.mul(120).div(100) });
+            await tx.wait();
+            
+            const ni = {
+                content: c,
+                reporter: await this.contract.signer.getAddress(),
+                timestamp: new Date().toISOString(),
+                queryId: qid
+            };
+            
+            this.state.i.unshift(ni);
+            this.render([ni], true);
+            this.$('reportContent').value = '';
+            localStorage.setItem(CONFIG.STORE, JSON.stringify(this.state.i.slice(0, CONFIG.LIMIT)));
+        } catch (e) {
+            console.error('Submit:', e);
+        } finally {
+            this.$('publishStory').disabled = false;
+            this.toggle(false);
+        }
+    }
+
+    short = a => a?.length > 10 ? `${a.slice(0, 6)}...${a.slice(-4)}` : (a || 'Unknown');
+    date = t => new Date(t).toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true });
+    toggle = s => this.$('loadingOverlay').style.display = s ? 'flex' : 'none';
+    clean = () => { this.cache.clear(); if (this.state.i.length > CONFIG.LIMIT * 2) this.state.i = this.state.i.slice(0, CONFIG.LIMIT); };
+    load = async () => { try { const s = localStorage.getItem(CONFIG.STORE); if (s) this.state.i = JSON.parse(s); } catch (e) { console.warn('Storage:', e); } };
+    act = b => {
+        const c = b.closest('.report-actions');
+        const { reporter, queryId, timestamp } = c.dataset;
+        const a = b.dataset.action;
+        a === 'dispute' ? window.disputeNews?.(reporter, queryId, timestamp) : console.log(`${a} by: ${this.short(reporter)}`);
     };
+}
 
-    const clearSearch = () => {
-        isSearchActive = false;
-        elements.searchInput.value = '';
-        renderNews(allNewsItems);
-        elements.loadMoreButton.style.display = 'block';
-    };
-
-    // Event Listeners
-    elements.connectWallet.addEventListener('click', connectWallet);
-    elements.publishStory.addEventListener('click', submitStory);
-    elements.searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch());
-    elements.searchButton.addEventListener('click', performSearch);
-    elements.loadMoreButton.addEventListener('click', () => loadNewsFeed());
-    elements.postButton.addEventListener('click', () => elements.reportContent.focus());
-    elements.reportContent.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = this.scrollHeight + 'px';
-    });
-
-    // Global functions
-    window.commentNews = reporter => console.log(`Comment on news by reporter: ${shortenAddress(reporter)}`);
-    window.likeNews = reporter => console.log(`Like news by reporter: ${shortenAddress(reporter)}`);
-    window.voteNews = reporter => console.log(`Vote on news by reporter: ${shortenAddress(reporter)}`);
-    window.disputeNews = (reporter, queryId, timestamp) => {
-        console.log(`Dispute news by reporter: ${shortenAddress(reporter)}, QueryID: ${queryId}, Timestamp: ${timestamp}`);
-    };
-
-    // Initial load
-    loadFromLocalStorage();
-    loadNewsFeed();
-});
+document.addEventListener('DOMContentLoaded', () => new App());
