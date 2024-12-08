@@ -6,11 +6,13 @@
     <title>Pulse Underground</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/jpeg" href="newTRBphoto.jpg">
+    <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.6.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 </head>
 <body>
     <div id="app-container">
+        <!-- Left Sidebar -->
         <div id="sidebar-left">
             <div class="sidebar-content">
                 <h1>Pulse Underground</h1>
@@ -35,6 +37,8 @@
                 </div>
             </div>
         </div>
+
+        <!-- Main Content -->
         <main>
             <div id="tab-container">
                 <button class="tab active">All Reporters</button>
@@ -45,18 +49,20 @@
                 <div class="input-container">
                     <textarea id="reportContent" placeholder="Connect wallet to report"></textarea>
                     <div id="post-options">
-                        <!-- Add icons for media, GIF, poll, etc. if needed -->
+                        <!-- Add post options here if needed -->
                     </div>
                     <button id="publishStory" disabled>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.31 6.71c-.39.39-.39 1.02 0 1.41L13.19 12l-3.88 3.88c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l4.59-4.59c.39-.39.39-1.02 0-1.41L10.72 6.7c-.38-.38-1.02-.38-1.41.01z"></path></svg>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M9.31 6.71c-.39.39-.39 1.02 0 1.41L13.19 12l-3.88 3.88c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l4.59-4.59c.39-.39.39-1.02 0-1.41L10.72 6.7c-.38-.38-1.02-.38-1.41.01z"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
-            <div id="newsFeed">
-                <!-- News stories will be dynamically populated here -->
-            </div>
+            <div id="newsFeed"></div>
             <button id="loadMoreButton" style="display: none;">Load More</button>
         </main>
+
+        <!-- Right Sidebar -->
         <div id="sidebar-right">
             <div id="search-container">
                 <input type="text" id="search-input" placeholder="Search The Pulse Underground">
@@ -64,22 +70,37 @@
             </div>
             <div id="trending-section">
                 <h3>What's happening</h3>
-                <!-- Trending content will be dynamically added here -->
             </div>
             <div id="who-to-follow">
                 <h3>Who to follow</h3>
-                <!-- Suggested users will be dynamically added here -->
             </div>
             <div id="disputes-section">
                 <h3>Disputes</h3>
-                <!-- Open disputes for voting will be dynamically added here -->
             </div>
         </div>
     </div>
+
+    <!-- Modals and Overlays -->
     <div id="popupContainer" class="popup-container">
         <div id="popupContent" class="popup-content"></div>
     </div>
     <div id="loadingOverlay">Loading news feed...</div>
+
+    <!-- Comment Modal -->
+    <div id="commentModal" style="display: none;">
+        <div id="commentModalContent">
+            <button class="close-button">×</button>
+            <div id="originalPost"></div>
+            <div id="commentsList"></div>
+            <div class="comment-input">
+                <textarea id="commentText"></textarea>
+                <button id="submitComment">💬</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Scripts -->
+    <script src="cache.js"></script>
     <script src="dispute.js"></script>
     <script src="index.js"></script>
 </body>
