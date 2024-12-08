@@ -6,7 +6,6 @@
     <title>Pulse Underground</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/jpeg" href="newTRBphoto.jpg">
-    <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.6.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 </head>
@@ -49,7 +48,6 @@
                 <div class="input-container">
                     <textarea id="reportContent" placeholder="Connect wallet to report"></textarea>
                     <div id="post-options">
-                        <!-- Add post options here if needed -->
                     </div>
                     <button id="publishStory" disabled>
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -80,26 +78,28 @@
         </div>
     </div>
 
-    <!-- Modals and Overlays -->
-    <div id="popupContainer" class="popup-container">
-        <div id="popupContent" class="popup-content"></div>
-    </div>
-    <div id="loadingOverlay">Loading news feed...</div>
-
     <!-- Comment Modal -->
-    <div id="commentModal" style="display: none;">
-        <div id="commentModalContent">
-            <button class="close-button">×</button>
-            <div id="originalPost"></div>
-            <div id="commentsList"></div>
-            <div class="comment-input">
-                <textarea id="commentText"></textarea>
-                <button id="submitComment">💬</button>
+    <div id="m" class="modal">
+        <div id="n" class="modal-content">
+            <button class="x">×</button>
+            <div id="r" class="original-post"></div>
+            <div id="s" class="comments-section">
+                <div id="l" class="comments-list"></div>
+                <div class="i comment-input">
+                    <textarea id="t" placeholder="Write a comment..."></textarea>
+                    <button id="cs">💬</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Application Scripts -->
+    <!-- Status Message -->
+    <div id="o" class="status-message"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">Loading news feed...</div>
+
+    <!-- Scripts -->
     <script src="cache.js"></script>
     <script src="dispute.js"></script>
     <script src="index.js"></script>
