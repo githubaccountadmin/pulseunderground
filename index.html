@@ -6,10 +6,11 @@
     <title>Pulse Underground</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/jpeg" href="newTRBphoto.jpg">
-    <!-- Updated ethers.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+</head>
 <body>
     <div id="app-container">
+        <!-- Left Sidebar -->
         <div id="sidebar-left">
             <div class="sidebar-content">
                 <h1>Pulse Underground</h1>
@@ -35,6 +36,7 @@
             </div>
         </div>
 
+        <!-- Main Content -->
         <main>
             <div id="tab-container">
                 <div class="tab active">All Reporters</div>
@@ -53,6 +55,7 @@
             <button id="loadMoreButton">Load More</button>
         </main>
 
+        <!-- Right Sidebar -->
         <div id="sidebar-right">
             <div id="search-container">
                 <input type="text" id="search-input" placeholder="Search The Pulse Underground">
@@ -85,6 +88,7 @@
         </div>
     </div>
 
+    <!-- Loading & Status -->
     <div id="loadingOverlay">Loading news feed...</div>
     <div id="o"></div>
 
