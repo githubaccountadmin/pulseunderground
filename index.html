@@ -6,79 +6,72 @@
     <title>Pulse Underground</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/jpeg" href="newTRBphoto.jpg">
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.6.0/dist/ethers.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 </head>
 <body>
     <div id="app-container">
-        <!-- Left Sidebar -->
         <div id="sidebar-left">
             <div class="sidebar-content">
                 <h1>Pulse Underground</h1>
                 <nav>
                     <ul>
-                        <li><a href="#"><span class="icon">🏠</span> Home</a></li>
-                        <li><a href="#"><span class="icon">🔍</span> Explore</a></li>
-                        <li><a href="#"><span class="icon">🔔</span> Notifications</a></li>
-                        <li><a href="#"><span class="icon">✉️</span> Messages</a></li>
-                        <li><a href="#"><span class="icon">👤</span> Profile</a></li>
-                        <li><a href="#"><span class="icon">⋯</span> More</a></li>
+                        <li><a href="#"><span class="icon">🏠</span><span>Home</span></a></li>
+                        <li><a href="#"><span class="icon">🔍</span><span>Explore</span></a></li>
+                        <li><a href="#"><span class="icon">🔔</span><span>Notifications</span></a></li>
+                        <li><a href="#"><span class="icon">✉️</span><span>Messages</span></a></li>
+                        <li><a href="#"><span class="icon">👤</span><span>Profile</span></a></li>
+                        <li><a href="#"><span class="icon">⋯</span><span>More</span></a></li>
                     </ul>
                 </nav>
             </div>
+
             <div class="bottom-buttons">
                 <button id="postButton">Post</button>
                 <button id="connectWallet">Connect Wallet</button>
             </div>
-            <div id="profile-section">
-                <div id="walletInfo" style="display: none;">
-                    <span id="walletAddress"></span>
-                </div>
-            </div>
         </div>
 
-        <!-- Main Content -->
         <main>
             <div id="tab-container">
-                <button class="tab active">All Reporters</button>
-                <button class="tab">Reporters you follow</button>
+                <div class="tab active">All Reporters</div>
+                <div class="tab">Reporters you follow</div>
             </div>
+
             <div id="storySubmission">
                 <img src="newTRBphoto.jpg" alt="User Avatar" class="avatar">
                 <div class="input-container">
                     <textarea id="reportContent" placeholder="Connect wallet to report"></textarea>
-                    <div id="post-options">
-                    </div>
                     <button id="publishStory" disabled>
                         <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M9.31 6.71c-.39.39-.39 1.02 0 1.41L13.19 12l-3.88 3.88c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l4.59-4.59c.39-.39.39-1.02 0-1.41L10.72 6.7c-.38-.38-1.02-.38-1.41.01z"></path>
+                            <path d="M9.31 6.71c-.39.39-.39 1.02 0 1.41L13.19 12l-3.88 3.88c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l4.59-4.59c.39-.39.39-1.02 0-1.41L10.72 6.7c-.38-.38-1.02-.38-1.41.01z"/>
                         </svg>
                     </button>
                 </div>
             </div>
+
             <div id="newsFeed"></div>
-            <button id="loadMoreButton" style="display: none;">Load More</button>
+            <button id="loadMoreButton">Load More</button>
         </main>
 
-        <!-- Right Sidebar -->
         <div id="sidebar-right">
             <div id="search-container">
                 <input type="text" id="search-input" placeholder="Search The Pulse Underground">
                 <button id="search-button">🔍</button>
             </div>
-            <div id="trending-section">
-                <h3>What's happening</h3>
-            </div>
-            <div id="who-to-follow">
-                <h3>Who to follow</h3>
-            </div>
-            <div id="disputes-section">
-                <h3>Disputes</h3>
+            <div id="sections">
+                <div id="trending-section">
+                    <h3>What's happening</h3>
+                </div>
+                <div id="who-to-follow">
+                    <h3>Who to follow</h3>
+                </div>
+                <div id="disputes-section">
+                    <h3>Disputes</h3>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Comment Modal -->
+    <!-- Modal for comments -->
     <div id="m" class="modal">
         <div id="n" class="modal-content">
             <button class="x">×</button>
@@ -93,13 +86,12 @@
         </div>
     </div>
 
-    <!-- Status Message -->
+    <!-- Loading and Status -->
+    <div id="loadingOverlay">Loading news feed...</div>
     <div id="o" class="status-message"></div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay">Loading news feed...</div>
-
     <!-- Scripts -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.6.0/dist/ethers.umd.min.js"></script>
     <script src="cache.js"></script>
     <script src="dispute.js"></script>
     <script src="index.js"></script>
