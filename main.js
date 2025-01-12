@@ -24,7 +24,7 @@ const governanceContractAddress = '0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00';
 const tokenContractAddress = '0x7CdD7A0963A92bA1D98f6173214563EE0EBd9921';
 const governanceContractABI = [
     {"inputs": [{"name": "_queryId", "type": "bytes32"}, {"name": "_timestamp", "type": "uint256"}], "name": "beginDispute", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-    {"inputs": [], "name": "disputeFee", "outputs": [{"name": "", "type": "uint256"}], "stateMutability: "view", "type": "function"}
+    {"inputs": [], "name": "disputeFee", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", type: "function"}
 ];
 const tokenABI = ["function approve(address spender, uint256 amount) public returns (bool)"];
 
@@ -62,21 +62,36 @@ class Cache {
         this.db = null;
         this.memoryCache = new Map();
         this.pendingRequests = new Set();
+        console.log("Cache constructor called");
         this.init();
     }
 
     async init() {
-        if (this.db) return this.db;
+        if (this.db) {
+            console.log("DB already initialized, returning it");
+            return this.db;
+        }
+        console.log("Starting DB initialization");
         return new Promise((resolve, reject) => {
             const openDB = indexedDB.open(C.n, C.v);
-            openDB.onerror = () => reject(openDB.error);
-            openDB.onsuccess = () => {this.db = openDB.result; resolve(this.db)};
+            openDB.onerror = () => {
+                console.error("DB initialization error:", openDB.error);
+                reject(openDB.error);
+            };
+            openDB.onsuccess = () => {
+                console.log("DB successfully opened");
+                this.db = openDB.result;
+                resolve(this.db);
+            };
             openDB.onupgradeneeded = e => {
+                console.log("DB upgrade needed");
                 const db = e.target.result, keys = C.k;
                 if (!db.objectStoreNames.contains(C.s.n)) {
+                    console.log("Creating new object store for news");
                     const store = db.createObjectStore(C.s.n, {keyPath: keys.q});
                     store.createIndex(keys.t, keys.t, {unique: false});
                     store.createIndex(keys.r, keys.r, {unique: false});
+                    console.log("Object store created");
                 }
                 // Additional stores creation for comments and reporters...
             };
@@ -84,36 +99,55 @@ class Cache {
     }
 
     async transaction(storeName, mode, callback) {
+        console.log(`Starting transaction for ${storeName} in ${mode} mode`);
         const db = await this.init();
+        console.log("DB instance obtained for transaction");
         const transaction = db.transaction(storeName, mode);
         const store = transaction.objectStore(storeName);
         try {
+            console.log("Executing transaction callback");
             return await callback(store, transaction);
         } catch (e) {
+            console.error("Transaction error:", e);
             transaction.abort();
             throw e;
         }
     }
 
     async saveNews(items) {
+        console.log(`Saving ${items.length} news items`);
         const timestamp = Date.now();
         await this.transaction(C.s.n, 'readwrite', async (store) => {
-            const promises = items.map(item => store.put({...item, [C.k.c]: timestamp}));
+            console.log("Inside saveNews transaction");
+            const promises = items.map(item => {
+                console.log("Saving item:", item);
+                return store.put({...item, [C.k.c]: timestamp});
+            });
             await Promise.all(promises);
+            console.log("All news items saved");
         });
     }
 
     async getNews(options = {}) {
+        console.log("Fetching news with options:", options);
         const {limit = 50, offset = 0, reporter} = options;
         const now = Date.now();
         const news = [];
         return this.transaction(C.s.n, 'readonly', async (store) => {
+            console.log("Inside getNews transaction");
             const index = reporter ? store.index(C.k.r) : store.index(C.k.t);
+            console.log("Using index:", reporter ? 'reporter' : 'timestamp');
             await new Promise((resolve) => {
                 let count = 0;
                 index.openCursor(reporter || null, 'prev').onsuccess = (event) => {
                     const cursor = event.target.result;
-                    if (!cursor || news.length >= limit) {
+                    if (!cursor) {
+                        console.log("No more items to fetch");
+                        resolve();
+                        return;
+                    }
+                    if (news.length >= limit) {
+                        console.log("Reached limit of items");
                         resolve();
                         return;
                     }
@@ -123,11 +157,13 @@ class Cache {
                         return;
                     }
                     if (cursor.value[C.k.c] > now - C.t) {
+                        console.log("Adding item to news list:", cursor.value);
                         news.push(cursor.value);
                     }
                     cursor.continue();
                 };
             });
+            console.log(`Returning ${news.length} news items`);
             return news;
         });
     }
