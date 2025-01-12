@@ -1,6 +1,6 @@
 const ethers = window.ethers;
-const defaultAbiCoder = ethers.defaultAbiCoder;
-const utils = ethers.utils;
+const { utils } = ethers;
+const defaultAbiCoder = utils.defaultAbiCoder;
 
 // Constants for Tellor Oracle and other contract interactions
 const D = {
@@ -24,7 +24,7 @@ const governanceContractAddress = '0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00';
 const tokenContractAddress = '0x7CdD7A0963A92bA1D98f6173214563EE0EBd9921';
 const governanceContractABI = [
     {"inputs": [{"name": "_queryId", "type": "bytes32"}, {"name": "_timestamp", "type": "uint256"}], "name": "beginDispute", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-    {"inputs": [], "name": "disputeFee", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}
+    {"inputs": [], "name": "disputeFee", "outputs": [{"name": "", "type": "uint256"}], "stateMutability: "view", "type": "function"}
 ];
 const tokenABI = ["function approve(address spender, uint256 amount) public returns (bool)"];
 
@@ -109,10 +109,9 @@ class Cache {
         const news = [];
         return this.transaction(C.s.n, 'readonly', async (store) => {
             const index = reporter ? store.index(C.k.r) : store.index(C.k.t);
-            await new Promise((resolve, reject) => {
+            await new Promise((resolve) => {
                 let count = 0;
-                const request = index.openCursor(reporter || null, 'prev');
-                request.onsuccess = (event) => {
+                index.openCursor(reporter || null, 'prev').onsuccess = (event) => {
                     const cursor = event.target.result;
                     if (!cursor || news.length >= limit) {
                         resolve();
@@ -132,14 +131,12 @@ class Cache {
             return news;
         });
     }
-
-    // Other cache methods like for comments could be added here if needed
 }
 
 class App {
     constructor() {
         this.e = ethers;
-        this.state = {items: [], loading: 0, noMore: 0, page: null, requests: new Set(), lastUpdate: 0, searchActive: 0};
+        this.state = {items: [], loading: false, noMore: false, page: null, requests: new Set(), lastUpdate: 0, searchActive: false};
         this.$ = document.getElementById.bind(document);
         this.setup();
         this.cache = new Cache();
@@ -159,8 +156,7 @@ class App {
                     else if (target.dataset.action === 'dispute') this.disputeNews(actions.reporter, actions.queryId, actions.timestamp);
                 }
             } else {
-                const id = target.id;
-                switch(id) {
+                switch(target.id) {
                     case 'connectWallet': this.connectWallet(); break;
                     case 'publishStory': this.publishStory(); break;
                     case 'loadMoreButton': this.loadMore(); break;
@@ -181,7 +177,7 @@ class App {
             searchInput.addEventListener('input', e => {
                 const value = e.target.value.trim();
                 if (!value && this.state.searchActive) {
-                    this.state.searchActive = 0;
+                    this.state.searchActive = false;
                     this.render(this.state.items);
                     this.$('loadMoreButton').style.display = 'none';
                 }
@@ -261,14 +257,14 @@ class App {
         if (!value) return;
         const filtered = this.state.items.filter(item => sh(item.reporter).toLowerCase().includes(value) || item.content.toLowerCase().includes(value));
         this.render(filtered);
-        this.state.searchActive = 1;
+        this.state.searchActive = true;
         this.$('loadMoreButton').style.display = 'block';
         displayStatus(`Found ${filtered.length} result(s)`);
     }
 
     async loadMore() {
         if (this.state.loading || Date.now() - this.state.lastUpdate < 30000) return;
-        this.state.loading = 1;
+        this.state.loading = true;
         toggleLoading(true);
         try {
             const transactions = await this.fetchTransactions(this.state.page);
@@ -284,18 +280,18 @@ class App {
         } catch (e) {
             console.error('Update error:', e);
         } finally {
-            this.state.loading = 0;
+            this.state.loading = false;
             toggleLoading(false);
         }
     }
 
     async fetch(initial) {
         if (this.state.loading || (this.state.noMore && !initial)) return;
-        this.state.loading = 1;
+        this.state.loading = true;
         toggleLoading(true);
         if (initial) {
             this.state.items = [];
-            this.state.noMore = 0;
+            this.state.noMore = false;
             this.state.page = null;
         }
         try {
@@ -317,14 +313,14 @@ class App {
         } catch (e) {
             console.error('Feed error:', e);
         } finally {
-            this.state.loading = 0;
+            this.state.loading = false;
             toggleLoading(false);
         }
     }
 
     async parseTransactions(batch) {
         if (!batch?.items?.length) {
-            this.state.noMore = 1;
+            this.state.noMore = true;
             return [];
         }
         const items = [];
@@ -404,7 +400,7 @@ class App {
                 throw new Error("Please connect to PulseChain network");
             }
             const disputeFee = await this.getDisputeFee();
-            console.log(`Dispute fee: ${ethers.utils.formatEther(disputeFee)} TRB`);
+            console.log(`Dispute fee: ${utils.formatEther(disputeFee)} TRB`);
             const approveTx = await this.tokenContract.approve(governanceContractAddress, disputeFee);
             await approveTx.wait();
             console.log('Approval transaction confirmed.');
@@ -427,7 +423,7 @@ class App {
     async disputeNews(originalReporterAddress, queryId, timestamp) {
         try {
             const disputeFee = await this.getDisputeFee();
-            if (confirm(`Are you sure you want to dispute this report?\n\nReporter: ${originalReporterAddress}\nDispute Fee: ${ethers.utils.formatEther(disputeFee)} TRB\n\nThis action will require a transaction and gas fees.`)) {
+            if (confirm(`Are you sure you want to dispute this report?\n\nReporter: ${originalReporterAddress}\nDispute Fee: ${utils.formatEther(disputeFee)} TRB\n\nThis action will require a transaction and gas fees.`)) {
                 const txHash = await this.beginDispute(queryId, timestamp);
                 displayStatus(`Dispute submitted successfully. Transaction hash: ${txHash}`);
             } else {
