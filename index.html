@@ -6,17 +6,18 @@
     <title>Pulse Underground</title>
     <link rel="icon" type="image/jpeg" href="image1.jpeg">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #7c4dff;
-            --primary-light: #b388ff;
-            --bg-dark: #0d0b14;
-            --bg-light: #13101c;
-            --bg-lighter: #1a1327;
-            --border: #2a2438;
-            --border-hover: #38314d;
-            --text: #fff;
-            --text-secondary: #8899a6;
+            --primary: #7c4dff;           /* PulseChain purple */
+            --primary-light: #b388ff;     /* Lighter purple */
+            --bg-dark: #0d0b14;          /* Dark background */
+            --bg-light: #13101c;         /* Slightly lighter dark */
+            --bg-lighter: #1a1327;       /* Even lighter dark */
+            --border: #2a2438;           /* Border color */
+            --text: #fff;                /* Primary text */
+            --text-secondary: #8899a6;   /* Secondary text */
+            --neon-glow: 0 0 5px var(--primary), 0 0 10px var(--primary), 0 0 15px var(--primary);
         }
         * {
             box-sizing: border-box;
@@ -24,7 +25,7 @@
             padding: 0;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Orbitron', sans-serif;
             background: var(--bg-dark);
             color: var(--text);
             line-height: 1.3;
@@ -42,18 +43,67 @@
             height: 100vh;
             overflow-y: auto;
             background: var(--bg-light);
+            padding: 20px;
         }
         #sidebar-left {
             width: 275px;
-            padding: 0 12px;
-            display: flex;
-            flex-direction: column;
             border-right: 1px solid var(--border);
         }
         #sidebar-right {
             width: 350px;
-            padding: 16px;
             border-left: 1px solid var(--border);
+        }
+        h1, h3 {
+            color: var(--primary-light);
+            margin: 0 0 20px;
+        }
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        nav ul li {
+            margin-bottom: 8px;
+        }
+        nav ul li a {
+            display: flex;
+            align-items: center;
+            color: var(--text);
+            text-decoration: none;
+            padding: 10px 12px;
+            border-radius: 8px;
+            transition: background 0.2s, box-shadow 0.2s;
+            font-size: 16px;
+        }
+        nav ul li a:hover {
+            background: var(--border);
+            box-shadow: var(--neon-glow);
+        }
+        .icon {
+            margin-right: 16px;
+            width: 20px;
+            height: 20px;
+            filter: drop-shadow(0 0 2px var(--primary));
+        }
+        .bottom-buttons {
+            margin-top: auto;
+        }
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, var(--primary), var(--primary-light));
+            color: var(--text);
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.3s, box-shadow 0.3s;
+            display: block;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #6a3fff, #a370ff);
+            box-shadow: var(--neon-glow);
         }
         main {
             flex-grow: 1;
@@ -92,6 +142,7 @@
         textarea:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: var(--neon-glow);
         }
         #publishStory {
             position: absolute;
@@ -107,6 +158,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        #publishStory:hover {
+            box-shadow: var(--neon-glow);
         }
         #newsFeed {
             visibility: hidden;
@@ -144,6 +198,9 @@
             border-radius: 5px;
             cursor: pointer;
         }
+        #loadMoreButton:hover {
+            box-shadow: var(--neon-glow);
+        }
         #search-container {
             position: relative;
             margin-bottom: 16px;
@@ -156,6 +213,12 @@
             border-radius: 999px;
             color: var(--text);
             font-size: 15px;
+        }
+        #search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--border);
+            box-shadow: var(--neon-glow);
         }
         #search-button {
             position: absolute;
@@ -192,6 +255,7 @@
             border-radius: 5px;
             display: none;
             z-index: 1001;
+            box-shadow: var(--neon-glow);
         }
     </style>
 </head>
@@ -202,12 +266,12 @@
                 <h1>Pulse Underground</h1>
                 <nav>
                     <ul>
-                        <li><a href="#"><span class="icon">🏠</span> Home</a></li>
-                        <li><a href="#"><span class="icon">🔍</span> Explore</a></li>
-                        <li><a href="#"><span class="icon">🔔</span> Notifications</a></li>
-                        <li><a href="#"><span class="icon">✉️</span> Messages</a></li>
-                        <li><a href="#"><span class="icon">👤</span> Profile</a></li>
-                        <li><a href="#"><span class="icon">⋯</span> More</a></li>
+                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span> Home</a></li>
+                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M21 21l-6-6m2-5a7 7 0 1 0-14 0 7 7 0 0 0 14 0z"></path></svg></span> Explore</a></li>
+                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10zM12 8v4M12 16h.01"></path></svg></span> Notifications</a></li>
+                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></span> Messages</a></li>
+                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span> Profile</a></li>
+                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></span> More</a></li>
                     </ul>
                 </nav>
             </div>
@@ -393,13 +457,8 @@
                 this.$("publishStory").disabled = true;
                 toggleLoading(true);
                 try {
-                    const inputData = "POST:" + content;
-                    const tx = {
-                        to: POST_ADDRESS,
-                        value: 0,
-                        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(inputData)),
-                        gasLimit: 100000
-                    };
+                    const inputData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
+                    const tx = { to: POST_ADDRESS, value: 0, data: inputData, gasLimit: 100000 };
                     const signedTx = await this.signer.sendTransaction(tx);
                     const receipt = await signedTx.wait();
                     console.log("Story published, tx:", receipt.transactionHash);
@@ -411,6 +470,7 @@
                         txHash: receipt.transactionHash
                     };
                     this.state.items.unshift(newStory);
+                    this.state.seenTxHashes.add(newStory.txHash);
                     this.render([newStory], true);
                     await this.cache.saveNews([newStory]);
                     this.$("reportContent").value = "";
@@ -424,7 +484,8 @@
             }
             async fetchTransactions(p) {
                 console.log("Fetching transactions, params:", p);
-                const u = `https://api.scan.pulsechain.com/api/v2/transactions?to=${POST_ADDRESS}&sort=desc&limit=33${p ? "&" + new URLSearchParams(p) : ""}`;
+                const filter = 'to%20%7C%20from';
+                const u = `https://api.scan.pulsechain.com/api/v2/addresses/${POST_ADDRESS}/transactions?filter=${filter}&sort=desc&limit=33${p ? "&" + new URLSearchParams(p) : ""}`;
                 if (this.state.requests.has(u)) return this.state.cachedResponses.get(u);
                 this.state.requests.add(u);
                 try {
@@ -449,37 +510,28 @@
                 }
                 const posts = [];
                 for (const tx of b.items) {
-                    const toAddress = tx.to?.hash?.toLowerCase() || tx.to?.toLowerCase();
-                    const input = tx.raw_input || tx.input;
-                    if (!toAddress) {
-                        console.log("Skipping tx", tx.hash, ": no to address");
-                        continue;
-                    }
-                    if (toAddress !== POST_ADDRESS) {
-                        console.log("Skipping tx", tx.hash, ": wrong to address", toAddress);
-                        continue;
-                    }
-                    if (!input || input === "0x") {
-                        console.log("Skipping tx", tx.hash, ": no input data");
+                    const input = tx.raw_input || tx.input || "0x";
+                    if (input === "0x") {
+                        console.log(`Skipping tx ${tx.hash}: no input data`);
                         continue;
                     }
                     if (this.state.seenTxHashes.has(tx.hash)) {
-                        console.log("Skipping tx", tx.hash, ": already seen");
+                        console.log(`Skipping tx ${tx.hash}: already seen`);
                         continue;
                     }
                     try {
-                        const content = ethers.utils.toUtf8String(input);
-                        console.log("Decoded content:", content);
+                        const decodedInput = ethers.utils.toUtf8String(input);
+                        console.log(`Decoded input for tx ${tx.hash}:`, decodedInput);
                         const post = {
-                            content,
-                            reporter: tx.from.hash,
+                            content: decodedInput,
+                            reporter: tx.from.hash || tx.from,
                             timestamp: tx.timestamp,
                             txHash: tx.hash
                         };
                         posts.push(post);
                         this.state.seenTxHashes.add(tx.hash);
                     } catch (e) {
-                        console.warn("Failed to decode input for tx", tx.hash, ":", input, "Error:", e.message);
+                        console.warn(`Failed to decode input for tx ${tx.hash}:`, e.message);
                     }
                 }
                 this.state.page = b.next_page_params || null;
