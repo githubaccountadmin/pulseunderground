@@ -9,14 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #7c4dff;           /* PulseChain purple */
-            --primary-light: #b388ff;     /* Lighter purple */
-            --bg-dark: #0d0b14;          /* Dark background */
-            --bg-light: #13101c;         /* Slightly lighter dark */
-            --bg-lighter: #1a1327;       /* Even lighter dark */
-            --border: #2a2438;           /* Border color */
-            --text: #fff;                /* Primary text */
-            --text-secondary: #8899a6;   /* Secondary text */
+            --primary: #7c4dff;
+            --primary-light: #b388ff;
+            --bg-dark: #0d0b14;
+            --bg-light: #13101c;
+            --bg-lighter: #1a1327;
+            --border: #2a2438;
+            --border-hover: #38314d;
+            --text: #fff;
+            --text-secondary: #8899a6;
             --neon-glow: 0 0 5px var(--primary), 0 0 10px var(--primary), 0 0 15px var(--primary);
         }
         * {
@@ -25,7 +26,7 @@
             padding: 0;
         }
         body {
-            font-family: 'Orbitron', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-dark);
             color: var(--text);
             line-height: 1.3;
@@ -107,7 +108,7 @@
         }
         main {
             flex-grow: 1;
-            max-width: 600px;
+            max-width: 700px; /* Increased from 600px */
             border-left: 1px solid var(--border);
             border-right: 1px solid var(--border);
             background: var(--bg-light);
@@ -314,6 +315,7 @@
     <script>
         const ethers = window.ethers;
         const POST_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB".toLowerCase();
+        const PULSE_CHAIN_ID = 369;
 
         function sh(a) {
             return a?.length > 10 ? a.slice(0, 6) + "..." + a.slice(-4) : a || "-";
@@ -407,7 +409,11 @@
                 this.$ = document.getElementById.bind(document);
                 this.cache = new Cache();
                 this.setup();
-                this.fetch(true);
+                this.loadSeenTxHashes().then(() => this.fetch(true));
+            }
+            async loadSeenTxHashes() {
+                const cachedItems = await this.cache.getNews();
+                cachedItems.forEach(item => this.state.seenTxHashes.add(item.txHash));
             }
             setup() {
                 document.addEventListener("click", (e) => {
@@ -424,7 +430,7 @@
                     if (!window.ethereum) throw new Error("No MetaMask");
                     const provider = new ethers.providers.Web3Provider(window.ethereum);
                     const network = await provider.getNetwork();
-                    if (network.chainId !== 369) {
+                    if (network.chainId !== PULSE_CHAIN_ID) {
                         await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
                     }
                     await provider.send("eth_requestAccounts", []);
@@ -454,6 +460,17 @@
                 const content = this.$("reportContent").value.trim();
                 if (!content) return displayStatus("No content");
                 if (!this.signer) return displayStatus("Wallet not connected");
+                try {
+                    const provider = this.signer.provider;
+                    const network = await provider.getNetwork();
+                    if (network.chainId !== PULSE_CHAIN_ID) {
+                        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
+                    }
+                } catch (e) {
+                    console.error("Network check failed:", e);
+                    displayStatus("Please switch to PulseChain");
+                    return;
+                }
                 this.$("publishStory").disabled = true;
                 toggleLoading(true);
                 try {
@@ -512,11 +529,11 @@
                 for (const tx of b.items) {
                     const input = tx.raw_input || tx.input || "0x";
                     if (input === "0x") {
-                        console.log(`Skipping tx ${tx.hash}: no input data`);
+                        // Skipping tx with no input data (log removed)
                         continue;
                     }
                     if (this.state.seenTxHashes.has(tx.hash)) {
-                        console.log(`Skipping tx ${tx.hash}: already seen`);
+                        // Skipping already seen tx (log removed)
                         continue;
                     }
                     try {
@@ -549,7 +566,6 @@
                         const cachedItems = await this.cache.getNews(33);
                         if (cachedItems.length) {
                             this.state.items = cachedItems;
-                            cachedItems.forEach(item => this.state.seenTxHashes.add(item.txHash));
                             this.render(cachedItems);
                         }
                     }
