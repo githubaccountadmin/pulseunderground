@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pulse Underground</title>
-    <link rel="icon" type="image/jpeg" href="newTRBphoto.jpg">
+    <link rel="icon" type="image/jpeg" href="image1.jpg">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #7c4dff;           /* PulseChain purple */
-            --primary-light: #b388ff;     /* Lighter purple */
-            --bg-dark: #0d0b14;          /* Dark background */
-            --bg-light: #13101c;         /* Slightly lighter dark */
-            --bg-lighter: #1a1327;       /* Even lighter dark */
-            --border: #2a2438;           /* Border color */
-            --border-hover: #38314d;     /* Hover border */
-            --text: #fff;                /* Primary text */
-            --text-secondary: #8899a6;   /* Secondary text */
+            --primary: #7c4dff;
+            --primary-light: #b388ff;
+            --bg-dark: #0d0b14;
+            --bg-light: #13101c;
+            --bg-lighter: #1a1327;
+            --border: #2a2438;
+            --border-hover: #38314d;
+            --text: #fff;
+            --text-secondary: #8899a6;
             --neon-glow: 0 0 5px var(--primary), 0 0 10px var(--primary), 0 0 15px var(--primary);
         }
         * {
@@ -309,7 +309,7 @@
         </div>
         <main>
             <div id="storySubmission">
-                <img src="newTRBphoto.jpg" alt="User Avatar" class="avatar">
+                <img src="image1.jpg" alt="User Avatar" class="avatar">
                 <div class="input-container">
                     <textarea id="reportContent" placeholder="Connect wallet to report"></textarea>
                     <button id="publishStory" disabled>➤</button>
@@ -335,7 +335,7 @@
     <div id="o"></div>
     <script>
         const ethers = window.ethers;
-        const POST_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB"; // Replace with actual address
+        const POST_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB";
 
         // Utility Functions
         function sh(a) {
@@ -427,7 +427,9 @@
                     page: null,
                     requests: new Set(),
                     cachedResponses: new Map(),
-                    seenTxHashes: new Set()
+                    seenTxHashes: new Set(),
+                    fetchAttempts: 0,
+                    maxFetchAttempts: 10
                 };
                 this.$ = document.getElementById.bind(document);
                 this.cache = new Cache();
@@ -516,8 +518,9 @@
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const data = await response.json();
+                    console.log("API Response:", data);
                     this.state.cachedResponses.set(url, data);
-                    console.log("Fetched transactions:", data.items.length);
+                    console.log("Fetched transactions:", data.items?.length || 0);
                     return data;
                 } catch (e) {
                     console.error("Fetch transactions failed:", e);
@@ -529,25 +532,42 @@
             async parseTransactions(block) {
                 console.log("Parsing transactions");
                 if (!block?.items?.length) {
+                    console.log("No transactions to parse");
                     this.state.noMore = true;
                     return [];
                 }
                 const posts = [];
                 for (const tx of block.items) {
-                    if (tx.to.hash === POST_ADDRESS && tx.input && tx.input !== "0x" && !this.state.seenTxHashes.has(tx.hash)) {
-                        try {
-                            const content = ethers.utils.toUtf8String(tx.input);
-                            const post = {
-                                content,
-                                reporter: tx.from.hash,
-                                timestamp: tx.timestamp,
-                                txHash: tx.hash
-                            };
-                            posts.push(post);
-                            this.state.seenTxHashes.add(tx.hash);
-                        } catch (e) {
-                            console.warn("Failed to decode input:", tx.input);
+                    if (tx.to.hash?.toLowerCase() === POST_ADDRESS.toLowerCase() && !this.state.seenTxHashes.has(tx.hash)) {
+                        const input = tx.raw_input || tx.input;
+                        if (input && input !== "0x") {
+                            try {
+                                const content = ethers.utils.toUtf8String(input);
+                                console.log("Decoded input for tx", tx.hash, ":", content);
+                                const post = {
+                                    content,
+                                    reporter: tx.from.hash,
+                                    timestamp: tx.timestamp,
+                                    txHash: tx.hash
+                                };
+                                posts.push(post);
+                                this.state.seenTxHashes.add(tx.hash);
+                            } catch (e) {
+                                console.warn("Failed to decode input for tx", tx.hash, ":", input, "Error:", e.message);
+                                // Fallback to hex if non-UTF-8
+                                posts.push({
+                                    content: `Hex: ${input}`,
+                                    reporter: tx.from.hash,
+                                    timestamp: tx.timestamp,
+                                    txHash: tx.hash
+                                });
+                                this.state.seenTxHashes.add(tx.hash);
+                            }
+                        } else {
+                            console.log("Skipping tx", tx.hash, ": no input data");
                         }
+                    } else {
+                        console.log("Skipping tx", tx.hash, ": wrong to address or already seen");
                     }
                 }
                 this.state.page = block.next_page_params || null;
@@ -573,17 +593,22 @@
                     let txData = await this.fetchTransactions(this.state.page);
                     let newPosts = await this.parseTransactions(txData);
                     posts.push(...newPosts);
-                    if (initial && posts.length < 33 && !this.state.noMore) {
-                        while (posts.length < 33 && !this.state.noMore) {
+                    if (initial && posts.length < 33 && !this.state.noMore && this.state.fetchAttempts < this.state.maxFetchAttempts) {
+                        this.state.fetchAttempts++;
+                        console.log(`Fetch attempt ${this.state.fetchAttempts}, posts found: ${posts.length}`);
+                        while (posts.length < 33 && !this.state.noMore && this.state.fetchAttempts < this.state.maxFetchAttempts) {
                             txData = await this.fetchTransactions(this.state.page);
                             newPosts = await this.parseTransactions(txData);
                             posts.push(...newPosts);
+                            this.state.fetchAttempts++;
                         }
                     }
                     if (posts.length) {
                         this.state.items = initial ? posts : [...this.state.items, ...posts];
                         this.render(posts, !initial);
                         await this.cache.saveNews(posts);
+                    } else if (initial) {
+                        this.$("newsFeed").innerHTML = "No posts found";
                     }
                     this.$("loadMoreButton").style.display = this.state.noMore ? "none" : "block";
                 } catch (e) {
@@ -629,7 +654,7 @@
                     template.innerHTML = `
                         <article class="news-item">
                             <div class="reporter-info">
-                                <img src="newTRBphoto.jpg" alt="Reporter" class="avatar">
+                                <img src="image1.jpg" ножжalt="Reporter" class="avatar">
                                 <div class="reporter-details">
                                     <span class="reporter-name">${sh(item.reporter)}</span> · ${dt(item.timestamp)}
                                 </div>
