@@ -6,7 +6,6 @@
     <title>Pulse Underground</title>
     <link rel="icon" type="image/jpeg" href="image1.jpeg">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #7c4dff;
@@ -108,7 +107,7 @@
         }
         main {
             flex-grow: 1;
-            max-width: 700px; /* Increased from 600px */
+            max-width: 900px; /* Increased from 800px to 900px */
             border-left: 1px solid var(--border);
             border-right: 1px solid var(--border);
             background: var(--bg-light);
@@ -181,6 +180,7 @@
         }
         .reporter-details {
             margin-left: 12px;
+            font-size: 12px; /* Reduced from 14px to 12px */
         }
         .reporter-name {
             font-weight: 700;
@@ -324,14 +324,14 @@
             return new Date(t).toLocaleString("en", { month: "numeric", day: "numeric", year: "numeric", hour: "numeric", minute: "numeric" });
         }
         function displayStatus(m) {
-            console.log("Status:", m);
+            console.log(m);
             const o = document.getElementById("o");
             o.textContent = m;
             o.style.display = "block";
             setTimeout(() => o.style.display = "none", 3000);
         }
         function toggleLoading(s) {
-            console.log("Toggle loading:", s);
+            console.log(s ? "Loading..." : "Done");
             const l = document.getElementById("loadingOverlay");
             l.style.display = s ? "flex" : "none";
         }
@@ -372,13 +372,13 @@
                 }
             }
             async saveNews(items) {
-                console.log(`Saving ${items.length} news items`);
+                console.log("ok");
                 await this.transaction("news", "readwrite", async (store) => {
                     for (const item of items) await store.put(item);
                 });
             }
             async getNews(limit = 33) {
-                console.log("Getting cached news");
+                console.log("ok");
                 return this.transaction("news", "readonly", async (store) => {
                     const index = store.index("timestamp");
                     const news = [];
@@ -443,7 +443,7 @@
                     this.$("reportContent").placeholder = "What's happening?";
                     displayStatus("Connected");
                 } catch (e) {
-                    console.error("Wallet connection failed:", e);
+                    console.error("Error:", e.message);
                     displayStatus(e.message || "Failed to connect");
                 }
             }
@@ -466,20 +466,14 @@
                     if (network.chainId !== PULSE_CHAIN_ID) {
                         await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
                     }
-                } catch (e) {
-                    console.error("Network check failed:", e);
-                    displayStatus("Please switch to PulseChain");
-                    return;
-                }
-                this.$("publishStory").disabled = true;
-                toggleLoading(true);
-                try {
+                    this.$("publishStory").disabled = true;
+                    toggleLoading(true);
                     const inputData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
                     const tx = { to: POST_ADDRESS, value: 0, data: inputData, gasLimit: 100000 };
                     const signedTx = await this.signer.sendTransaction(tx);
                     const receipt = await signedTx.wait();
-                    console.log("Story published, tx:", receipt.transactionHash);
-                    displayStatus("Story published! Tx: " + receipt.transactionHash);
+                    console.log("ok");
+                    displayStatus("Story published! Tx: " + sh(receipt.transactionHash));
                     const newStory = {
                         content,
                         reporter: await this.signer.getAddress(),
@@ -488,11 +482,11 @@
                     };
                     this.state.items.unshift(newStory);
                     this.state.seenTxHashes.add(newStory.txHash);
-                    this.render([newStory], true);
+                    this.render([newStory]);
                     await this.cache.saveNews([newStory]);
                     this.$("reportContent").value = "";
                 } catch (e) {
-                    console.error("Publish failed:", e);
+                    console.error("Error:", e.message);
                     displayStatus(e.message || "Failed to publish");
                 } finally {
                     this.$("publishStory").disabled = false;
@@ -500,7 +494,7 @@
                 }
             }
             async fetchTransactions(p) {
-                console.log("Fetching transactions, params:", p);
+                console.log("Fetching transactions");
                 const filter = 'to%20%7C%20from';
                 const u = `https://api.scan.pulsechain.com/api/v2/addresses/${POST_ADDRESS}/transactions?filter=${filter}&sort=desc&limit=33${p ? "&" + new URLSearchParams(p) : ""}`;
                 if (this.state.requests.has(u)) return this.state.cachedResponses.get(u);
@@ -510,10 +504,10 @@
                     if (!r.ok) throw new Error(`HTTP ${r.status}`);
                     const d = await r.json();
                     this.state.cachedResponses.set(u, d);
-                    console.log("API Response:", d);
+                    console.log("ok");
                     return d;
                 } catch (e) {
-                    console.error("Fetch transactions failed:", e);
+                    console.error("Error:", e.message);
                     throw e;
                 } finally {
                     this.state.requests.delete(u);
@@ -528,36 +522,25 @@
                 const posts = [];
                 for (const tx of b.items) {
                     const input = tx.raw_input || tx.input || "0x";
-                    if (input === "0x") {
-                        // Skipping tx with no input data (log removed)
-                        continue;
-                    }
-                    if (this.state.seenTxHashes.has(tx.hash)) {
-                        // Skipping already seen tx (log removed)
-                        continue;
-                    }
+                    if (input === "0x" || this.state.seenTxHashes.has(tx.hash)) continue;
                     try {
                         const decodedInput = ethers.utils.toUtf8String(input);
-                        console.log(`Decoded input for tx ${tx.hash}:`, decodedInput);
-                        const post = {
+                        posts.push({
                             content: decodedInput,
                             reporter: tx.from.hash || tx.from,
                             timestamp: tx.timestamp,
                             txHash: tx.hash
-                        };
-                        posts.push(post);
+                        });
                         this.state.seenTxHashes.add(tx.hash);
                     } catch (e) {
-                        console.warn(`Failed to decode input for tx ${tx.hash}:`, e.message);
+                        console.warn("Decode error:", e.message);
                     }
                 }
-                this.state.page = b.next_page_params || null;
-                this.state.noMore = !this.state.page;
-                console.log(`Parsed ${posts.length} posts`);
+                console.log("ok");
                 return posts;
             }
             async fetch(initial = false) {
-                console.log("Fetching news, initial:", initial);
+                console.log("Fetching news");
                 if (this.state.loading) return;
                 this.state.loading = true;
                 toggleLoading(true);
@@ -569,31 +552,30 @@
                             this.render(cachedItems);
                         }
                     }
-                    const posts = [];
-                    let txData = await this.fetchTransactions(this.state.page);
-                    let newPosts = await this.parseTransactions(txData);
-                    posts.push(...newPosts);
-                    if (initial && posts.length < 33 && !this.state.noMore) {
-                        while (posts.length < 33 && !this.state.noMore) {
-                            txData = await this.fetchTransactions(this.state.page);
-                            newPosts = await this.parseTransactions(txData);
-                            posts.push(...newPosts);
-                        }
+                    const txData = await this.fetchTransactions(this.state.page);
+                    const newPosts = await this.parseTransactions(txData);
+                    if (newPosts.length) {
+                        this.state.items = initial ? newPosts : [...newPosts, ...this.state.items];
+                        this.render(newPosts);
                     }
-                    if (posts.length) {
-                        this.state.items = initial ? posts : this.state.items.concat(posts);
-                        this.render(posts, !initial);
-                        await this.cache.saveNews(posts);
-                    }
+                    this.state.page = txData.next_page_params || null;
+                    this.state.noMore = !this.state.page;
                     this.$("loadMoreButton").style.display = this.state.noMore ? "none" : "block";
                 } catch (e) {
-                    console.error("Fetch error:", e);
+                    console.error("Error:", e.message);
                 } finally {
                     this.state.loading = false;
                     toggleLoading(false);
                 }
             }
-            async loadMore() {
+            debounce(func, wait) {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(this, args), wait);
+                };
+            }
+            loadMore = this.debounce(async () => {
                 if (this.state.loading || this.state.noMore) return;
                 console.log("Loading more");
                 this.state.loading = true;
@@ -606,25 +588,33 @@
                         this.render(newPosts, true);
                         await this.cache.saveNews(newPosts);
                     }
+                    this.state.page = txData.next_page_params || null;
+                    this.state.noMore = !this.state.page;
                     this.$("loadMoreButton").style.display = this.state.noMore ? "none" : "block";
                 } catch (e) {
-                    console.error("Load more failed:", e);
+                    console.error("Error:", e.message);
                 } finally {
                     this.state.loading = false;
                     toggleLoading(false);
                 }
-            }
-            render(i, a = false) {
-                console.log("Rendering items, append:", a);
-                if (!i.length && !a) return this.$("newsFeed").innerHTML = "No items";
+            }, 300);
+            render(i, append = false) {
+                console.log("ok");
+                if (!i.length && !append) return this.$("newsFeed").innerHTML = "No items";
                 const f = document.createDocumentFragment(), t = document.createElement("template");
                 i.forEach(item => {
                     t.innerHTML = `<article class="news-item"><div class="reporter-info"><img src="image1.jpeg" alt="Reporter" class="avatar"><div class="reporter-details"><span class="reporter-name">${sh(item.reporter)}</span>· ${dt(item.timestamp)}</div></div><div class="report-content">${item.content.split("\n\n").map(p => "<p>" + p.replace(/\n/g, "<br>") + "</p>").join("")}</div></article>`;
                     f.appendChild(t.content.firstChild);
                 });
                 const feed = this.$("newsFeed");
-                a ? feed.appendChild(f) : (feed.textContent = "", feed.appendChild(f));
-                feed.style.visibility = "visible";
+                requestAnimationFrame(() => {
+                    if (append) feed.appendChild(f);
+                    else {
+                        feed.innerHTML = '';
+                        feed.appendChild(f);
+                    }
+                    feed.style.visibility = "visible";
+                });
             }
         }
         new App();
