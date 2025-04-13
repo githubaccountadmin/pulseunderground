@@ -351,11 +351,11 @@
                 this.initialize();
             }
             async initialize() {
-                await this.cache.saveItems([]);
+                await this.cache.saveItems([]); // Clear cache initially
                 await this.loadCachedData();
                 this.setupEventListeners();
                 this.updateCurrentChannelDisplay();
-                await this.fetchMultipleNews(33, false);
+                await this.fetchMultipleNews(33, false); // Fetch initial posts
             }
             setupEventListeners() {
                 this.elements.connectWallet.addEventListener("click", () => {
@@ -492,8 +492,8 @@
                 this.state.isLoading = true;
                 toggleLoading(true);
                 try {
-                    let accumulatedPosts = [];
-                    while (this.state.hasMore && accumulatedPosts.length < minPosts) {
+                    let accumulatedPosts = isLoadMore ? [...this.state.newsItems] : [];
+                    while (this.state.hasMore && accumulatedPosts.length < (isLoadMore ? this.state.newsItems.length + minPosts : minPosts)) {
                         const newPosts = await this.fetchOnePage();
                         if (newPosts.length === 0) {
                             this.state.hasMore = false;
@@ -501,15 +501,14 @@
                         }
                         accumulatedPosts = [...accumulatedPosts, ...newPosts];
                     }
-                    accumulatedPosts = accumulatedPosts.slice(0, minPosts);
-                    if (accumulatedPosts.length > 0) {
-                        this.state.newsItems = isLoadMore
-                            ? [...this.state.newsItems, ...accumulatedPosts]
-                            : accumulatedPosts;
-                        this.state.newsItems = this.state.newsItems
-                            .filter((item, index, self) => index === self.findIndex(i => i.txHash === i.txHash))
+                    const newPostsToAdd = accumulatedPosts.slice(isLoadMore ? this.state.newsItems.length : 0);
+                    if (newPostsToAdd.length > 0) {
+                        // Remove duplicates by txHash
+                        const allPosts = [...(isLoadMore ? this.state.newsItems : []), ...newPostsToAdd];
+                        this.state.newsItems = allPosts
+                            .filter((item, index, self) => index === self.findIndex(i => i.txHash === item.txHash))
                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                        await this.cache.saveItems(accumulatedPosts);
+                        await this.cache.saveItems(newPostsToAdd);
                     }
                     this.renderNewsFeed();
                     this.updateLoadMoreButton();
@@ -567,7 +566,7 @@
                     ? this.state.newsItems.filter(item =>
                         item.content.toLowerCase().includes(this.state.searchTerm) ||
                         item.reporter.toLowerCase().includes(this.state.searchTerm))
-                    : this.state.newsItems;
+                    : [...this.state.newsItems]; // Clone to prevent mutation
                 this.elements.newsFeed.innerHTML = "";
                 if (!filteredItems.length) {
                     this.elements.newsFeed.textContent = "No news items available.";
@@ -595,10 +594,7 @@
                 if (this.state.newsItems.length > 0) {
                     this.elements.loadMoreButton.style.display = "block";
                     this.elements.loadMoreButton.textContent = this.state.hasMore ? "Load More" : "Return to Top";
-                    this.elements.loadMoreButton.disabled = !this.state.hasMore;
-                    this.elements.loadMoreButton.onclick = this.state.hasMore 
-                        ? () => this.fetchMultipleNews(33, true) 
-                        : () => window.scrollTo({ top: 0, behavior: "smooth" });
+                    this.elements.loadMoreButton.disabled = !this.state.hasMore && this.state.newsItems.length > 0;
                 } else {
                     this.elements.loadMoreButton.style.display = "none";
                 }
