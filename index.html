@@ -136,7 +136,7 @@
         .reporter-details { font-size: 14px; margin-left: 10px; }
         .reporter-name { font-weight: bold; }
         .report-content { margin: 10px 0; line-height: 1.6; }
-        #search-input {
+        #searchInput {
             width: 100%;
             padding: 12px 15px;
             background: var(--bg-lighter);
@@ -145,7 +145,7 @@
             color: var(--text);
             margin-bottom: 20px;
         }
-        #search-input:focus { outline: none; border-color: var(--primary); box-shadow: var(--neon-glow); }
+        #searchInput:focus { outline: none; border-color: var(--primary); box-shadow: var(--neon-glow); }
         #loadingOverlay {
             position: fixed;
             top: 0;
@@ -171,6 +171,32 @@
             z-index: 1001;
             box-shadow: var(--neon-glow);
         }
+        #channelSelection {
+            margin-top: 20px;
+        }
+        #channelSelection h3 {
+            font-size: 18px;
+            color: var(--primary-light);
+            margin-bottom: 10px;
+        }
+        #channelSelection button {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        #customChannelInput {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text);
+        }
+        #currentChannel {
+            font-size: 14px;
+            color: var(--text);
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -185,6 +211,14 @@
                     <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</a></li>
                 </ul>
             </nav>
+            <div id="channelSelection">
+                <h3>Channels</h3>
+                <button id="mainChannel">Main Channel</button>
+                <button id="selfChannel">Self Channel</button>
+                <input type="text" id="customChannelInput" placeholder="Enter custom address">
+                <button id="setCustomChannel">Set Custom Channel</button>
+                <p>Current Channel: <span id="currentChannel"></span></p>
+            </div>
             <button id="connectWallet">Connect Wallet</button>
             <div id="walletInfo" style="display: none;">
                 <p>Connected: <span id="walletAddress"></span></p>
@@ -219,7 +253,7 @@
 
     <script>
         const ethers = window.ethers;
-        const POST_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB".toLowerCase();
+        const MAIN_CHANNEL_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB".toLowerCase();
         const PULSE_CHAIN_ID = 369;
 
         // Utility Functions
@@ -252,8 +286,7 @@
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
                     if (!db.objectStoreNames.contains("newsItems")) {
-                        const store = db.createObjectStore("newsItems", { keyPath: "txHash" });
-                        store.createIndex("timestamp", "timestamp", { unique: false });
+                        db.createObjectStore("newsItems", { keyPath: "txHash" });
                     }
                 };
                 request.onsuccess = () => this.db = request.result;
@@ -289,7 +322,8 @@
                     searchTerm: "",
                     isLoading: false,
                     hasMore: true,
-                    nextPageParams: null
+                    nextPageParams: null,
+                    currentChannel: MAIN_CHANNEL_ADDRESS
                 };
                 this.elements = {
                     newsFeed: document.getElementById("newsFeed"),
@@ -298,7 +332,13 @@
                     loadMoreButton: document.getElementById("loadMoreButton"),
                     connectWallet: document.getElementById("connectWallet"),
                     walletInfo: document.getElementById("walletInfo"),
-                    walletAddress: document.getElementById("walletAddress")
+                    walletAddress: document.getElementById("walletAddress"),
+                    publishStory: document.getElementById("publishStory"),
+                    mainChannel: document.getElementById("mainChannel"),
+                    selfChannel: document.getElementById("selfChannel"),
+                    customChannelInput: document.getElementById("customChannelInput"),
+                    setCustomChannel: document.getElementById("setCustomChannel"),
+                    currentChannel: document.getElementById("currentChannel")
                 };
                 this.cache = new Cache();
                 this.signer = null;
@@ -308,6 +348,7 @@
                 this.loadCachedData();
                 this.setupEventListeners();
                 this.fetchNews();
+                this.updateCurrentChannelDisplay();
             }
             setupEventListeners() {
                 this.elements.connectWallet.addEventListener("click", () => {
@@ -319,6 +360,23 @@
                     this.state.searchTerm = this.elements.searchInput.value.trim().toLowerCase();
                     this.renderNewsFeed();
                 }, 300));
+                this.elements.mainChannel.addEventListener("click", () => this.setChannel(MAIN_CHANNEL_ADDRESS));
+                this.elements.selfChannel.addEventListener("click", async () => {
+                    if (!this.signer) {
+                        showStatus("Please connect your wallet first");
+                        return;
+                    }
+                    const address = await this.signer.getAddress();
+                    this.setChannel(address.toLowerCase());
+                });
+                this.elements.setCustomChannel.addEventListener("click", () => {
+                    const customAddress = this.elements.customChannelInput.value.trim().toLowerCase();
+                    if (ethers.utils.isAddress(customAddress)) {
+                        this.setChannel(customAddress);
+                    } else {
+                        showStatus("Invalid Ethereum address");
+                    }
+                });
             }
             debounce(fn, delay) {
                 let timeout;
@@ -378,7 +436,7 @@
                     toggleLoading(true);
                     const inputData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
                     const tx = {
-                        to: POST_ADDRESS,
+                        to: this.state.currentChannel,
                         value: 0,
                         data: inputData,
                         gasLimit: 150000
@@ -407,7 +465,7 @@
                 this.state.isLoading = true;
                 toggleLoading(true);
                 try {
-                    const url = `https://api.scan.pulsechain.com/api/v2/addresses/${POST_ADDRESS}/transactions?limit=50${this.state.nextPageParams ? "&" + new URLSearchParams(this.state.nextPageParams).toString() : ""}`;
+                    const url = `https://api.scan.pulsechain.com/api/v2/addresses/${this.state.currentChannel}/transactions?limit=50${this.state.nextPageParams ? "&" + new URLSearchParams(this.state.nextPageParams).toString() : ""}`;
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`API error: ${response.status}`);
                     const data = await response.json();
@@ -454,6 +512,17 @@
                 if (!this.state.isLoading && this.state.hasMore) {
                     this.fetchNews();
                 }
+            }
+            setChannel(address) {
+                this.state.currentChannel = address;
+                this.state.newsItems = [];
+                this.state.nextPageParams = null;
+                this.state.hasMore = true;
+                this.updateCurrentChannelDisplay();
+                this.fetchNews();
+            }
+            updateCurrentChannelDisplay() {
+                this.elements.currentChannel.textContent = shortenAddress(this.state.currentChannel);
             }
             renderNewsFeed() {
                 const filteredItems = this.state.searchTerm
