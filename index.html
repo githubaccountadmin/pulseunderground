@@ -51,7 +51,7 @@
             padding-top: 20px;
         }
         main h1 { text-align: center; font-size: 24px; margin-bottom: 20px; }
-        nav ul { list-style: none; padding: 0; }
+        nav ul { list-style: none; }
         nav ul li { margin-bottom: 8px; }
         nav ul li a {
             display: flex;
@@ -87,7 +87,6 @@
             right: 8px;
             width: 34px;
             height: 34px;
-RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
             border-radius: 50%;
             padding: 0;
             display: flex;
@@ -98,7 +97,6 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
             margin: 20px auto;
             padding: 10px 20px;
             border-radius: 5px;
-            display: block;
             width: auto;
         }
         #storySubmission { display: flex; padding: 16px; border-bottom: 1px solid var(--border); background: var(--bg-lighter); }
@@ -128,7 +126,7 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
             width: 100%;
             padding: 12px 40px 12px 44px;
             background: var(--bg-lighter);
-            border kript:1px solid var(--border);
+            border: 1px solid var(--border);
             border-radius: 999px;
             color: var(--text);
             font-size: 15px;
@@ -171,30 +169,40 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
             z-index: 1001;
             box-shadow: var(--neon-glow);
         }
+        #channel-selection { margin-top: 20px; }
+        #channel-selection h3 { margin-bottom: 10px; }
+        #custom-channel-input { width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-lighter); color: var(--text); }
+        #active-channels { margin-top: 20px; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="sidebar-left">
-            <div class="sidebar-content">
-                <nav>
-                    <ul>
-                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span> Home</a></li>
-                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M21 21l-6-6m2-5a7 7 0 1 0-14 0 7 7 0 0 0 14 0z"></path></svg></span> Explore</a></li>
-                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10zM12 8v4M12 16h.01"></path></svg></span> Notifications</a></li>
-                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></span> Messages</a></li>
-                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span> Profile</a></li>
-                        <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></span> More</a></li>
-                    </ul>
-                </nav>
+            <nav>
+                <ul>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span> Home</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M21 21l-6-6m2-5a7 7 0 1 0-14 0 7 7 0 0 0 14 0z"></path></svg></span> Explore</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10zM12 8v4M12 16h.01"></path></svg></span> Notifications</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></span> Messages</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span> Profile</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></span> More</a></li>
+                </ul>
+            </nav>
+            <div id="channel-selection">
+                <h3>Channels</h3>
+                <button id="main-channel">Main Channel</button>
+                <button id="self-channel">Self Channel</button>
+                <div>
+                    <input type="text" id="custom-channel-input" placeholder="Enter custom address">
+                    <button id="set-custom-channel">Set Custom Channel</button>
+                </div>
+                <p>Current Channel: <span id="current-channel"></span></p>
             </div>
             <div class="bottom-buttons">
                 <button id="connectWallet">Connect Wallet</button>
             </div>
-            <div id="profile-section">
-                <div id="walletInfo" style="display:none">
-                    <span id="walletAddress"></span>
-                </div>
+            <div id="walletInfo" style="display:none">
+                <span id="walletAddress"></span>
             </div>
         </div>
         <main>
@@ -220,16 +228,21 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
             <div id="who-to-follow">
                 <h3>Who to follow</h3>
             </div>
+            <div id="active-channels">
+                <h3>Most Active Channels</h3>
+                <p>Coming soon...</p>
+            </div>
         </div>
     </div>
     <div id="loadingOverlay">Loading...</div>
     <div id="o"></div>
     <script>
         const ethers = window.ethers;
-        const POST_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB".toLowerCase();
+        const MAIN_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB".toLowerCase();
         const PULSE_CHAIN_ID = 369;
 
-        const sh = a => a?.length > 10 ? a.slice(0, 6) + "..." + a.slice(-4) : a || "-";
+        // Utility Functions
+        const sh = a => a?.length > 10 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a || "-";
         const dt = t => new Date(t).toLocaleString("en", { month: "numeric", day: "numeric", year: "numeric", hour: "numeric", minute: "numeric" });
         const displayStatus = m => {
             const o = document.getElementById("o");
@@ -243,6 +256,7 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
             overlay.style.display = s ? "flex" : "none";
         };
 
+        // Cache Class for IndexedDB
         class Cache {
             constructor() { this.db = null; this.init(); }
             async init() {
@@ -264,41 +278,40 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
                 const db = await this.init();
                 const tx = db.transaction(storeName, mode);
                 const store = tx.objectStore(storeName);
-                try { return await callback(store); } catch (e) { tx.abort(); throw e; }
+                return callback(store);
             }
             async saveNews(items) {
-                await this.transaction("news", "readwrite", async store => {
-                    for (const item of items) await store.put(item);
-                });
+                await this.transaction("news", "readwrite", store => items.forEach(item => store.put(item)));
             }
             async getNews(limit = 1000) {
-                return this.transaction("news", "readonly", async store => {
+                return this.transaction("news", "readonly", store => {
                     const index = store.index("timestamp");
-                    const news = [];
-                    await new Promise(resolve => {
+                    return new Promise(resolve => {
+                        const news = [];
                         index.openCursor(null, "prev").onsuccess = event => {
                             const cursor = event.target.result;
-                            if (!cursor || news.length >= limit) return resolve();
+                            if (!cursor || news.length >= limit) return resolve(news);
                             news.push(cursor.value);
                             cursor.continue();
                         };
                     });
-                    return news;
                 });
             }
         }
 
+        // Main App Class
         class App {
             constructor() {
                 this.state = {
                     items: [],
-                    filterTerm: '',
+                    filterTerm: "",
                     loading: false,
                     noMore: false,
                     page: null,
                     requests: new Set(),
                     cachedResponses: new Map(),
-                    seenTxHashes: new Set()
+                    seenTxHashes: new Set(),
+                    currentChannel: MAIN_ADDRESS
                 };
                 this.elements = {
                     newsFeed: document.getElementById("newsFeed"),
@@ -307,7 +320,12 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
                     loadMoreButton: document.getElementById("loadMoreButton"),
                     connectWallet: document.getElementById("connectWallet"),
                     walletInfo: document.getElementById("walletInfo"),
-                    walletAddress: document.getElementById("walletAddress")
+                    walletAddress: document.getElementById("walletAddress"),
+                    mainChannelButton: document.getElementById("main-channel"),
+                    selfChannelButton: document.getElementById("self-channel"),
+                    customChannelInput: document.getElementById("custom-channel-input"),
+                    setCustomChannelButton: document.getElementById("set-custom-channel"),
+                    currentChannelDisplay: document.getElementById("current-channel")
                 };
                 this.cache = new Cache();
                 this.setup();
@@ -328,10 +346,19 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
                     else if (t.id === "loadMoreButton") this.loadMore();
                 });
                 this.elements.searchInput.addEventListener("input", this.debounce(() => {
-                    console.log("Search input:", this.elements.searchInput.value);
                     this.state.filterTerm = this.elements.searchInput.value.trim().toLowerCase();
                     this.updateDisplay();
                 }, 200));
+                this.elements.mainChannelButton.addEventListener("click", () => this.setChannel(MAIN_ADDRESS));
+                this.elements.selfChannelButton.addEventListener("click", async () => {
+                    if (!this.signer) await this.connectWallet();
+                    if (this.signer) this.setChannel((await this.signer.getAddress()).toLowerCase());
+                });
+                this.elements.setCustomChannelButton.addEventListener("click", () => {
+                    const address = this.elements.customChannelInput.value.trim().toLowerCase();
+                    if (ethers.utils.isAddress(address)) this.setChannel(address);
+                    else displayStatus("Invalid address");
+                });
                 this.elements.loadMoreButton.style.display = "none";
             }
             debounce(func, wait) {
@@ -367,25 +394,15 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
                 displayStatus("Disconnected");
             }
             async publishStory() {
-                if (!this.signer) {
-                    await this.connectWallet();
-                    if (!this.signer) return displayStatus("Wallet connection canceled");
-                }
-                let content = this.elements.reportContent.value.trim();
+                if (!this.signer && !(await this.connectWallet())) return displayStatus("Wallet connection canceled");
+                const content = this.elements.reportContent.value.trim().replace(/[^\x20-\x7E\n]/g, "").replace(/\s+/g, " ");
                 if (!content) return displayStatus("No content");
-                content = content.replace(/[^\x20-\x7E\n]/g, '').replace(/\s+/g, ' ').trim();
                 try {
-                    const provider = this.signer.provider;
-                    const network = await provider.getNetwork();
-                    if (network.chainId !== PULSE_CHAIN_ID) {
-                        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
-                    }
                     toggleLoading(true, "Submitting post...");
                     const inputData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
-                    const tx = { to: POST_ADDRESS, value: 0, data: inputData, gasLimit: 100000 };
+                    const tx = { to: this.state.currentChannel, value: 0, data: inputData, gasLimit: 100000 };
                     const signedTx = await this.signer.sendTransaction(tx);
                     const receipt = await signedTx.wait();
-                    displayStatus("Story published! Tx: " + sh(receipt.transactionHash));
                     const newStory = {
                         content,
                         reporter: await this.signer.getAddress(),
@@ -397,51 +414,36 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
                     await this.cache.saveNews([newStory]);
                     this.updateDisplay();
                     this.elements.reportContent.value = "";
+                    displayStatus(`Story published! Tx: ${sh(receipt.transactionHash)}`);
                 } catch (e) {
-                    console.error("Publish error:", e.message);
                     displayStatus(e.message || "Failed to publish");
                 } finally {
                     toggleLoading(false);
                 }
             }
             async fetchTransactions(p) {
-                const filter = 'to%20%7C%20from';
-                const u = `https://api.scan.pulsechain.com/api/v2/addresses/${POST_ADDRESS}/transactions?filter=${filter}&sort=desc&limit=33${p ? "&" + new URLSearchParams(p) : ""}`;
+                const u = `https://api.scan.pulsechain.com/api/v2/addresses/${this.state.currentChannel}/transactions?filter=to&sort=desc&limit=33${p ? "&" + new URLSearchParams(p) : ""}`;
                 if (this.state.requests.has(u)) return this.state.cachedResponses.get(u);
                 this.state.requests.add(u);
-                try {
-                    const r = await fetch(u);
-                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                    const d = await r.json();
-                    this.state.cachedResponses.set(u, d);
-                    return d;
-                } catch (e) {
-                    throw e;
-                } finally {
-                    this.state.requests.delete(u);
-                }
+                const r = await fetch(u);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const d = await r.json();
+                this.state.cachedResponses.set(u, d);
+                this.state.requests.delete(u);
+                return d;
             }
             async parseTransactions(b) {
-                if (!b?.items?.length) {
-                    this.state.noMore = true;
-                    return [];
-                }
+                if (!b?.items?.length) return (this.state.noMore = true), [];
                 const posts = [];
                 for (const tx of b.items) {
-                    const input = tx.raw_input || tx.input || "0x";
-                    if (input === "0x" || this.state.seenTxHashes.has(tx.hash)) continue;
+                    if (tx.input === "0x" || this.state.seenTxHashes.has(tx.hash)) continue;
                     try {
-                        const decodedInput = ethers.utils.toUtf8String(input).trim();
-                        if (decodedInput && /[\x20-\x7E\n]/.test(decodedInput)) {
-                            posts.push({
-                                content: decodedInput,
-                                reporter: tx.from.hash || tx.from,
-                                timestamp: tx.timestamp,
-                                txHash: tx.hash
-                            });
+                        const content = ethers.utils.toUtf8String(tx.input).trim();
+                        if (/[\x20-\x7E\n]/.test(content)) {
+                            posts.push({ content, reporter: tx.from.hash, timestamp: tx.timestamp, txHash: tx.hash });
                             this.state.seenTxHashes.add(tx.hash);
                         }
-                    } catch (e) {}
+                    } catch {}
                 }
                 return posts;
             }
@@ -453,9 +455,8 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
                     const txData = await this.fetchTransactions(this.state.page);
                     const newPosts = await this.parseTransactions(txData);
                     if (newPosts.length) {
-                        const allItems = [...newPosts, ...this.state.items];
-                        this.state.items = Array.from(new Set(allItems.map(item => item.txHash)))
-                            .map(txHash => allItems.find(item => item.txHash === txHash))
+                        this.state.items = [...newPosts, ...this.state.items]
+                            .filter((item, i, arr) => arr.findIndex(t => t.txHash === item.txHash) === i)
                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                         await this.cache.saveNews(newPosts);
                     }
@@ -464,32 +465,36 @@ RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
                     this.state.noMore = !this.state.page;
                     this.elements.loadMoreButton.style.display = this.state.noMore ? "none" : "block";
                 } catch (e) {
-                    console.error("Fetch error:", e.message);
+                    console.error("Fetch error:", e);
                 } finally {
                     this.state.loading = false;
                     toggleLoading(false);
                 }
             }
-            loadMore = this.debounce(async () => {
-                if (this.state.loading || this.state.noMore) return;
-                await this.fetch();
-            }, 300);
+            setChannel(address) {
+                this.state.currentChannel = address;
+                this.elements.currentChannelDisplay.textContent = sh(address);
+                this.state.items = [];
+                this.state.page = null;
+                this.state.seenTxHashes.clear();
+                this.state.noMore = false;
+                this.updateDisplay();
+                this.fetch(true);
+            }
+            loadMore = this.debounce(() => !this.state.loading && !this.state.noMore && this.fetch(), 300);
             updateDisplay() {
                 const items = this.state.filterTerm
-                    ? this.state.items.filter(item => 
-                        (item.content || "").toLowerCase().includes(this.state.filterTerm) ||
-                        (item.reporter || "").toLowerCase().includes(this.state.filterTerm))
+                    ? this.state.items.filter(i => [i.content, i.reporter].some(v => v?.toLowerCase().includes(this.state.filterTerm)))
                     : this.state.items;
                 this.render(items);
             }
-            render(items = []) {
+            render(items) {
                 this.elements.newsFeed.innerHTML = items.length ? "" : "No items";
                 if (!items.length) return;
                 const f = document.createDocumentFragment();
                 const t = document.createElement("template");
                 items.forEach(item => {
-                    const content = item.content || "";
-                    t.innerHTML = `<article class="news-item"><div class="reporter-info"><img src="image1.jpeg" alt="Reporter" class="avatar"><div class="reporter-details"><span class="reporter-name">${sh(item.reporter)}</span>· ${dt(item.timestamp)}</div></div><div class="report-content">${content.split("\n\n").map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("")}</div></article>`;
+                    t.innerHTML = `<article class="news-item"><div class="reporter-info"><img src="image1.jpeg" alt="Reporter" class="avatar"><div class="reporter-details"><span class="reporter-name">${sh(item.reporter)}</span>· ${dt(item.timestamp)}</div></div><div class="report-content">${item.content.split("\n\n").map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("")}</div></article>`;
                     f.appendChild(t.content.firstChild);
                 });
                 this.elements.newsFeed.appendChild(f);
