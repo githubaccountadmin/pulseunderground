@@ -206,6 +206,57 @@
             color: var(--text);
             margin-top: 10px;
         }
+        #profileModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 11, 20, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: var(--bg-light);
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+            border: 1px solid var(--border);
+        }
+        .modal-content h2 {
+            color: var(--primary-light);
+            margin-bottom: 20px;
+        }
+        .modal-content label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .modal-content input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text);
+        }
+        .modal-content img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -214,11 +265,11 @@
             <img src="image1.jpeg" alt="Pulse Underground Logo" class="logo">
             <nav>
                 <ul>
-                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span>Home</a></li>
+                    <li><a href="#" id="homeLink"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span>Home</a></li>
                     <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M21 21l-6-6m2-5a7 7 0 1 0-14 0 7 7 0 0 0 14 0z"></path></svg></span>Explore</a></li>
                     <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10zM12 8v4M12 16h.01"></path></svg></span>Notifications</a></li>
                     <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></span>Messages</a></li>
-                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</a></li>
+                    <li><a href="#" id="profileLink"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</a></li>
                 </ul>
             </nav>
             <button id="connectWallet">Connect Wallet</button>
@@ -229,7 +280,7 @@
         <main>
             <h1>The Pulse Underground</h1>
             <div id="storySubmission">
-                <img src="image1.jpeg" alt="User Avatar" class="avatar">
+                <img src="image1.jpeg" alt="User Avatar" class="avatar" id="submissionAvatar">
                 <div class="input-container">
                     <textarea id="reportContent" placeholder="What's happening?"></textarea>
                     <button id="publishStory">➤</button>
@@ -256,6 +307,21 @@
     </div>
     <div id="loadingOverlay">Loading...</div>
     <div id="statusMessage"></div>
+    <div id="profileModal">
+        <div class="modal-content">
+            <h2>Edit Profile</h2>
+            <img src="image1.jpeg" alt="Profile Preview" id="profilePicPreview">
+            <label for="usernameInput">Username:</label>
+            <input type="text" id="usernameInput" placeholder="Enter username">
+            <label for="profilePicInput">Profile Picture URL:</label>
+            <input type="text" id="profilePicInput" placeholder="Enter image URL">
+            <div class="modal-buttons">
+                <button id="saveProfile">Save</button>
+                <button id="clearProfile">Clear Profile</button>
+                <button id="closeProfileModal">Close</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const ethers = window.ethers;
@@ -288,11 +354,14 @@
                 this.initDB();
             }
             initDB() {
-                const request = indexedDB.open("PulseUndergroundCache", 1);
+                const request = indexedDB.open("PulseUndergroundCache", 2); // Updated version for profiles store
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
                     if (!db.objectStoreNames.contains("newsItems")) {
                         db.createObjectStore("newsItems", { keyPath: "txHash" });
+                    }
+                    if (!db.objectStoreNames.contains("profiles")) {
+                        db.createObjectStore("profiles", { keyPath: "address" });
                     }
                 };
                 request.onsuccess = () => this.db = request.result;
@@ -318,6 +387,36 @@
                     tx.onerror = () => reject(tx.error);
                 });
             }
+            async getProfile(address) {
+                if (!this.db) await new Promise(resolve => setTimeout(resolve, 100));
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction("profiles", "readonly");
+                    const store = tx.objectStore("profiles");
+                    const request = store.get(address);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+            async saveProfile(profile) {
+                if (!this.db) await new Promise(resolve => setTimeout(resolve, 100));
+                const tx = this.db.transaction("profiles", "readwrite");
+                const store = tx.objectStore("profiles");
+                store.put(profile);
+                return new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+            async clearProfile(address) {
+                if (!this.db) await new Promise(resolve => setTimeout(resolve, 100));
+                const tx = this.db.transaction("profiles", "readwrite");
+                const store = tx.objectStore("profiles");
+                store.delete(address);
+                return new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
         }
 
         // Main Application Class
@@ -329,7 +428,9 @@
                     isLoading: false,
                     hasMore: true,
                     nextPageParams: null,
-                    currentChannel: MAIN_CHANNEL_ADDRESS || ""
+                    currentChannel: MAIN_CHANNEL_ADDRESS || "",
+                    profile: { username: "", profilePicUrl: "image1.jpeg" },
+                    connectedAddress: null
                 };
                 this.elements = {
                     newsFeed: document.getElementById("newsFeed"),
@@ -344,7 +445,16 @@
                     selfChannel: document.getElementById("selfChannel"),
                     customChannelInput: document.getElementById("customChannelInput"),
                     setCustomChannel: document.getElementById("setCustomChannel"),
-                    currentChannel: document.getElementById("currentChannel")
+                    currentChannel: document.getElementById("currentChannel"),
+                    submissionAvatar: document.getElementById("submissionAvatar"),
+                    profileLink: document.getElementById("profileLink"),
+                    profileModal: document.getElementById("profileModal"),
+                    usernameInput: document.getElementById("usernameInput"),
+                    profilePicInput: document.getElementById("profilePicInput"),
+                    profilePicPreview: document.getElementById("profilePicPreview"),
+                    saveProfile: document.getElementById("saveProfile"),
+                    clearProfile: document.getElementById("clearProfile"),
+                    closeProfileModal: document.getElementById("closeProfileModal")
                 };
                 this.cache = new Cache();
                 this.signer = null;
@@ -384,6 +494,20 @@
                     }
                 });
                 this.elements.loadMoreButton.addEventListener("click", () => this.handleLoadMoreClick());
+                this.elements.profileLink.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    if (!this.signer) {
+                        showStatus("Please connect your wallet first");
+                        return;
+                    }
+                    this.showProfileModal();
+                });
+                this.elements.saveProfile.addEventListener("click", () => this.saveProfile());
+                this.elements.clearProfile.addEventListener("click", () => this.clearProfile());
+                this.elements.closeProfileModal.addEventListener("click", () => {
+                    this.elements.profileModal.style.display = "none";
+                });
+                this.elements.profilePicInput.addEventListener("input", () => this.previewProfilePic());
             }
             debounce(fn, delay) {
                 let timeout;
@@ -415,9 +539,12 @@
                     await provider.send("eth_requestAccounts", []);
                     this.signer = provider.getSigner();
                     const address = await this.signer.getAddress();
+                    this.state.connectedAddress = address.toLowerCase();
                     this.elements.walletAddress.textContent = shortenAddress(address);
                     this.elements.walletInfo.style.display = "block";
                     this.elements.connectWallet.textContent = "Disconnect Wallet";
+                    await this.loadProfile();
+                    this.updateAvatars();
                     showStatus("Wallet connected successfully");
                 } catch (error) {
                     showStatus("Wallet connection failed: " + (error.message || "Unknown error"));
@@ -425,9 +552,88 @@
             }
             disconnectWallet() {
                 this.signer = null;
+                this.state.connectedAddress = null;
+                this.state.profile = { username: "", profilePicUrl: "image1.jpeg" };
                 this.elements.walletInfo.style.display = "none";
                 this.elements.connectWallet.textContent = "Connect Wallet";
+                this.updateAvatars();
                 showStatus("Wallet disconnected");
+            }
+            async loadProfile() {
+                try {
+                    const profile = await this.cache.getProfile(this.state.connectedAddress);
+                    if (profile) {
+                        this.state.profile = {
+                            username: profile.username || "",
+                            profilePicUrl: profile.profilePicUrl || "image1.jpeg"
+                        };
+                    } else {
+                        this.state.profile = { username: "", profilePicUrl: "image1.jpeg" };
+                    }
+                    this.updateAvatars();
+                } catch (error) {
+                    showStatus("Error loading profile");
+                }
+            }
+            async saveProfile() {
+                const username = this.elements.usernameInput.value.trim();
+                const profilePicUrl = this.elements.profilePicInput.value.trim() || "image1.jpeg";
+                if (profilePicUrl !== "image1.jpeg") {
+                    const img = new Image();
+                    img.src = profilePicUrl;
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = () => reject(new Error("Invalid image URL"));
+                    }).catch(() => {
+                        showStatus("Invalid profile picture URL");
+                        return;
+                    });
+                }
+                this.state.profile = { username, profilePicUrl };
+                try {
+                    await this.cache.saveProfile({
+                        address: this.state.connectedAddress,
+                        username,
+                        profilePicUrl
+                    });
+                    this.updateAvatars();
+                    this.elements.profileModal.style.display = "none";
+                    showStatus("Profile saved successfully");
+                } catch (error) {
+                    showStatus("Error saving profile");
+                }
+            }
+            async clearProfile() {
+                try {
+                    await this.cache.clearProfile(this.state.connectedAddress);
+                    this.state.profile = { username: "", profilePicUrl: "image1.jpeg" };
+                    this.updateAvatars();
+                    this.elements.profileModal.style.display = "none";
+                    showStatus("Profile cleared");
+                } catch (error) {
+                    showStatus("Error clearing profile");
+                }
+            }
+            showProfileModal() {
+                this.elements.usernameInput.value = this.state.profile.username;
+                this.elements.profilePicInput.value = this.state.profile.profilePicUrl !== "image1.jpeg" ? this.state.profile.profilePicUrl : "";
+                this.elements.profilePicPreview.src = this.state.profile.profilePicUrl;
+                this.elements.profileModal.style.display = "flex";
+            }
+            previewProfilePic() {
+                const url = this.elements.profilePicInput.value.trim() || "image1.jpeg";
+                const img = new Image();
+                img.src = url;
+                img.onload = () => {
+                    this.elements.profilePicPreview.src = url;
+                };
+                img.onerror = () => {
+                    this.elements.profilePicPreview.src = "image1.jpeg";
+                };
+            }
+            updateAvatars() {
+                this.elements.submissionAvatar.src = this.state.profile.profilePicUrl;
+                this.renderNewsFeed();
             }
             async publishStory() {
                 if (!this.signer) {
@@ -471,15 +677,18 @@
                 if (!this.state.hasMore || !this.state.currentChannel) return [];
                 const url = `https://api.scan.pulsechain.com/api/v2/addresses/${this.state.currentChannel}/transactions?limit=33${this.state.nextPageParams ? "&" + new URLSearchParams(this.state.nextPageParams).toString() : ""}`;
                 try {
+                    console.log("Fetching URL:", url);
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`API error: ${response.status}`);
                     const data = await response.json();
                     const newItems = this.parseTransactions(data.items || []);
                     this.state.nextPageParams = data.next_page_params;
-                    this.state.hasMore = !!data.next_page_params;
+                    this.state.hasMore = !!data.next_page_params && newItems.length > 0;
+                    console.log("Fetched:", newItems.length, "items, nextPageParams:", this.state.nextPageParams, "hasMore:", this.state.hasMore);
                     return newItems;
                 } catch (error) {
                     this.state.hasMore = false;
+                    console.error("Fetch error:", error.message);
                     showStatus("Fetch failed: " + (error.message || "Unknown error"));
                     return [];
                 }
@@ -490,21 +699,30 @@
                     return;
                 }
                 this.state.isLoading = true;
-                toggleLoading(true);
+                this.elements.loadMoreButton.disabled = true;
+ pobres                toggleLoading(true);
                 try {
-                    while (this.state.newsItems.length < targetPosts && this.state.hasMore) {
-                        const newPosts = await this.fetchOnePage();
-                        const uniqueNewPosts = newPosts.filter(post => 
-                            !this.state.newsItems.some(item => item.txHash === post.txHash)
-                        );
-                        if (uniqueNewPosts.length === 0 && !this.state.nextPageParams) {
-                            this.state.hasMore = false;
-                            break;
-                        }
-                        this.state.newsItems = [...this.state.newsItems, ...uniqueNewPosts]
-                            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                        await this.cache.saveItems(uniqueNewPosts);
+                    console.log("Starting fetchMultipleNews, target:", targetPosts, "current newsItems:", this.state.newsItems.length);
+                    const postsNeeded = targetPosts - this.state.newsItems.length;
+                    if (postsNeeded <= 0) {
+                        console.log("Target already met");
+                        this.state.hasMore = false;
+                        return;
                     }
+                    let newPosts = await this.fetchOnePage();
+                    console.log("Fetched new posts:", newPosts.length);
+                    const uniqueNewPosts = newPosts
+                        .filter(post => !this.state.newsItems.some(item => item.txHash === post.txHash))
+                        .slice(0, postsNeeded);
+                    console.log("Unique new posts after filter:", uniqueNewPosts.length);
+                    if (uniqueNewPosts.length === 0 && !this.state.nextPageParams) {
+                        this.state.hasMore = false;
+                        console.log("No new posts, setting hasMore to false");
+                    }
+                    this.state.newsItems = [...this.state.newsItems, ...uniqueNewPosts]
+                        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    console.log("Updated newsItems:", this.state.newsItems.length);
+                    await this.cache.saveItems(uniqueNewPosts);
                     this.state.newsItems = this.state.newsItems
                         .filter((item, index, self) => 
                             index === self.findIndex(i => i.txHash === item.txHash)
@@ -513,11 +731,14 @@
                     this.updateLoadMoreButton();
                     if (this.state.newsItems.length < targetPosts && !this.state.hasMore) {
                         showStatus("No more transactions found");
+                        console.log("Reached end of data");
                     }
                 } catch (error) {
+                    console.error("fetchMultipleNews error:", error.message);
                     showStatus("Failed to load news: " + (error.message || "Unknown error"));
                 } finally {
                     this.state.isLoading = false;
+                    this.elements.loadMoreButton.disabled = false;
                     toggleLoading(false);
                 }
             }
@@ -543,8 +764,8 @@
                 return items;
             }
             async loadMore() {
-                const targetPosts = this.state.newsItems.length + 33;
-                await this.fetchMultipleNews(targetPosts);
+                console.log("Load more clicked, current newsItems:", this.state.newsItems.length);
+                await this.fetchMultipleNews(this.state.newsItems.length + 33);
             }
             async setChannel(address) {
                 this.state.currentChannel = address.toLowerCase();
@@ -554,6 +775,7 @@
                 await this.cache.saveItems([]);
                 this.renderNewsFeed();
                 this.updateCurrentChannelDisplay();
+                console.log("Setting channel:", address, "fetching initial 33 posts");
                 await this.fetchMultipleNews(33);
             }
             updateCurrentChannelDisplay() {
@@ -575,11 +797,17 @@
                     filteredItems.forEach(item => {
                         const div = document.createElement("div");
                         div.className = "news-item";
+                        const avatarSrc = item.reporter.toLowerCase() === this.state.connectedAddress && this.state.profile.profilePicUrl
+                            ? this.state.profile.profilePicUrl
+                            : "image1.jpeg";
+                        const displayName = item.reporter.toLowerCase() === this.state.connectedAddress && this.state.profile.username
+                            ? this.state.profile.username
+                            : shortenAddress(item.reporter);
                         div.innerHTML = `
                             <div class="reporter-info">
-                                <img src="image1.jpeg" alt="Reporter" class="avatar">
+                                <img src="${avatarSrc}" alt="Reporter" class="avatar">
                                 <div class="reporter-details">
-                                    <span class="reporter-name">${shortenAddress(item.reporter)}</span> · ${formatDate(item.timestamp)}
+                                    <span class="reporter-name">${displayName}</span> · ${formatDate(item.timestamp)}
                                 </div>
                             </div>
                             <div class="report-content">${item.content.replace(/\n/g, "<br>")}</div>
@@ -594,15 +822,16 @@
                 if (this.state.newsItems.length > 0) {
                     this.elements.loadMoreButton.style.display = "block";
                     this.elements.loadMoreButton.textContent = this.state.hasMore ? "Load More" : "Return to Top";
-                    this.elements.loadMoreButton.disabled = false;
+                    this.elements.loadMoreButton.disabled = this.state.isLoading;
+                    console.log("Button updated, hasMore:", this.state.hasMore, "isLoading:", this.state.isLoading);
                 } else {
                     this.elements.loadMoreButton.style.display = "none";
                 }
             }
             handleLoadMoreClick() {
-                if (this.state.hasMore) {
+                if (this.state.hasMore && !this.state.isLoading) {
                     this.loadMore();
-                } else {
+                } else if (!this.state.hasMore) {
                     window.scrollTo({ top: 0, behavior: "smooth" });
                 }
             }
@@ -612,7 +841,7 @@
         const app = new PulseUnderground();
 
         // Home button scrolls to top
-        document.querySelector("#sidebar-left nav ul li:first-child a").addEventListener("click", (e) => {
+        document.getElementById("homeLink").addEventListener("click", (e) => {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
