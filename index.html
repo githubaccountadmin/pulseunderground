@@ -56,6 +56,14 @@
             color: var(--primary-light);
             margin: 0 0 20px;
         }
+        main {
+            flex-grow: 1;
+            max-width: 900px;
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            background: var(--bg-light);
+            padding-top: 20px; /* Added padding */
+        }
         main h1 {
             text-align: center;
             font-size: 24px;
@@ -109,13 +117,6 @@
         button:hover {
             background: linear-gradient(45deg, #6a3fff, #a370ff);
             box-shadow: var(--neon-glow);
-        }
-        main {
-            flex-grow: 1;
-            max-width: 900px;
-            border-left: 1px solid var(--border);
-            border-right: 1px solid var(--border);
-            background: var(--bg-light);
         }
         #storySubmission {
             display: flex;
@@ -328,14 +329,12 @@
             return new Date(t).toLocaleString("en", { month: "numeric", day: "numeric", year: "numeric", hour: "numeric", minute: "numeric" });
         }
         function displayStatus(m) {
-            console.log(m);
             const o = document.getElementById("o");
             o.textContent = m;
             o.style.display = "block";
             setTimeout(() => o.style.display = "none", 3000);
         }
         function toggleLoading(s) {
-            console.log(s ? "Loading..." : "Done");
             document.getElementById("loadingOverlay").style.display = s ? "flex" : "none";
         }
 
@@ -346,7 +345,6 @@
             }
             async init() {
                 if (this.db) return this.db;
-                console.log("Opening IndexedDB");
                 return new Promise((resolve, reject) => {
                     const request = indexedDB.open("PUCache", 1);
                     request.onerror = () => reject(request.error);
@@ -418,12 +416,15 @@
                 cachedItems.forEach(item => this.state.seenTxHashes.add(item.txHash));
             }
             setup() {
-                console.log("Setting up event listeners");
                 document.addEventListener("click", (e) => {
                     const t = e.target;
-                    if (t.id === "connectWallet") this.signer ? this.disconnectWallet() : this.connectWallet();
-                    else if (t.id === "publishStory") this.publishStory();
-                    else if (t.id === "loadMoreButton") this.loadMore();
+                    if (t.id === "connectWallet") {
+                        this.signer ? this.disconnectWallet() : this.connectWallet();
+                    } else if (t.id === "publishStory") {
+                        this.publishStory();
+                    } else if (t.id === "loadMoreButton") {
+                        this.loadMore();
+                    }
                 });
                 const searchInput = this.$('search-input');
                 searchInput.addEventListener('input', this.debounce(() => {
@@ -440,7 +441,6 @@
                 };
             }
             async connectWallet() {
-                console.log("Connecting wallet");
                 try {
                     if (!window.ethereum) throw new Error("No MetaMask");
                     const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -453,19 +453,19 @@
                     const address = await this.signer.getAddress();
                     this.$("walletInfo").style.display = "block";
                     this.$("walletAddress").textContent = sh(address);
+                    this.$("connectWallet").textContent = "Disconnect Wallet";
                     displayStatus("Connected");
                 } catch (e) {
-                    console.error("Error:", e.message);
                     displayStatus(e.message || "Failed to connect");
                 }
             }
             disconnectWallet() {
                 this.signer = null;
                 this.$("walletInfo").style.display = "none";
+                this.$("connectWallet").textContent = "Connect Wallet";
                 displayStatus("Disconnected");
             }
             async publishStory() {
-                console.log("Publishing story");
                 if (!this.signer) {
                     await this.connectWallet();
                     if (!this.signer) {
@@ -499,14 +499,12 @@
                     this.updateDisplay();
                     this.$("reportContent").value = "";
                 } catch (e) {
-                    console.error("Publish error:", e.message);
                     displayStatus(e.message || "Failed to publish");
                 } finally {
                     toggleLoading(false);
                 }
             }
             async fetchTransactions(p) {
-                console.log("Fetching transactions");
                 const filter = 'to%20%7C%20from';
                 const u = `https://api.scan.pulsechain.com/api/v2/addresses/${POST_ADDRESS}/transactions?filter=${filter}&sort=desc&limit=33${p ? "&" + new URLSearchParams(p) : ""}`;
                 if (this.state.requests.has(u)) return this.state.cachedResponses.get(u);
@@ -518,14 +516,12 @@
                     this.state.cachedResponses.set(u, d);
                     return d;
                 } catch (e) {
-                    console.error("Error:", e.message);
                     throw e;
                 } finally {
                     this.state.requests.delete(u);
                 }
             }
             async parseTransactions(b) {
-                console.log("Parsing transactions");
                 if (!b?.items?.length) {
                     this.state.noMore = true;
                     return [];
@@ -573,7 +569,7 @@
                     this.state.noMore = !this.state.page;
                     this.$("loadMoreButton").style.display = this.state.noMore ? "none" : "block";
                 } catch (e) {
-                    console.error("Error:", e.message);
+                    console.error("Fetch error:", e.message);
                 } finally {
                     this.state.loading = false;
                     toggleLoading(false);
@@ -584,18 +580,23 @@
                 this.state.loading = true;
                 toggleLoading(true);
                 try {
-                    const txData = await this.fetchTransactions(this.state.page);
-                    const newPosts = await this.parseTransactions(txData);
+                    let newPosts = [];
+                    let txData;
+                    do {
+                        txData = await this.fetchTransactions(this.state.page);
+                        const parsed = await this.parseTransactions(txData);
+                        newPosts = newPosts.concat(parsed);
+                        this.state.page = txData.next_page_params || null;
+                        this.state.noMore = !this.state.page;
+                    } while (newPosts.length < 33 && !this.state.noMore);
                     if (newPosts.length) {
                         this.state.items.push(...newPosts);
                         await this.cache.saveNews(newPosts);
                     }
                     this.updateDisplay();
-                    this.state.page = txData.next_page_params || null;
-                    this.state.noMore = !this.state.page;
                     this.$("loadMoreButton").style.display = this.state.noMore ? "none" : "block";
                 } catch (e) {
-                    console.error("Error:", e.message);
+                    console.error("Load more error:", e.message);
                 } finally {
                     this.state.loading = false;
                     toggleLoading(false);
@@ -611,7 +612,6 @@
                 this.render(filteredItems);
             }
             render(items) {
-                console.log("Rendering posts");
                 const feed = this.$("newsFeed");
                 feed.innerHTML = '';
                 if (!items.length) {
