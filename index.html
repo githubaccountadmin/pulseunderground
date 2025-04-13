@@ -351,11 +351,11 @@
                 this.initialize();
             }
             async initialize() {
-                await this.cache.saveItems([]); // Clear cache initially
+                await this.cache.saveItems([]);
                 await this.loadCachedData();
                 this.setupEventListeners();
                 this.updateCurrentChannelDisplay();
-                await this.fetchMultipleNews(33, false); // Fetch initial posts
+                await this.fetchMultipleNews(33, false);
             }
             setupEventListeners() {
                 this.elements.connectWallet.addEventListener("click", () => {
@@ -476,7 +476,7 @@
                     const data = await response.json();
                     const newItems = this.parseTransactions(data.items || []);
                     this.state.nextPageParams = data.next_page_params;
-                    this.state.hasMore = !!data.next_page_params && newItems.length > 0;
+                    this.state.hasMore = !!data.next_page_params;
                     return newItems;
                 } catch (error) {
                     this.state.hasMore = false;
@@ -492,27 +492,28 @@
                 this.state.isLoading = true;
                 toggleLoading(true);
                 try {
-                    let accumulatedPosts = isLoadMore ? [...this.state.newsItems] : [];
-                    while (this.state.hasMore && accumulatedPosts.length < (isLoadMore ? this.state.newsItems.length + minPosts : minPosts)) {
+                    let accumulatedPosts = [];
+                    while (this.state.hasMore && accumulatedPosts.length < minPosts) {
                         const newPosts = await this.fetchOnePage();
                         if (newPosts.length === 0) {
                             this.state.hasMore = false;
                             break;
                         }
-                        accumulatedPosts = [...accumulatedPosts, ...newPosts];
+                        const uniqueNewPosts = newPosts.filter(post => !this.state.newsItems.some(item => item.txHash === post.txHash));
+                        accumulatedPosts = [...accumulatedPosts, ...uniqueNewPosts];
                     }
-                    const newPostsToAdd = accumulatedPosts.slice(isLoadMore ? this.state.newsItems.length : 0);
-                    if (newPostsToAdd.length > 0) {
-                        // Remove duplicates by txHash
-                        const allPosts = [...(isLoadMore ? this.state.newsItems : []), ...newPostsToAdd];
-                        this.state.newsItems = allPosts
+                    accumulatedPosts = accumulatedPosts.slice(0, minPosts);
+                    if (accumulatedPosts.length > 0) {
+                        let allPosts = isLoadMore ? [...this.state.newsItems, ...accumulatedPosts] : accumulatedPosts;
+                        allPosts = allPosts
                             .filter((item, index, self) => index === self.findIndex(i => i.txHash === item.txHash))
                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                        await this.cache.saveItems(newPostsToAdd);
+                        this.state.newsItems = allPosts;
+                        await this.cache.saveItems(accumulatedPosts);
                     }
                     this.renderNewsFeed();
                     this.updateLoadMoreButton();
-                    if (isLoadMore && !this.state.hasMore) {
+                    if (isLoadMore && !this.state.hasMore && accumulatedPosts.length === 0) {
                         showStatus("No more transactions found");
                     }
                 } catch (error) {
@@ -566,7 +567,7 @@
                     ? this.state.newsItems.filter(item =>
                         item.content.toLowerCase().includes(this.state.searchTerm) ||
                         item.reporter.toLowerCase().includes(this.state.searchTerm))
-                    : [...this.state.newsItems]; // Clone to prevent mutation
+                    : [...this.state.newsItems];
                 this.elements.newsFeed.innerHTML = "";
                 if (!filteredItems.length) {
                     this.elements.newsFeed.textContent = "No news items available.";
@@ -594,7 +595,7 @@
                 if (this.state.newsItems.length > 0) {
                     this.elements.loadMoreButton.style.display = "block";
                     this.elements.loadMoreButton.textContent = this.state.hasMore ? "Load More" : "Return to Top";
-                    this.elements.loadMoreButton.disabled = !this.state.hasMore && this.state.newsItems.length > 0;
+                    this.elements.loadMoreButton.disabled = false;
                 } else {
                     this.elements.loadMoreButton.style.display = "none";
                 }
