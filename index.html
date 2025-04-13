@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pulse Underground</title>
-    <link rel="icon" type="image/jpeg" href="image1.jpeg">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root {
@@ -130,8 +129,9 @@
             border-radius: 999px;
             color: var(--text);
             font-size: 15px;
-            position: relative;
             z-index: 10;
+            position: relative;
+            pointer-events: auto;
         }
         #search-input:focus { outline: none; border-color: var(--primary); background: var(--border); box-shadow: var(--neon-glow); }
         #search-button {
@@ -270,10 +270,7 @@
                     request.onsuccess = () => { this.db = request.result; resolve(this.db); };
                     request.onupgradeneeded = event => {
                         const db = event.target.result;
-                        if (!db.objectStoreNames.contains("news")) {
-                            const store = db.createObjectStore("news", { keyPath: "txHash" });
-                            store.createIndex("timestamp", "timestamp", { unique: false });
-                        }
+                        if (!db.objectStoreNames.contains("news")) db.createObjectStore("news", { keyPath: "txHash" }).createIndex("timestamp", "timestamp", { unique: false });
                     };
                 });
             }
@@ -283,22 +280,17 @@
                 const store = tx.objectStore(storeName);
                 return callback(store);
             }
-            async saveNews(items) {
-                await this.transaction("news", "readwrite", store => items.forEach(item => store.put(item)));
-            }
+            async saveNews(items) { await this.transaction("news", "readwrite", store => items.forEach(item => store.put(item))); }
             async getNews(limit = 1000) {
-                return this.transaction("news", "readonly", store => {
-                    const index = store.index("timestamp");
-                    return new Promise(resolve => {
-                        const news = [];
-                        index.openCursor(null, "prev").onsuccess = event => {
-                            const cursor = event.target.result;
-                            if (!cursor || news.length >= limit) return resolve(news);
-                            news.push(cursor.value);
-                            cursor.continue();
-                        };
-                    });
-                });
+                return this.transaction("news", "readonly", store => new Promise(resolve => {
+                    const news = [];
+                    store.index("timestamp").openCursor(null, "prev").onsuccess = event => {
+                        const cursor = event.target.result;
+                        if (!cursor || news.length >= limit) return resolve(news);
+                        news.push(cursor.value);
+                        cursor.continue();
+                    };
+                }));
             }
         }
 
@@ -330,43 +322,34 @@
                     setCustomChannelButton: document.getElementById("set-custom-channel"),
                     currentChannelDisplay: document.getElementById("current-channel")
                 };
-                for (const [key, el] of Object.entries(this.elements)) {
-                    if (!el) console.error(`Element not found: ${key}`);
-                }
                 this.cache = new Cache();
                 this.setup();
                 this.loadInitialData();
             }
 
             async loadInitialData() {
-                console.log("Loading initial data for channel:", this.state.currentChannel);
                 const cachedItems = await this.cache.getNews();
-                console.log("Cached items:", cachedItems);
                 this.state.items = cachedItems;
                 cachedItems.forEach(item => this.state.seenTxHashes.add(item.txHash));
                 this.updateDisplay();
-                await this.fetch(true); // Ensure main channel loads on startup
+                this.fetch(true);
             }
 
             setup() {
+                console.log("Setting up app...");
+                this.elements.searchInput.addEventListener("input", this.debounce(() => {
+                    const value = this.elements.searchInput.value.trim().toLowerCase();
+                    console.log("Search input changed to:", value);
+                    this.state.filterTerm = value;
+                    this.updateDisplay();
+                }, 200));
+
                 document.addEventListener("click", e => {
                     const t = e.target;
                     if (t.id === "connectWallet") this.signer ? this.disconnectWallet() : this.connectWallet();
                     else if (t.id === "publishStory") this.publishStory();
                     else if (t.id === "loadMoreButton") this.loadMore();
                 });
-
-                if (this.elements.searchInput) {
-                    console.log("Attaching search input listener");
-                    this.elements.searchInput.addEventListener("input", this.debounce(() => {
-                        const value = this.elements.searchInput.value;
-                        console.log("Search input triggered with value:", value);
-                        this.state.filterTerm = value.trim().toLowerCase();
-                        this.updateDisplay();
-                    }, 200));
-                } else {
-                    console.error("searchInput element not found during setup");
-                }
 
                 this.elements.mainChannelButton.addEventListener("click", () => this.setChannel(MAIN_ADDRESS));
                 this.elements.selfChannelButton.addEventListener("click", async () => {
@@ -390,22 +373,19 @@
             }
 
             async connectWallet() {
+                if (!window.ethereum) return displayStatus("Please install MetaMask!");
                 try {
-                    if (!window.ethereum) throw new Error("No MetaMask");
                     const provider = new ethers.providers.Web3Provider(window.ethereum);
-                    const network = await provider.getNetwork();
-                    if (network.chainId !== PULSE_CHAIN_ID) {
-                        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
-                    }
                     await provider.send("eth_requestAccounts", []);
                     this.signer = provider.getSigner();
                     const address = await this.signer.getAddress();
-                    this.elements.walletInfo.style.display = "block";
                     this.elements.walletAddress.textContent = sh(address);
-                    this.elements.connectWallet.textContent = "Disconnect Wallet";
-                    displayStatus("Connected");
+                    this.elements.walletInfo.style.display = "block";
+                    this.elements.connectWallet.textContent = "Disconnect";
+                    displayStatus("Wallet connected!");
                 } catch (e) {
-                    displayStatus(e.message || "Failed to connect");
+                    console.error("Wallet connection failed:", e);
+                    displayStatus("Failed to connect wallet");
                 }
             }
 
@@ -413,67 +393,59 @@
                 this.signer = null;
                 this.elements.walletInfo.style.display = "none";
                 this.elements.connectWallet.textContent = "Connect Wallet";
-                displayStatus("Disconnected");
+                displayStatus("Wallet disconnected");
             }
 
             async publishStory() {
-                if (!this.signer && !(await this.connectWallet())) return displayStatus("Wallet connection canceled");
-                const content = this.elements.reportContent.value.trim().replace(/[^\x20-\x7E\n]/g, "").replace(/\s+/g, " ");
-                if (!content) return displayStatus("No content");
+                if (!this.signer) return displayStatus("Connect wallet first!");
+                const content = this.elements.reportContent.value.trim();
+                if (!content) return displayStatus("Enter a story!");
+                toggleLoading(true, "Publishing story...");
                 try {
-                    toggleLoading(true, "Submitting post...");
-                    const inputData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
-                    const tx = { to: this.state.currentChannel, value: 0, data: inputData, gasLimit: 100000 };
-                    const signedTx = await this.signer.sendTransaction(tx);
-                    const receipt = await signedTx.wait();
-                    const newStory = {
-                        content,
-                        reporter: await this.signer.getAddress(),
-                        timestamp: new Date().toISOString(),
-                        txHash: receipt.transactionHash
-                    };
-                    this.state.items.unshift(newStory);
-                    this.state.seenTxHashes.add(newStory.txHash);
-                    await this.cache.saveNews([newStory]);
-                    this.updateDisplay();
+                    const tx = await this.signer.sendTransaction({
+                        to: this.state.currentChannel,
+                        value: 0,
+                        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content))
+                    });
+                    await tx.wait();
+                    displayStatus("Story published!");
                     this.elements.reportContent.value = "";
-                    displayStatus(`Story published! Tx: ${sh(receipt.transactionHash)}`);
+                    this.fetch();
                 } catch (e) {
-                    displayStatus(e.message || "Failed to publish");
+                    console.error("Publish error:", e);
+                    displayStatus("Failed to publish story");
                 } finally {
                     toggleLoading(false);
                 }
             }
 
-            async fetchTransactions(p) {
-                const u = `https://api.scan.pulsechain.com/api/v2/addresses/${this.state.currentChannel}/transactions?sort=desc&limit=33${p ? "&" + new URLSearchParams(p) : ""}`;
-                if (this.state.requests.has(u)) return this.state.cachedResponses.get(u);
-                this.state.requests.add(u);
-                const r = await fetch(u);
-                if (!r.ok) {
-                    console.error(`Fetch error: ${r.status} ${r.statusText}`);
-                    throw new Error(`HTTP ${r.status}`);
-                }
-                const d = await r.json();
-                this.state.cachedResponses.set(u, d);
-                this.state.requests.delete(u);
-                return d;
+            async fetchTransactions(pageParams) {
+                const url = pageParams ? `https://scan.pulsechain.com/api/v2/transactions?${new URLSearchParams(pageParams)}` : 
+                    `https://scan.pulsechain.com/api/v2/address/${this.state.currentChannel}/transactions`;
+                const response = await fetch(url);
+                return response.json();
             }
 
             async parseTransactions(b) {
                 if (!b?.items?.length) {
-                    console.log("No transactions found in response");
-                    return (this.state.noMore = true), [];
+                    console.log("No transactions found");
+                    this.state.noMore = true;
+                    return [];
                 }
                 const posts = [];
                 for (const tx of b.items) {
-                    // Adjust for API response structure; 'to' might be directly under tx
                     const toAddress = tx.to?.hash?.toLowerCase() || tx.to?.toLowerCase();
-                    if (!toAddress || toAddress !== this.state.currentChannel) continue;
-                    if (tx.input === "0x" || this.state.seenTxHashes.has(tx.hash)) continue;
+                    if (toAddress !== this.state.currentChannel) continue;
+
+                    console.log(`Parsing tx ${tx.hash}, input:`, tx.input);
+                    if (!tx.input || typeof tx.input !== "string" || tx.input === "0x" || !tx.input.startsWith("0x")) {
+                        console.warn(`Skipping tx ${tx.hash}: invalid input`);
+                        continue;
+                    }
+
                     try {
                         const content = ethers.utils.toUtf8String(tx.input).trim();
-                        if (/[\x20-\x7E\n]/.test(content)) {
+                        if (/[\x20-\x7E\n]/.test(content) && !this.state.seenTxHashes.has(tx.hash)) {
                             posts.push({
                                 content,
                                 reporter: tx.from.hash,
@@ -483,91 +455,70 @@
                             this.state.seenTxHashes.add(tx.hash);
                         }
                     } catch (e) {
-                        console.warn("Failed to parse transaction input:", e);
+                        console.warn(`Failed to parse tx ${tx.hash}:`, e);
                     }
                 }
-                console.log("Parsed posts:", posts);
                 return posts;
             }
 
+            updateDisplay() {
+                const filtered = this.state.items.filter(item => 
+                    !this.state.filterTerm || item.content.toLowerCase().includes(this.state.filterTerm)
+                );
+                this.elements.newsFeed.innerHTML = filtered.map(item => `
+                    <div class="news-item">
+                        <div class="reporter-info">
+                            <img src="image1.jpeg" alt="Reporter Avatar" class="avatar">
+                            <div class="reporter-details">
+                                <div class="reporter-name">${sh(item.reporter)}</div>
+                                <div>${dt(item.timestamp)}</div>
+                            </div>
+                        </div>
+                        <div class="report-content">${item.content}</div>
+                    </div>
+                `).join("");
+                this.elements.newsFeed.style.visibility = "visible";
+            }
+
             async fetch(initial = false) {
-                if (this.state.loading) {
-                    console.log("Fetch skipped: already loading");
-                    return;
-                }
+                if (this.state.loading) return;
                 this.state.loading = true;
                 toggleLoading(true, "Loading news feed...");
                 try {
-                    console.log("Fetching transactions for page:", this.state.page);
                     const txData = await this.fetchTransactions(this.state.page);
-                    console.log("Transaction data received:", txData);
                     const newPosts = await this.parseTransactions(txData);
-                    console.log("New posts parsed:", newPosts);
                     if (newPosts.length) {
                         this.state.items = [...newPosts, ...this.state.items]
                             .filter((item, i, arr) => arr.findIndex(t => t.txHash === item.txHash) === i)
                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                         await this.cache.saveNews(newPosts);
-                    } else {
-                        console.log("No new posts to add");
+                        this.updateDisplay();
                     }
-                    this.updateDisplay();
                     this.state.page = txData.next_page_params || null;
                     this.state.noMore = !this.state.page;
                     this.elements.loadMoreButton.style.display = this.state.noMore ? "none" : "block";
-                    console.log("Fetch complete. noMore:", this.state.noMore, "page:", this.state.page);
                 } catch (e) {
                     console.error("Fetch error:", e);
-                    displayStatus("Failed to load feed");
+                    displayStatus("Failed to load news feed");
                 } finally {
                     this.state.loading = false;
                     toggleLoading(false);
                 }
             }
 
+            loadMore() { this.fetch(); }
+
             setChannel(address) {
-                console.log("Setting channel to:", address);
                 this.state.currentChannel = address;
-                this.elements.currentChannelDisplay.textContent = sh(address);
                 this.state.items = [];
                 this.state.page = null;
-                this.state.seenTxHashes.clear();
                 this.state.noMore = false;
-                this.updateDisplay();
-                this.fetch(true); // Auto-load selected channel
-            }
-
-            loadMore = this.debounce(() => {
-                console.log("Load more triggered. Loading:", this.state.loading, "No more:", this.state.noMore);
-                if (!this.state.loading && !this.state.noMore) this.fetch();
-            }, 300);
-
-            updateDisplay() {
-                const items = this.state.filterTerm
-                    ? this.state.items.filter(i => [i.content, i.reporter].some(v => v?.toLowerCase().includes(this.state.filterTerm)))
-                    : this.state.items;
-                console.log("Updating display with items:", items);
-                this.render(items);
-            }
-
-            render(items) {
-                this.elements.newsFeed.innerHTML = items.length ? "" : "No items yet";
-                if (!items.length) {
-                    this.elements.newsFeed.style.visibility = "visible";
-                    return;
-                }
-                const f = document.createDocumentFragment();
-                const t = document.createElement("template");
-                items.forEach(item => {
-                    t.innerHTML = `<article class="news-item"><div class="reporter-info"><img src="image1.jpeg" alt="Reporter" class="avatar"><div class="reporter-details"><span class="reporter-name">${sh(item.reporter)}</span>· ${dt(item.timestamp)}</div></div><div class="report-content">${item.content.split("\n\n").map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("")}</div></article>`;
-                    f.appendChild(t.content.firstChild);
-                });
-                this.elements.newsFeed.appendChild(f);
-                this.elements.newsFeed.style.visibility = "visible";
+                this.state.seenTxHashes.clear();
+                this.elements.currentChannelDisplay.textContent = sh(address);
+                this.fetch();
             }
         }
 
-        // Initialize app
         new App();
     </script>
 </body>
