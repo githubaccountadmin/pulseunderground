@@ -87,6 +87,7 @@
             right: 8px;
             width: 34px;
             height: 34px;
+RANCH OF THE CODE THAT WAS CAUGHT OFF height: 34px;
             border-radius: 50%;
             padding: 0;
             display: flex;
@@ -127,7 +128,7 @@
             width: 100%;
             padding: 12px 40px 12px 44px;
             background: var(--bg-lighter);
-            border: 1px solid var(--border);
+            border kript:1px solid var(--border);
             border-radius: 999px;
             color: var(--text);
             font-size: 15px;
@@ -221,7 +222,7 @@
             </div>
         </div>
     </div>
-    <div id="loadingOverlay">Loading news feed...</div>
+    <div id="loadingOverlay">Loading...</div>
     <div id="o"></div>
     <script>
         const ethers = window.ethers;
@@ -236,7 +237,11 @@
             o.style.display = "block";
             setTimeout(() => o.style.display = "none", 3000);
         };
-        const toggleLoading = s => document.getElementById("loadingOverlay").style.display = s ? "flex" : "none";
+        const toggleLoading = (s, message = "Loading...") => {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.textContent = message;
+            overlay.style.display = s ? "flex" : "none";
+        };
 
         class Cache {
             constructor() { this.db = null; this.init(); }
@@ -323,6 +328,7 @@
                     else if (t.id === "loadMoreButton") this.loadMore();
                 });
                 this.elements.searchInput.addEventListener("input", this.debounce(() => {
+                    console.log("Search input:", this.elements.searchInput.value);
                     this.state.filterTerm = this.elements.searchInput.value.trim().toLowerCase();
                     this.updateDisplay();
                 }, 200));
@@ -374,7 +380,7 @@
                     if (network.chainId !== PULSE_CHAIN_ID) {
                         await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
                     }
-                    toggleLoading(true);
+                    toggleLoading(true, "Submitting post...");
                     const inputData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
                     const tx = { to: POST_ADDRESS, value: 0, data: inputData, gasLimit: 100000 };
                     const signedTx = await this.signer.sendTransaction(tx);
@@ -442,7 +448,7 @@
             async fetch(initial = false) {
                 if (this.state.loading) return;
                 this.state.loading = true;
-                toggleLoading(true);
+                toggleLoading(true, "Loading news feed...");
                 try {
                     const txData = await this.fetchTransactions(this.state.page);
                     const newPosts = await this.parseTransactions(txData);
@@ -466,11 +472,7 @@
             }
             loadMore = this.debounce(async () => {
                 if (this.state.loading || this.state.noMore) return;
-                let newPosts = [];
-                do {
-                    await this.fetch();
-                    newPosts = this.state.items.slice(0, newPosts.length);
-                } while (newPosts.length < 33 && !this.state.noMore);
+                await this.fetch();
             }, 300);
             updateDisplay() {
                 const items = this.state.filterTerm
