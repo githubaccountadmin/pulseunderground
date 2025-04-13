@@ -108,8 +108,9 @@
         }
         #loadMoreButton {
             width: auto;
+            padding: 8px 20px; /* Smaller size */
+            font-size: 14px; /* Slightly smaller text */
             margin: 20px auto;
-            padding: 10px 25px;
             display: none;
         }
         #storySubmission {
@@ -347,10 +348,10 @@
                 this.signer = null;
                 this.initialize();
             }
-            initialize() {
+            async initialize() {
                 this.loadCachedData();
                 this.setupEventListeners();
-                this.fetchNews();
+                await this.fetchMultipleNews(33);
                 this.updateCurrentChannelDisplay();
             }
             setupEventListeners() {
@@ -358,7 +359,6 @@
                     this.signer ? this.disconnectWallet() : this.connectWallet();
                 });
                 this.elements.publishStory.addEventListener("click", () => this.publishStory());
-                this.elements.loadMoreButton.addEventListener("click", () => this.loadMore());
                 this.elements.searchInput.addEventListener("input", this.debounce(() => {
                     this.state.searchTerm = this.elements.searchInput.value.trim().toLowerCase();
                     this.renderNewsFeed();
@@ -380,6 +380,7 @@
                         showStatus("Invalid Ethereum address");
                     }
                 });
+                this.elements.loadMoreButton.addEventListener("click", () => this.handleLoadMoreClick());
             }
             debounce(fn, delay) {
                 let timeout;
@@ -463,26 +464,42 @@
                     toggleLoading(false);
                 }
             }
-            async fetchNews() {
-                if (this.state.isLoading || !this.state.hasMore) return;
+            async fetchOnePage() {
+                if (!this.state.hasMore) return [];
+                const url = `https://api.scan.pulsechain.com/api/v2/addresses/${this.state.currentChannel}/transactions?limit=50${this.state.nextPageParams ? "&" + new URLSearchParams(this.state.nextPageParams).toString() : ""}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+                const data = await response.json();
+                const newItems = this.parseTransactions(data.items);
+                this.state.nextPageParams = data.next_page_params;
+                this.state.hasMore = !!data.next_page_params;
+                return newItems;
+            }
+            async fetchMultipleNews(minPosts = 33) {
+                if (this.state.isLoading) return;
                 this.state.isLoading = true;
                 toggleLoading(true);
                 try {
-                    const url = `https://api.scan.pulsechain.com/api/v2/addresses/${this.state.currentChannel}/transactions?limit=50${this.state.nextPageParams ? "&" + new URLSearchParams(this.state.nextPageParams).toString() : ""}`;
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`API error: ${response.status}`);
-                    const data = await response.json();
-                    const newItems = this.parseTransactions(data.items);
-                    if (newItems.length) {
-                        this.state.newsItems = [...newItems, ...this.state.newsItems]
+                    let accumulatedPosts = [];
+                    while (this.state.hasMore && accumulatedPosts.length < minPosts) {
+                        const newPosts = await this.fetchOnePage();
+                        accumulatedPosts = [...accumulatedPosts, ...newPosts];
+                        if (newPosts.length === 0 && this.state.hasMore) {
+                            continue;
+                        }
+                    }
+                    if (accumulatedPosts.length > 0) {
+                        this.state.newsItems = [...this.state.newsItems, ...accumulatedPosts]
                             .filter((item, index, self) => index === self.findIndex(i => i.txHash === item.txHash))
                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                        await this.cache.saveItems(newItems);
+                        await this.cache.saveItems(accumulatedPosts);
                     }
-                    this.state.nextPageParams = data.next_page_params;
-                    this.state.hasMore = !!data.next_page_params;
-                    this.elements.loadMoreButton.style.display = this.state.hasMore ? "block" : "none";
                     this.renderNewsFeed();
+                    if (!this.state.hasMore && accumulatedPosts.length === 0) {
+                        showStatus("No more transactions found");
+                    } else if (!this.state.hasMore && accumulatedPosts.length < minPosts) {
+                        showStatus(`Only ${accumulatedPosts.length} posts found - no more transactions available`);
+                    }
                 } catch (error) {
                     showStatus("Failed to load news: " + (error.message || "Unknown error"));
                 } finally {
@@ -493,7 +510,6 @@
             parseTransactions(transactions) {
                 const items = [];
                 const knownFunctionSelectors = ["0xa9059cbb"];
-                
                 for (const tx of transactions) {
                     if (!tx.raw_input || tx.raw_input === "0x" || items.some(item => item.txHash === tx.hash)) {
                         continue;
@@ -517,18 +533,16 @@
                 }
                 return items;
             }
-            loadMore() {
-                if (!this.state.isLoading && this.state.hasMore) {
-                    this.fetchNews();
-                }
+            async loadMore() {
+                await this.fetchMultipleNews(33);
             }
-            setChannel(address) {
+            async setChannel(address) {
                 this.state.currentChannel = address;
                 this.state.newsItems = [];
                 this.state.nextPageParams = null;
                 this.state.hasMore = true;
-                this.updateCurrentChannelDisplay();
-                this.fetchNews();
+                this.renderNewsFeed(); // Update UI immediately
+                await this.fetchMultipleNews(33);
             }
             updateCurrentChannelDisplay() {
                 this.elements.currentChannel.textContent = shortenAddress(this.state.currentChannel);
@@ -542,29 +556,51 @@
                 this.elements.newsFeed.innerHTML = "";
                 if (!filteredItems.length) {
                     this.elements.newsFeed.textContent = "No news items available.";
-                    return;
-                }
-                const fragment = document.createDocumentFragment();
-                filteredItems.forEach(item => {
-                    const div = document.createElement("div");
-                    div.className = "news-item";
-                    div.innerHTML = `
-                        <div class="reporter-info">
-                            <img src="image1.jpeg" alt="Reporter" class="avatar">
-                            <div class="reporter-details">
-                                <span class="reporter-name">${shortenAddress(item.reporter)}</span> · ${formatDate(item.timestamp)}
+                } else {
+                    const fragment = document.createDocumentFragment();
+                    filteredItems.forEach(item => {
+                        const div = document.createElement("div");
+                        div.className = "news-item";
+                        div.innerHTML = `
+                            <div class="reporter-info">
+                                <img src="image1.jpeg" alt="Reporter" class="avatar">
+                                <div class="reporter-details">
+                                    <span class="reporter-name">${shortenAddress(item.reporter)}</span> · ${formatDate(item.timestamp)}
+                                </div>
                             </div>
-                        </div>
-                        <div class="report-content">${item.content.replace(/\n/g, "<br>")}</div>
-                    `;
-                    fragment.appendChild(div);
-                });
-                this.elements.newsFeed.appendChild(fragment);
+                            <div class="report-content">${item.content.replace(/\n/g, "<br>")}</div>
+                        `;
+                        fragment.appendChild(div);
+                    });
+                    this.elements.newsFeed.appendChild(fragment);
+                }
+                this.updateLoadMoreButton();
+            }
+            updateLoadMoreButton() {
+                if (this.state.newsItems.length > 0) {
+                    this.elements.loadMoreButton.style.display = "block";
+                    this.elements.loadMoreButton.textContent = this.state.hasMore ? "Load More" : "Return to Top";
+                } else {
+                    this.elements.loadMoreButton.style.display = "none";
+                }
+            }
+            handleLoadMoreClick() {
+                if (this.state.hasMore) {
+                    this.loadMore();
+                } else {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                }
             }
         }
 
         // Start the application
         const app = new PulseUnderground();
+
+        // Home button scrolls to top
+        document.querySelector("#sidebar-left nav ul li:first-child a").addEventListener("click", (e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
     </script>
 </body>
 </html>
