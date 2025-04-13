@@ -28,12 +28,13 @@
         #app-container {
             display: flex;
             min-height: 100vh;
+            width: 100%;
             max-width: 1280px;
             margin: 0 auto;
             background: var(--bg-dark);
         }
         #sidebar-left {
-            width: 275px;
+            width: 250px;
             position: sticky;
             top: 0;
             height: 100vh;
@@ -43,7 +44,7 @@
             overflow-y: auto;
         }
         #sidebar-right {
-            width: 350px;
+            width: 300px;
             position: sticky;
             top: 0;
             height: 100vh;
@@ -75,7 +76,7 @@
         .icon { width: 20px; height: 20px; margin-right: 15px; filter: drop-shadow(0 0 2px var(--primary)); }
         main {
             flex-grow: 1;
-            max-width: 900px;
+            width: calc(1280px - 250px - 300px);
             background: var(--bg-light);
             border-left: 1px solid var(--border);
             border-right: 1px solid var(--border);
@@ -94,6 +95,7 @@
             margin-bottom: 15px;
         }
         button:hover { background: linear-gradient(45deg, #6a3fff, #a370ff); box-shadow: var(--neon-glow); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
         #publishStory {
             position: absolute;
             bottom: 10px;
@@ -108,8 +110,8 @@
         }
         #loadMoreButton {
             width: auto;
-            padding: 8px 20px; /* Smaller size */
-            font-size: 14px; /* Slightly smaller text */
+            padding: 8px 20px;
+            font-size: 14px;
             margin: 20px auto;
             display: none;
         }
@@ -219,14 +221,6 @@
                     <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</a></li>
                 </ul>
             </nav>
-            <div id="channelSelection">
-                <h3>Channels</h3>
-                <button id="mainChannel">Main Channel</button>
-                <button id="selfChannel">Self Channel</button>
-                <input type="text" id="customChannelInput" placeholder="Enter custom address">
-                <button id="setCustomChannel">Set Custom Channel</button>
-                <p>Current Channel: <span id="currentChannel"></span></p>
-            </div>
             <button id="connectWallet">Connect Wallet</button>
             <div id="walletInfo" style="display: none;">
                 <p>Connected: <span id="walletAddress"></span></p>
@@ -246,6 +240,14 @@
         </main>
         <div id="sidebar-right">
             <input type="text" id="searchInput" placeholder="Search The Pulse Underground">
+            <div id="channelSelection">
+                <h3>Channels</h3>
+                <button id="mainChannel">Main Channel</button>
+                <button id="selfChannel">Self Channel</button>
+                <input type="text" id="customChannelInput" placeholder="Enter custom address">
+                <button id="setCustomChannel">Set Custom Channel</button>
+                <p>Current Channel: <span id="currentChannel"></span></p>
+            </div>
             <div id="activeChannels">
                 <h3>Active Channels</h3>
                 <p>Coming soon...</p>
@@ -327,7 +329,7 @@
                     isLoading: false,
                     hasMore: true,
                     nextPageParams: null,
-                    currentChannel: MAIN_CHANNEL_ADDRESS
+                    currentChannel: MAIN_CHANNEL_ADDRESS || ""
                 };
                 this.elements = {
                     newsFeed: document.getElementById("newsFeed"),
@@ -349,10 +351,11 @@
                 this.initialize();
             }
             async initialize() {
-                this.loadCachedData();
+                await this.cache.saveItems([]);
+                await this.loadCachedData();
                 this.setupEventListeners();
-                await this.fetchMultipleNews(33);
                 this.updateCurrentChannelDisplay();
+                await this.fetchMultipleNews(33, false);
             }
             setupEventListeners() {
                 this.elements.connectWallet.addEventListener("click", () => {
@@ -465,40 +468,53 @@
                 }
             }
             async fetchOnePage() {
-                if (!this.state.hasMore) return [];
+                if (!this.state.hasMore || !this.state.currentChannel) return [];
                 const url = `https://api.scan.pulsechain.com/api/v2/addresses/${this.state.currentChannel}/transactions?limit=50${this.state.nextPageParams ? "&" + new URLSearchParams(this.state.nextPageParams).toString() : ""}`;
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                const data = await response.json();
-                const newItems = this.parseTransactions(data.items);
-                this.state.nextPageParams = data.next_page_params;
-                this.state.hasMore = !!data.next_page_params;
-                return newItems;
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`API error: ${response.status}`);
+                    const data = await response.json();
+                    const newItems = this.parseTransactions(data.items || []);
+                    this.state.nextPageParams = data.next_page_params;
+                    this.state.hasMore = !!data.next_page_params && newItems.length > 0;
+                    return newItems;
+                } catch (error) {
+                    this.state.hasMore = false;
+                    showStatus("Fetch failed: " + (error.message || "Unknown error"));
+                    return [];
+                }
             }
-            async fetchMultipleNews(minPosts = 33) {
-                if (this.state.isLoading) return;
+            async fetchMultipleNews(minPosts = 33, isLoadMore = false) {
+                if (this.state.isLoading || !this.state.currentChannel) {
+                    showStatus("No channel selected");
+                    return;
+                }
                 this.state.isLoading = true;
                 toggleLoading(true);
                 try {
                     let accumulatedPosts = [];
                     while (this.state.hasMore && accumulatedPosts.length < minPosts) {
                         const newPosts = await this.fetchOnePage();
-                        accumulatedPosts = [...accumulatedPosts, ...newPosts];
-                        if (newPosts.length === 0 && this.state.hasMore) {
-                            continue;
+                        if (newPosts.length === 0) {
+                            this.state.hasMore = false;
+                            break;
                         }
+                        accumulatedPosts = [...accumulatedPosts, ...newPosts];
                     }
+                    accumulatedPosts = accumulatedPosts.slice(0, minPosts);
                     if (accumulatedPosts.length > 0) {
-                        this.state.newsItems = [...this.state.newsItems, ...accumulatedPosts]
-                            .filter((item, index, self) => index === self.findIndex(i => i.txHash === item.txHash))
+                        this.state.newsItems = isLoadMore
+                            ? [...this.state.newsItems, ...accumulatedPosts]
+                            : accumulatedPosts;
+                        this.state.newsItems = this.state.newsItems
+                            .filter((item, index, self) => index === self.findIndex(i => i.txHash === i.txHash))
                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                         await this.cache.saveItems(accumulatedPosts);
                     }
                     this.renderNewsFeed();
-                    if (!this.state.hasMore && accumulatedPosts.length === 0) {
+                    this.updateLoadMoreButton();
+                    if (isLoadMore && !this.state.hasMore) {
                         showStatus("No more transactions found");
-                    } else if (!this.state.hasMore && accumulatedPosts.length < minPosts) {
-                        showStatus(`Only ${accumulatedPosts.length} posts found - no more transactions available`);
                     }
                 } catch (error) {
                     showStatus("Failed to load news: " + (error.message || "Unknown error"));
@@ -509,43 +525,42 @@
             }
             parseTransactions(transactions) {
                 const items = [];
-                const knownFunctionSelectors = ["0xa9059cbb"];
                 for (const tx of transactions) {
-                    if (!tx.raw_input || tx.raw_input === "0x" || items.some(item => item.txHash === tx.hash)) {
-                        continue;
-                    }
-                    if (knownFunctionSelectors.some(selector => tx.raw_input.startsWith(selector))) {
-                        continue;
-                    }
-                    try {
-                        const content = ethers.utils.toUtf8String(tx.raw_input).trim();
-                        if (content && /[\x20-\x7E\n]/.test(content)) {
-                            items.push({
-                                content,
-                                reporter: tx.from.hash,
-                                timestamp: tx.timestamp,
-                                txHash: tx.hash
-                            });
+                    if (tx.raw_input && tx.raw_input !== "0x") {
+                        try {
+                            const content = ethers.utils.toUtf8String(tx.raw_input).trim();
+                            if (content.length > 0) {
+                                items.push({
+                                    content,
+                                    reporter: tx.from?.hash || tx.from,
+                                    timestamp: tx.timestamp || new Date().toISOString(),
+                                    txHash: tx.hash
+                                });
+                            }
+                        } catch (e) {
+                            // Skip invalid UTF-8 data
                         }
-                    } catch (e) {
-                        // Invalid inputs are silently skipped
                     }
                 }
                 return items;
             }
             async loadMore() {
-                await this.fetchMultipleNews(33);
+                await this.fetchMultipleNews(33, true);
             }
             async setChannel(address) {
-                this.state.currentChannel = address;
+                this.state.currentChannel = address.toLowerCase();
                 this.state.newsItems = [];
                 this.state.nextPageParams = null;
                 this.state.hasMore = true;
-                this.renderNewsFeed(); // Update UI immediately
-                await this.fetchMultipleNews(33);
+                await this.cache.saveItems([]);
+                this.renderNewsFeed();
+                this.updateCurrentChannelDisplay();
+                await this.fetchMultipleNews(33, false);
             }
             updateCurrentChannelDisplay() {
-                this.elements.currentChannel.textContent = shortenAddress(this.state.currentChannel);
+                if (this.elements.currentChannel) {
+                    this.elements.currentChannel.textContent = this.state.currentChannel ? shortenAddress(this.state.currentChannel) : "No channel selected";
+                }
             }
             renderNewsFeed() {
                 const filteredItems = this.state.searchTerm
@@ -580,6 +595,10 @@
                 if (this.state.newsItems.length > 0) {
                     this.elements.loadMoreButton.style.display = "block";
                     this.elements.loadMoreButton.textContent = this.state.hasMore ? "Load More" : "Return to Top";
+                    this.elements.loadMoreButton.disabled = !this.state.hasMore;
+                    this.elements.loadMoreButton.onclick = this.state.hasMore 
+                        ? () => this.fetchMultipleNews(33, true) 
+                        : () => window.scrollTo({ top: 0, behavior: "smooth" });
                 } else {
                     this.elements.loadMoreButton.style.display = "none";
                 }
