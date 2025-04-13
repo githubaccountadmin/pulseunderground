@@ -1,9 +1,7 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Pulse Underground</title><link rel="icon" type="image/jpeg" href="image1.jpeg"><script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script><style>:root{--primary:#7c4dff;--primary-light:#b388ff;--bg-dark:#0d0b14;--bg-light:#13101c;--bg-lighter:#1a1327;--border:#2a2438;--text:#fff;--neon-glow:0 0 5px var(--primary),0 0 10px var(--primary),0 0 15px var(--primary);}*{box-sizing:border-box;margin:0;padding:0;}body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg-dark);color:var(--text);line-height:1.5;font-size:16px;}#app-container{display:flex;min-height:100vh;max-width:1280px;margin:0 auto;}#sidebar-left,#sidebar-right{position:sticky;top:0;height:100vh;background:var(--bg-light);padding:20px;overflow-y:auto;}#sidebar-left{width:250px;border-right:1px solid var(--border);}#sidebar-right{width:300px;border-left:1px solid var(--border);}.logo{display:block;margin:0 auto 20px;width:100px;}h1{font-size:24px;color:var(--primary-light);text-align:center;margin-bottom:20px;}h3{font-size:18px;color:var(--primary-light);margin-bottom:15px;}nav ul{list-style:none;}nav ul li{margin-bottom:10px;}nav a{display:flex;align-items:center;color:var(--text);text-decoration:none;padding:10px;border-radius:8px;transition:background .2s,box-shadow .2s;}nav a:hover{background:var(--bg-lighter);box-shadow:var(--neon-glow);}.icon{width:20px;height:20px;margin-right:15px;filter:drop-shadow(0 0 2px var(--primary));}main{flex-grow:1;width:calc(1280px - 550px);background:var(--bg-light);border:1px solid var(--border);padding:20px;}button{width:100%;padding:12px;background:linear-gradient(45deg,var(--primary),var(--primary-light));color:var(--text);border:none;border-radius:8px;font-weight:bold;cursor:pointer;transition:background .3s,box-shadow .3s;margin-bottom:15px;}button:hover{background:linear-gradient(45deg,#6a3fff,#a370ff);box-shadow:var(--neon-glow);}button:disabled{opacity:.6;cursor:not-allowed;}#publishStory{position:absolute;bottom:10px;right:10px;width:40px;height:40px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;}#loadMoreButton{width:auto;padding:8px 20px;font-size:14px;margin:20px auto;display:none;}#storySubmission{display:flex;padding:15px;background:var(--bg-lighter);border-bottom:1px solid var(--border);margin-bottom:20px;}.avatar{width:48px;height:48px;border-radius:50%;margin-right:15px;}.input-container{flex-grow:1;position:relative;}textarea{width:100%;min-height:100px;padding:15px;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:none;}textarea:focus{outline:none;border-color:var(--primary);box-shadow:var(--neon-glow);}.news-item{padding:15px;border-bottom:1px solid var(--border);transition:background .2s;}.news-item:hover{background:var(--bg-lighter);}.reporter-info{display:flex;align-items:center;margin-bottom:10px;}.reporter-details{font-size:14px;margin-left:10px;}.reporter-name{font-weight:bold;}.report-content{margin:10px 0;line-height:1.6;}#searchInput,#customChannelInput{width:100%;padding:12px 15px;background:var(--bg-lighter);border:1px solid var(--border);border-radius:20px;color:var(--text);margin-bottom:20px;}#searchInput:focus,#customChannelInput:focus{outline:none;border-color:var(--primary);box-shadow:var(--neon-glow);}#loadingOverlay,#profileModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(13,11,20,.8);color:var(--text);display:none;justify-content:center;align-items:center;z-index:1000;}#statusMessage{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg-light);padding:10px 20px;border-radius:5px;display:none;z-index:1001;box-shadow:var(--neon-glow);}#channelSelection{margin-top:20px;}#currentChannel{font-size:14px;color:var(--text);margin-top:10px;}.modal-content{background:var(--bg-light);padding:20px;border-radius:8px;width:400px;max-width:90%;border:1px solid var(--border);}.modal-content h2{color:var(--primary-light);margin-bottom:20px;}.modal-content label{display:block;margin-bottom:10px;font-size:14px;}.modal-content input{width:100%;padding:10px;margin-bottom:15px;background:var(--bg-lighter);border:1px solid var(--border);border-radius:5px;color:var(--text);}.modal-content img{width:100px;height:100px;border-radius:50%;margin-bottom:15px;display:block;margin-left:auto;margin-right:auto;}.modal-buttons{display:flex;gap:10px;}</style></head><body><div id="app-container"><div id="sidebar-left"><img src="image1.jpeg" alt="Pulse Underground Logo" class="logo"><nav><ul><li><a href="#" id="homeLink"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span>Home</a></li><li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M21 21l-6-6m2-5a7 7 0 1 0-14 0 7 7 0 0 0 14 0z"></path></svg></span>Explore</a></li><li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10zM12 8v4M12 16h.01"></path></svg></span>Notifications</a></li><li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></span>Messages</a></li><li><a href="#" id="profileLink"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</a></li></ul></nav><button id="connectWallet">Connect Wallet</button><div id="walletInfo" style="display:none"><p>Connected: <span id="walletAddress"></span></p></div></div><main><h1>The Pulse Underground</h1><div id="storySubmission"><img src="image1.jpeg" alt="User Avatar" class="avatar" id="submissionAvatar"><div class="input-container"><textarea id="reportContent" placeholder="What's happening?"></textarea><button id="publishStory">➤</button></div></div><div id="newsFeed"></div><button id="loadMoreButton">Load More</button></main><div id="sidebar-right"><input type="text" id="searchInput" placeholder="Search The Pulse Underground"><div id="channelSelection"><h3>Channels</h3><button id="mainChannel">Main Channel</button><button id="selfChannel">Self Channel</button><input type="text" id="customChannelInput" placeholder="Enter custom address"><button id="setCustomChannel">Set Custom Channel</button><p>Current Channel: <span id="currentChannel"></span></p></div><div id="activeChannels"><h3>Active Channels</h3><p>Coming soon...</p></div></div></div><div id="loadingOverlay">Loading...</div><div id="statusMessage"></div><div id="profileModal"><div class="modal-content"><h2>Edit Profile</h2><img src="image1.jpeg" alt="Profile Preview" id="profilePicPreview"><label for="usernameInput">Username:</label><input type="text" id="usernameInput" placeholder="Enter username"><label for="profilePicInput">Profile Picture URL:</label><input type="text" id="profilePicInput" placeholder="Enter image URL"><div class="modal-buttons"><button id="saveProfile">Save</button><button id="clearProfile">Clear Profile</button><button id="closeProfileModal">Close</button></div></div></div><script>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pulse Underground</title><link rel="icon" type="image/jpeg" href="image1.jpeg"><script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script><style>:root{--primary:#7c4dff;--primary-light:#b388ff;--bg-dark:#0d0b14;--bg-light:#13101c;--bg-lighter:#1a1327;--border:#2a2438;--text:#fff;--neon-glow:0 0 5px var(--primary),0 0 10px var(--primary),0 0 15px var(--primary);}*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg-dark);color:var(--text);line-height:1.5;font-size:16px}#app-container{display:flex;min-height:100vh;max-width:1280px;margin:0 auto}#sidebar-left,#sidebar-right{position:sticky;top:0;height:100vh;background:var(--bg-light);padding:20px;overflow-y:auto}#sidebar-left{width:250px;border-right:1px solid var(--border)}#sidebar-right{width:300px;border-left:1px solid var(--border)}.logo{display:block;margin:0 auto 20px;width:100px}h1{font-size:24px;color:var(--primary-light);text-align:center;margin-bottom:20px}h3{font-size:18px;color:var(--primary-light);margin-bottom:15px}nav ul{list-style:none}nav ul li{margin-bottom:10px}nav a{display:flex;align-items:center;color:var(--text);text-decoration:none;padding:10px;border-radius:8px;transition:background .2s,box-shadow .2s}nav a:hover{background:var(--bg-lighter);box-shadow:var(--neon-glow)}.icon{width:20px;height:20px;margin-right:15px;filter:drop-shadow(0 0 2px var(--primary))}main{flex-grow:1;width:calc(1280px - 550px);background:var(--bg-light);border:1px solid var(--border);padding:20px}button{width:100%;padding:12px;background:linear-gradient(45deg,var(--primary),var(--primary-light));color:var(--text);border:none;border-radius:8px;font-weight:bold;cursor:pointer;transition:background .3s,box-shadow .3s;margin-bottom:15px}button:hover{background:linear-gradient(45deg,#6a3fff,#a370ff);box-shadow:var(--neon-glow)}button:disabled{opacity:.6;cursor:not-allowed}#publishStory{position:absolute;bottom:10px;right:10px;width:40px;height:40px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center}#loadMoreButton{width:auto;padding:8px 20px;font-size:14px;margin:20px auto;display:none}#storySubmission{display:flex;padding:15px;background:var(--bg-lighter);border-bottom:1px solid var(--border);margin-bottom:20px}.avatar{width:48px;height:48px;border-radius:50%;margin-right:15px}.input-container{flex-grow:1;position:relative}textarea{width:100%;min-height:100px;padding:15px;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:none}textarea:focus{outline:none;border-color:var(--primary);box-shadow:var(--neon-glow)}.news-item{padding:15px;border-bottom:1px solid var(--border);transition:background .2s}.news-item:hover{background:var(--bg-lighter)}.reporter-info{display:flex;align-items:center;margin-bottom:10px}.reporter-details{font-size:14px;margin-left:10px}.reporter-name{font-weight:bold}.report-content{margin:10px 0;line-height:1.6}#searchInput,#customChannelInput{width:100%;padding:12px 15px;background:var(--bg-lighter);border:1px solid var(--border);border-radius:20px;color:var(--text);margin-bottom:20px}#searchInput:focus,#customChannelInput:focus{outline:none;border-color:var(--primary);box-shadow:var(--neon-glow)}#loadingOverlay,#profileModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(13,11,20,.8);color:var(--text);display:none;justify-content:center;align-items:center;z-index:1000}#statusMessage{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg-light);padding:10px 20px;border-radius:5px;display:none;z-index:1001;box-shadow:var(--neon-glow)}#channelSelection{margin-top:20px}#currentChannel{font-size:14px;color:var(--text);margin-top:10px}.modal-content{background:var(--bg-light);padding:20px;border-radius:8px;width:400px;max-width:90%;border:1px solid var(--border)}.modal-content h2{color:var(--primary-light);margin-bottom:20px}.modal-content label{display:block;margin-bottom:10px;font-size:14px}.modal-content input{width:100%;padding:10px;margin-bottom:15px;background:var(--bg-lighter);border:1px solid var(--border);border-radius:5px;color:var(--text)}.modal-content img{width:100px;height:100px;border-radius:50%;margin-bottom:15px;display:block;margin-left:auto;margin-right:auto}.modal-buttons{display:flex;gap:10px}</style></head><body><div id="app-container"><div id="sidebar-left"><img src="image1.jpeg" alt="Pulse Underground Logo" class="logo"><nav><ul><li><a href="#" id="homeLink"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span>Home</a></li><li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M21 21l-6-6m2-5a7 7 0 1 0-14 0 7 7 0 0 0 14 0z"></path></svg></span>Explore</a></li><li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10zM12 8v4M12 16h.01"></path></svg></span>Notifications</a></li><li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></span>Messages</a></li><li><a href="#" id="profileLink"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</a></li></ul></nav><button id="connectWallet">Connect Wallet</button><div id="walletInfo" style="display:none"><p>Connected: <span id="walletAddress"></span></p></div></div><main><h1>The Pulse Underground</h1><div id="storySubmission"><img src="image1.jpeg" alt="User Avatar" class="avatar" id="submissionAvatar"><div class="input-container"><textarea id="reportContent" placeholder="What's happening?"></textarea><button id="publishStory">➤</button></div></div><div id="newsFeed"></div><button id="loadMoreButton">Load More</button></main><div id="sidebar-right"><input type="text" id="searchInput" placeholder="Search The Pulse Underground"><div id="channelSelection"><h3>Channels</h3><button id="mainChannel">Main Channel</button><button id="selfChannel">Self Channel</button><input type="text" id="customChannelInput" placeholder="Enter custom address"><button id="setCustomChannel">Set Custom Channel</button><p>Current Channel: <span id="currentChannel"></span></p></div><div id="activeChannels"><h3>Active Channels</h3><p>Coming soon...</p></div></div></div><div id="loadingOverlay">Loading...</div><div id="statusMessage"></div><div id="profileModal"><div class="modal-content"><h2>Edit Profile</h2><img src="image1.jpeg" alt="Profile Preview" id="profilePicPreview"><label for="usernameInput">Username:</label><input type="text" id="usernameInput" placeholder="Enter username"><label for="profilePicInput">Profile Picture URL:</label><input type="text" id="profilePicInput" placeholder="Enter image URL"><div class="modal-buttons"><button id="saveProfile">Save</button><button id="clearProfile">Clear Profile</button><button id="closeProfileModal">Close</button></div></div></div><script>
 const ethers=window.ethers,MAIN_CHANNEL="0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB".toLowerCase(),PULSE_CHAIN_ID=369;
 const utils={
-    shortenAddress:a=>a?.length>10?`${a.slice(0,6)}...${a.slice(-4)}`:a||"Unknown",
-    formatDate:t=>new Date(t).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"}),
-    showStatus:(m,d=3e3)=>{document.getElementById("statusMessage").textContent=m;document.getElementById("statusMessage").style.display="block";setTimeout(()=>{document.getElementById("statusMessage").style.display="none";},d);},
+    showStatus:(m,d=3e3)=>{const s=document.getElementById("statusMessage");s.textContent=m;s.style.display="block";setTimeout(()=>{s.style.display="none";},d);},
     toggleLoading:s=>document.getElementById("loadingOverlay").style.display=s?"flex":"none"
 };
 class Cache{
@@ -25,15 +23,15 @@ class Cache{
         await this.waitForDB();
         return new Promise((r,e)=>{
             const t=this.db.transaction("newsItems","readonly"),s=t.objectStore("newsItems"),q=s.getAll();
-            q.onsuccess=()=>{r(q.result);};
+            q.onsuccess=()=>{r(q.result||[]);};
             q.onerror=()=>{e(q.error);};
         });
     }
     async saveItems(i){
         await this.waitForDB();
-        const t=this.db.transaction("newsItems","readwrite-Apr-2025"),s=t.objectStore("newsItems");
+        const t=this.db.transaction("newsItems","readwrite"),s=t.objectStore("newsItems");
         i.forEach(x=>s.put(x));
-        return new Promise((r,e)=>{t.oncomplete=r;t.onerror=()=>{e(t.error);};});
+        return new Promise((r,e)=>{t.oncomplete=r;t.onerror=()=>{e(t.error);console.error("Save items error:",t.error);};});
     }
     async getProfile(a){
         await this.waitForDB();
@@ -45,15 +43,15 @@ class Cache{
     }
     async saveProfile(p){
         await this.waitForDB();
-        const t=this.db.transaction("profiles","readwrite-Apr-2025"),s=t.objectStore("profiles");
+        const t=this.db.transaction("profiles","readwrite"),s=t.objectStore("profiles");
         s.put(p);
-        return new Promise((r,e)=>{t.oncomplete=r;t.onerror=()=>{e(t.error);};});
+        return new Promise((r,e)=>{t.oncomplete=r;t.onerror=()=>{e(t.error);console.error("Save profile error:",t.error);};});
     }
     async clearProfile(a){
         await this.waitForDB();
-        const t=this.db.transaction("profiles","readwrite-Apr-2025"),s=t.objectStore("profiles");
+        const t=this.db.transaction("profiles","readwrite"),s=t.objectStore("profiles");
         s.delete(a);
-        return new Promise((r,e)=>{t.oncomplete=r;t.onerror=()=>{e(t.error);};});
+        return new Promise((r,e)=>{t.oncomplete=r;t.onerror=()=>{e(t.error);console.error("Clear profile error:",t.error);};});
     }
 }
 class PulseUnderground{
@@ -101,45 +99,41 @@ class PulseUnderground{
         await this.cache.saveItems([]);
         await this.loadCachedData();
         this.setupListeners();
-        this.elements.currentChannel.textContent=utils.shortenAddress(this.state.channel);
+        this.elements.currentChannel.textContent=this.state.channel.length>10?`${this.state.channel.slice(0,6)}...${this.state.channel.slice(-4)}`:this.state.channel||"Unknown";
         await this.fetchPosts(33);
     }
-    setupListeners(){
+    setupListeners=()=>{
         const e=this.elements;
-        e.connectWallet.addEventListener("click",()=>{this.toggleWallet();});
-        e.publishStory.addEventListener("click",()=>{this.publishStory();});
-        e.searchInput.addEventListener("input",this.debounce(()=>{this.state.searchTerm=e.searchInput.value.trim().toLowerCase();this.renderNewsFeed();},300));
-        e.loadMoreButton.addEventListener("click",()=>{this.onLoadMore();});
-        e.homeLink.addEventListener("click",e=>{e.preventDefault();window.scrollTo({top:0,behavior:"smooth"});});
-        e.mainChannel.addEventListener("click",()=>{this.setChannel(MAIN_CHANNEL);});
-        e.selfChannel.addEventListener("click",async()=>{
+        e.connectWallet.onclick=()=>this.toggleWallet();
+        e.publishStory.onclick=()=>this.publishStory();
+        e.searchInput.oninput=this.debounce(()=>{this.state.searchTerm=e.searchInput.value.trim().toLowerCase();this.renderNewsFeed();},300);
+        e.loadMoreButton.onclick=()=>this.onLoadMore();
+        e.homeLink.onclick=e=>{e.preventDefault();window.scrollTo({top:0,behavior:"smooth"});};
+        e.mainChannel.onclick=()=>this.setChannel(MAIN_CHANNEL);
+        e.selfChannel.onclick=async()=>{
             if(!this.signer) return utils.showStatus("Connect wallet first");
-            const a=await this.signer.getAddress();
-            this.setChannel(a.toLowerCase());
-        });
-        e.setCustomChannel.addEventListener("click",()=>{
+            this.setChannel((await this.signer.getAddress()).toLowerCase());
+        };
+        e.setCustomChannel.onclick=()=>{
             const a=e.customChannelInput.value.trim().toLowerCase();
             ethers.utils.isAddress(a)?this.setChannel(a):utils.showStatus("Invalid address");
-        });
-        e.profileLink.addEventListener("click",e=>{
+        };
+        e.profileLink.onclick=e=>{
             e.preventDefault();
             if(!this.signer) return utils.showStatus("Connect wallet first");
             this.showProfileModal();
-        });
-        e.saveProfile.addEventListener("click",()=>{this.saveProfile();});
-        e.clearProfile.addEventListener("click",()=>{this.clearProfile();});
-        e.closeProfileModal.addEventListener("click",()=>{e.profileModal.style.display="none";});
-        e.profilePicInput.addEventListener("input",()=>{this.previewProfilePic();});
-    }
-    debounce(f,d){
-        let t;
-        return (...a)=>{
-            clearTimeout(t);
-            t=setTimeout(()=>{f.apply(this,a);},d);
         };
+        e.saveProfile.onclick=()=>this.saveProfile();
+        e.clearProfile.onclick=()=>this.clearProfile();
+        e.closeProfileModal.onclick=()=>{e.profileModal.style.display="none";};
+        e.profilePicInput.oninput=()=>this.previewProfilePic();
+    }
+    debounce=(f,d)=>{
+        let t;
+        return (...a)=>{clearTimeout(t);t=setTimeout(()=>{f.apply(this,a);},d);};
     }
     async loadCachedData(){
-        this.state.newsItems=(await this.cache.getItems()).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))||[];
+        this.state.newsItems=(await this.cache.getItems()).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
         this.renderNewsFeed();
     }
     async toggleWallet(){
@@ -147,18 +141,22 @@ class PulseUnderground{
     }
     async connectWallet(){
         if(!window.ethereum) return utils.showStatus("MetaMask not detected");
-        const p=new ethers.providers.Web3Provider(window.ethereum);
-        if((await p.getNetwork()).chainId!==PULSE_CHAIN_ID){
-            await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x171"}]});
+        try{
+            const p=new ethers.providers.Web3Provider(window.ethereum);
+            if((await p.getNetwork()).chainId!==PULSE_CHAIN_ID){
+                await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x171"}]});
+            }
+            await p.send("eth_requestAccounts",[]);
+            this.signer=p.getSigner();
+            this.state.signerAddress=(await this.signer.getAddress()).toLowerCase();
+            this.elements.walletAddress.textContent=this.state.signerAddress.length>10?`${this.state.signerAddress.slice(0,6)}...${this.state.signerAddress.slice(-4)}`:this.state.signerAddress;
+            this.elements.walletInfo.style.display="block";
+            this.elements.connectWallet.textContent="Disconnect Wallet";
+            await this.loadProfile();
+            utils.showStatus("Wallet connected");
+        }catch(e){
+            utils.showStatus("Connection failed: "+e.message);
         }
-        await p.send("eth_requestAccounts",[]);
-        this.signer=p.getSigner();
-        this.state.signerAddress=(await this.signer.getAddress()).toLowerCase();
-        this.elements.walletAddress.textContent=utils.shortenAddress(this.state.signerAddress);
-        this.elements.walletInfo.style.display="block";
-        this.elements.connectWallet.textContent="Disconnect Wallet";
-        await this.loadProfile();
-        utils.showStatus("Wallet connected");
     }
     async disconnectWallet(){
         this.signer=null;
@@ -166,13 +164,14 @@ class PulseUnderground{
         this.state.profile={username:"",profilePicUrl:"image1.jpeg"};
         this.elements.walletInfo.style.display="none";
         this.elements.connectWallet.textContent="Connect Wallet";
-        this.updateAvatars();
+        this.renderNewsFeed();
         utils.showStatus("Wallet disconnected");
     }
     async loadProfile(){
-        const p=await this.cache.getProfile(this.state.signerAddress);
-        this.state.profile=p||{username:"",profilePicUrl:"image1.jpeg"};
-        this.updateAvatars();
+        const p=await this.cache.getProfile(this.state.signerAddress)||{username:"",profilePicUrl:"image1.jpeg"};
+        this.state.profile=p;
+        this.elements.submissionAvatar.src=p.profilePicUrl;
+        this.renderNewsFeed();
     }
     async saveProfile(){
         const n=this.elements.usernameInput.value.trim();
@@ -187,33 +186,31 @@ class PulseUnderground{
         }
         this.state.profile={username:n,profilePicUrl:i};
         await this.cache.saveProfile({address:this.state.signerAddress,username:n,profilePicUrl:i});
-        this.updateAvatars();
+        this.elements.submissionAvatar.src=i;
         this.elements.profileModal.style.display="none";
+        this.renderNewsFeed();
         utils.showStatus("Profile saved");
     }
     async clearProfile(){
         await this.cache.clearProfile(this.state.signerAddress);
         this.state.profile={username:"",profilePicUrl:"image1.jpeg"};
-        this.updateAvatars();
+        this.elements.submissionAvatar.src="image1.jpeg";
         this.elements.profileModal.style.display="none";
+        this.renderNewsFeed();
         utils.showStatus("Profile cleared");
     }
-    showProfileModal(){
+    showProfileModal=()=>{
         this.elements.usernameInput.value=this.state.profile.username;
         this.elements.profilePicInput.value=this.state.profile.profilePicUrl!=="image1.jpeg"?this.state.profile.profilePicUrl:"";
         this.elements.profilePicPreview.src=this.state.profile.profilePicUrl;
         this.elements.profileModal.style.display="flex";
     }
-    previewProfilePic(){
+    previewProfilePic=()=>{
         const u=this.elements.profilePicInput.value.trim()||"image1.jpeg";
         const i=new Image();
         i.src=u;
         i.onload=()=>{this.elements.profilePicPreview.src=u;};
         i.onerror=()=>{this.elements.profilePicPreview.src="image1.jpeg";};
-    }
-    updateAvatars(){
-        this.elements.submissionAvatar.src=this.state.profile.profilePicUrl;
-        this.renderNewsFeed();
     }
     async publishStory(){
         if(!this.signer) return utils.showStatus("Connect wallet first");
@@ -229,7 +226,7 @@ class PulseUnderground{
             await this.cache.saveItems([n]);
             this.renderNewsFeed();
             this.elements.reportContent.value="";
-            utils.showStatus("Story published: "+utils.shortenAddress(r.transactionHash));
+            utils.showStatus("Story published: "+(r.transactionHash.length>10?`${r.transactionHash.slice(0,6)}...${r.transactionHash.slice(-4)}`:r.transactionHash));
         }catch(e){
             utils.showStatus("Publish failed: "+e.message);
         }finally{
@@ -310,7 +307,7 @@ class PulseUnderground{
         this.state.hasMore=true;
         await this.cache.saveItems([]);
         this.renderNewsFeed();
-        this.elements.currentChannel.textContent=utils.shortenAddress(this.state.channel);
+        this.elements.currentChannel.textContent=a.length>10?`${a.slice(0,6)}...${a.slice(-4)}`:a||"Unknown";
         console.log("Set channel:",a,"fetching 33 posts");
         await this.fetchPosts(33);
     }
@@ -322,14 +319,11 @@ class PulseUnderground{
             const d=document.createElement("div");
             d.className="news-item";
             const u=x.reporter.toLowerCase()===this.state.signerAddress;
-            d.innerHTML=`<div class="reporter-info"><img src="${u&&this.state.profile.profilePicUrl?this.state.profile.profilePicUrl:"image1.jpeg"}" alt="Reporter" class="avatar"><div class="reporter-details"><span class="reporter-name">${u&&this.state.profile.username?this.state.profile.username:utils.shortenAddress(x.reporter)}</span> · ${utils.formatDate(x.timestamp)}</div></div><div class="report-content">${x.content.replace(/\n/g,"<br>")}</div>`;
+            d.innerHTML=`<div class="reporter-info"><img src="${u&&this.state.profile.profilePicUrl?this.state.profile.profilePicUrl:"image1.jpeg"}" alt="Reporter" class="avatar"><div class="reporter-details"><span class="reporter-name">${u&&this.state.profile.username?this.state.profile.username:(x.reporter.length>10?`${x.reporter.slice(0,6)}...${x.reporter.slice(-4)}`:x.reporter)}</span> · ${new Date(x.timestamp).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div></div><div class="report-content">${x.content.replace(/\n/g,"<br>")}</div>`;
             f.appendChild(d);
         });
         this.elements.newsFeed.appendChild(f);
-        this.updateLoadMoreButton();
-    }
-    updateLoadMoreButton(){
-        this.elements.loadMoreButton.style.display=this.state.newsItems.length?"block":"none";
+        this.elements.loadMoreButton.style.display=n.length?"block":"none";
         this.elements.loadMoreButton.textContent=this.state.hasMore?"Load More":"Return to Top";
         this.elements.loadMoreButton.disabled=this.state.isLoading;
         console.log("Button state, hasMore:",this.state.hasMore,"isLoading:",this.state.isLoading);
