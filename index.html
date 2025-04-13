@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pulse Underground</title>
+    <link rel="icon" type="image/jpeg" href="image1.jpeg">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root {
@@ -21,7 +22,8 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-dark);
             color: var(--text);
-            line-height: 1.3;
+            line-height: 1.5;
+            font-size: 16px;
         }
         #app-container {
             display: flex;
@@ -30,62 +32,68 @@
             margin: 0 auto;
             background: var(--bg-dark);
         }
-        #sidebar-left, #sidebar-right {
+        #sidebar-left {
+            width: 275px;
             position: sticky;
             top: 0;
             height: 100vh;
-            overflow-y: auto;
             background: var(--bg-light);
-            padding: 20px;
-        }
-        #sidebar-left { width: 275px; border-right: 1px solid var(--border); }
-        #sidebar-right { width: 350px; border-left: 1px solid var(--border); }
-        h1, h3 { color: var(--primary-light); margin: 0 0 20px; }
-        main {
-            flex-grow: 1;
-            max-width: 900px;
-            border-left: 1px solid var(--border);
             border-right: 1px solid var(--border);
-            background: var(--bg-light);
-            padding-top: 20px;
+            padding: 20px;
+            overflow-y: auto;
         }
-        main h1 { text-align: center; font-size: 24px; margin-bottom: 20px; }
+        #sidebar-right {
+            width: 350px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            background: var(--bg-light);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+        h1 { font-size: 24px; color: var(--primary-light); text-align: center; margin-bottom: 20px; }
+        h3 { font-size: 18px; color: var(--primary-light); margin-bottom: 15px; }
         nav ul { list-style: none; }
-        nav ul li { margin-bottom: 8px; }
-        nav ul li a {
+        nav ul li { margin-bottom: 10px; }
+        nav a {
             display: flex;
             align-items: center;
             color: var(--text);
             text-decoration: none;
-            padding: 10px 12px;
+            padding: 10px;
             border-radius: 8px;
             transition: background 0.2s, box-shadow 0.2s;
-            font-size: 16px;
         }
-        nav ul li a:hover { background: var(--border); box-shadow: var(--neon-glow); }
-        .icon { margin-right: 16px; width: 20px; height: 20px; filter: drop-shadow(0 0 2px var(--primary)); }
-        .bottom-buttons { margin-top: auto; }
+        nav a:hover { background: var(--bg-lighter); box-shadow: var(--neon-glow); }
+        .icon { width: 20px; height: 20px; margin-right: 15px; filter: drop-shadow(0 0 2px var(--primary)); }
+        main {
+            flex-grow: 1;
+            max-width: 900px;
+            background: var(--bg-light);
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+        }
         button {
+            width: 100%;
             padding: 12px;
-            border: none;
-            border-radius: 8px;
             background: linear-gradient(45deg, var(--primary), var(--primary-light));
             color: var(--text);
-            font-size: 16px;
-            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
             cursor: pointer;
             transition: background 0.3s, box-shadow 0.3s;
-            display: block;
-            margin-bottom: 12px;
-            width: 100%;
+            margin-bottom: 15px;
         }
         button:hover { background: linear-gradient(45deg, #6a3fff, #a370ff); box-shadow: var(--neon-glow); }
         #publishStory {
             position: absolute;
-            bottom: 8px;
-            right: 8px;
-            width: 34px;
-            height: 34px;
+            bottom: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             padding: 0;
             display: flex;
@@ -93,61 +101,52 @@
             justify-content: center;
         }
         #loadMoreButton {
-            margin: 20px auto;
-            padding: 10px 20px;
-            border-radius: 5px;
             width: auto;
+            margin: 20px auto;
+            padding: 10px 25px;
+            display: none;
         }
-        #storySubmission { display: flex; padding: 16px; border-bottom: 1px solid var(--border); background: var(--bg-lighter); }
-        .avatar { width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; }
+        #storySubmission {
+            display: flex;
+            padding: 15px;
+            background: var(--bg-lighter);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; margin-right: 15px; }
         .input-container { flex-grow: 1; position: relative; }
         textarea {
             width: 100%;
-            min-height: 80px;
-            padding: 12px;
+            min-height: 100px;
+            padding: 15px;
             background: var(--bg-light);
             border: 1px solid var(--border);
             border-radius: 8px;
             color: var(--text);
-            font-size: 16px;
             resize: none;
         }
         textarea:focus { outline: none; border-color: var(--primary); box-shadow: var(--neon-glow); }
-        #newsFeed { visibility: hidden; }
-        .news-item { padding: 16px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+        .news-item {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
         .news-item:hover { background: var(--bg-lighter); }
-        .reporter-info { display: flex; align-items: center; margin-bottom: 8px; }
-        .reporter-details { margin-left: 12px; font-size: 12px; }
-        .reporter-name { font-weight: 700; }
-        .report-content { margin: 8px 0; line-height: 1.4; }
-        #search-container { position: relative; margin-bottom: 16px; }
+        .reporter-info { display: flex; align-items: center; margin-bottom: 10px; }
+        .reporter-details { font-size: 14px; margin-left: 10px; }
+        .reporter-name { font-weight: bold; }
+        .report-content { margin: 10px 0; line-height: 1.6; }
         #search-input {
             width: 100%;
-            padding: 12px 40px 12px 44px;
+            padding: 12px 15px;
             background: var(--bg-lighter);
             border: 1px solid var(--border);
-            border-radius: 999px;
+            border-radius: 20px;
             color: var(--text);
-            font-size: 15px;
-            z-index: 10;
-            position: relative;
-            pointer-events: auto;
+            margin-bottom: 20px;
         }
-        #search-input:focus { outline: none; border-color: var(--primary); background: var(--border); box-shadow: var(--neon-glow); }
-        #search-button {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--primary-light);
-            font-size: 16px;
-            cursor: pointer;
-            z-index: 11;
-        }
+        #search-input:focus { outline: none; border-color: var(--primary); box-shadow: var(--neon-glow); }
         #loadingOverlay {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -155,27 +154,23 @@
             height: 100%;
             background: rgba(13, 11, 20, 0.8);
             color: var(--text);
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
         }
-        #o {
+        #statusMessage {
             position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             background: var(--bg-light);
-            color: var(--text);
             padding: 10px 20px;
             border-radius: 5px;
             display: none;
             z-index: 1001;
             box-shadow: var(--neon-glow);
         }
-        #channel-selection { margin-top: 20px; }
-        #channel-selection h3 { margin-bottom: 10px; }
-        #custom-channel-input { width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-lighter); color: var(--text); }
-        #active-channels { margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -183,29 +178,16 @@
         <div id="sidebar-left">
             <nav>
                 <ul>
-                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span> Home</a></li>
-                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M21 21l-6-6m2-5a7 7 0 1 0-14 0 7 7 0 0 0 14 0z"></path></svg></span> Explore</a></li>
-                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10zM12 8v4M12 16h.01"></path></svg></span> Notifications</a></li>
-                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></span> Messages</a></li>
-                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span> Profile</a></li>
-                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></span> More</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path><path d="M9 22V12h6v10"></path></svg></span>Home</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M21 21l-6-6m2-5a7 7 0 1 0-14 0 7 7 0 0 0 14 0z"></path></svg></span>Explore</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10zM12 8v4M12 16h.01"></path></svg></span>Notifications</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></span>Messages</a></li>
+                    <li><a href="#"><span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</a></li>
                 </ul>
             </nav>
-            <div id="channel-selection">
-                <h3>Channels</h3>
-                <button id="main-channel">Main Channel</button>
-                <button id="self-channel">Self Channel</button>
-                <div>
-                    <input type="text" id="custom-channel-input" placeholder="Enter custom address">
-                    <button id="set-custom-channel">Set Custom Channel</button>
-                </div>
-                <p>Current Channel: <span id="current-channel"></span></p>
-            </div>
-            <div class="bottom-buttons">
-                <button id="connectWallet">Connect Wallet</button>
-            </div>
-            <div id="walletInfo" style="display:none">
-                <span id="walletAddress"></span>
+            <button id="connectWallet">Connect Wallet</button>
+            <div id="walletInfo" style="display: none;">
+                <p>Connected: <span id="walletAddress"></span></p>
             </div>
         </div>
         <main>
@@ -221,305 +203,290 @@
             <button id="loadMoreButton">Load More</button>
         </main>
         <div id="sidebar-right">
-            <div id="search-container">
-                <input type="text" id="search-input" placeholder="Search The Pulse Underground">
-                <button id="search-button">🔍</button>
+            <input type="text" id="searchInput" placeholder="Search The Pulse Underground">
+            <div id="trendingSection">
+                <h3>What's Happening</h3>
+                <!-- Placeholder for trending content -->
             </div>
-            <div id="trending-section">
-                <h3>What's happening</h3>
-            </div>
-            <div id="who-to-follow">
-                <h3>Who to follow</h3>
-            </div>
-            <div id="active-channels">
-                <h3>Most Active Channels</h3>
-                <p>Coming soon...</p>
+            <div id="whoToFollow">
+                <h3>Who to Follow</h3>
+                <!-- Placeholder for follow suggestions -->
             </div>
         </div>
     </div>
     <div id="loadingOverlay">Loading...</div>
-    <div id="o"></div>
+    <div id="statusMessage"></div>
+
     <script>
         const ethers = window.ethers;
-        const MAIN_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB".toLowerCase();
+        const POST_ADDRESS = "0x9Cd83BE15a79646A3D22B81fc8dDf7B7240a62cB".toLowerCase();
         const PULSE_CHAIN_ID = 369;
 
         // Utility Functions
-        const sh = a => a?.length > 10 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a || "-";
-        const dt = t => new Date(t).toLocaleString("en", { month: "numeric", day: "numeric", year: "numeric", hour: "numeric", minute: "numeric" });
-        const displayStatus = m => {
-            const o = document.getElementById("o");
-            o.textContent = m;
-            o.style.display = "block";
-            setTimeout(() => o.style.display = "none", 3000);
-        };
-        const toggleLoading = (s, message = "Loading...") => {
-            const overlay = document.getElementById("loadingOverlay");
-            overlay.textContent = message;
-            overlay.style.display = s ? "flex" : "none";
-        };
+        function shortenAddress(addr) {
+            return addr?.length > 10 ? addr.slice(0, 6) + "..." + addr.slice(-4) : addr || "Unknown";
+        }
+        function formatDate(timestamp) {
+            return new Date(timestamp).toLocaleString("en-US", {
+                month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
+            });
+        }
+        function showStatus(message, duration = 3000) {
+            const status = document.getElementById("statusMessage");
+            status.textContent = message;
+            status.style.display = "block";
+            setTimeout(() => status.style.display = "none", duration);
+        }
+        function toggleLoading(show) {
+            document.getElementById("loadingOverlay").style.display = show ? "flex" : "none";
+        }
 
-        // Cache Class for IndexedDB
+        // IndexedDB Cache Class
         class Cache {
-            constructor() { this.db = null; this.init(); }
-            async init() {
-                if (this.db) return this.db;
+            constructor() {
+                this.db = null;
+                this.initDB();
+            }
+            initDB() {
+                const request = indexedDB.open("PulseUndergroundCache", 1);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains("newsItems")) {
+                        const store = db.createObjectStore("newsItems", { keyPath: "txHash" });
+                        store.createIndex("timestamp", "timestamp", { unique: false });
+                    }
+                };
+                request.onsuccess = () => this.db = request.result;
+                request.onerror = () => console.error("IndexedDB Error:", request.error);
+            }
+            async getAllItems() {
+                if (!this.db) await new Promise(resolve => setTimeout(resolve, 100));
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open("PUCache", 1);
+                    const tx = this.db.transaction("newsItems", "readonly");
+                    const store = tx.objectStore("newsItems");
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
                     request.onerror = () => reject(request.error);
-                    request.onsuccess = () => { this.db = request.result; resolve(this.db); };
-                    request.onupgradeneeded = event => {
-                        const db = event.target.result;
-                        if (!db.objectStoreNames.contains("news")) db.createObjectStore("news", { keyPath: "txHash" }).createIndex("timestamp", "timestamp", { unique: false });
-                    };
                 });
             }
-            async transaction(storeName, mode, callback) {
-                const db = await this.init();
-                const tx = db.transaction(storeName, mode);
-                const store = tx.objectStore(storeName);
-                return callback(store);
-            }
-            async saveNews(items) { await this.transaction("news", "readwrite", store => items.forEach(item => store.put(item))); }
-            async getNews(limit = 1000) {
-                return this.transaction("news", "readonly", store => new Promise(resolve => {
-                    const news = [];
-                    store.index("timestamp").openCursor(null, "prev").onsuccess = event => {
-                        const cursor = event.target.result;
-                        if (!cursor || news.length >= limit) return resolve(news);
-                        news.push(cursor.value);
-                        cursor.continue();
-                    };
-                }));
+            async saveItems(items) {
+                if (!this.db) await new Promise(resolve => setTimeout(resolve, 100));
+                const tx = this.db.transaction("newsItems", "readwrite");
+                const store = tx.objectStore("newsItems");
+                items.forEach(item => store.put(item));
+                return new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = () => reject(tx.error);
+                });
             }
         }
 
-        // Main App Class
-        class App {
+        // Main Application Class
+        class PulseUnderground {
             constructor() {
                 this.state = {
-                    items: [],
-                    filterTerm: "",
-                    loading: false,
-                    noMore: false,
-                    page: null,
-                    requests: new Set(),
-                    cachedResponses: new Map(),
-                    seenTxHashes: new Set(),
-                    currentChannel: MAIN_ADDRESS
+                    newsItems: [],
+                    searchTerm: "",
+                    isLoading: false,
+                    hasMore: true,
+                    nextPageParams: null
                 };
                 this.elements = {
                     newsFeed: document.getElementById("newsFeed"),
                     reportContent: document.getElementById("reportContent"),
-                    searchInput: document.getElementById("search-input"),
+                    searchInput: document.getElementById("searchInput"),
                     loadMoreButton: document.getElementById("loadMoreButton"),
                     connectWallet: document.getElementById("connectWallet"),
                     walletInfo: document.getElementById("walletInfo"),
-                    walletAddress: document.getElementById("walletAddress"),
-                    mainChannelButton: document.getElementById("main-channel"),
-                    selfChannelButton: document.getElementById("self-channel"),
-                    customChannelInput: document.getElementById("custom-channel-input"),
-                    setCustomChannelButton: document.getElementById("set-custom-channel"),
-                    currentChannelDisplay: document.getElementById("current-channel")
+                    walletAddress: document.getElementById("walletAddress")
                 };
                 this.cache = new Cache();
-                this.setup();
-                this.loadInitialData();
+                this.signer = null;
+                this.initialize();
             }
-
-            async loadInitialData() {
-                const cachedItems = await this.cache.getNews();
-                this.state.items = cachedItems;
-                cachedItems.forEach(item => this.state.seenTxHashes.add(item.txHash));
-                this.updateDisplay();
-                this.fetch(true);
+            initialize() {
+                this.loadCachedData();
+                this.setupEventListeners();
+                this.fetchNews();
             }
-
-            setup() {
-                console.log("Setting up app...");
+            setupEventListeners() {
+                this.elements.connectWallet.addEventListener("click", () => {
+                    this.signer ? this.disconnectWallet() : this.connectWallet();
+                });
+                this.elements.publishStory.addEventListener("click", () => this.publishStory());
+                this.elements.loadMoreButton.addEventListener("click", () => this.loadMore());
                 this.elements.searchInput.addEventListener("input", this.debounce(() => {
-                    const value = this.elements.searchInput.value.trim().toLowerCase();
-                    console.log("Search input changed to:", value);
-                    this.state.filterTerm = value;
-                    this.updateDisplay();
-                }, 200));
-
-                document.addEventListener("click", e => {
-                    const t = e.target;
-                    if (t.id === "connectWallet") this.signer ? this.disconnectWallet() : this.connectWallet();
-                    else if (t.id === "publishStory") this.publishStory();
-                    else if (t.id === "loadMoreButton") this.loadMore();
-                });
-
-                this.elements.mainChannelButton.addEventListener("click", () => this.setChannel(MAIN_ADDRESS));
-                this.elements.selfChannelButton.addEventListener("click", async () => {
-                    if (!this.signer) await this.connectWallet();
-                    if (this.signer) this.setChannel((await this.signer.getAddress()).toLowerCase());
-                });
-                this.elements.setCustomChannelButton.addEventListener("click", () => {
-                    const address = this.elements.customChannelInput.value.trim().toLowerCase();
-                    if (ethers.utils.isAddress(address)) this.setChannel(address);
-                    else displayStatus("Invalid address");
-                });
-                this.elements.loadMoreButton.style.display = "none";
+                    this.state.searchTerm = this.elements.searchInput.value.trim().toLowerCase();
+                    this.renderNewsFeed();
+                }, 300));
             }
-
-            debounce(func, wait) {
+            debounce(fn, delay) {
                 let timeout;
                 return (...args) => {
                     clearTimeout(timeout);
-                    timeout = setTimeout(() => func.apply(this, args), wait);
+                    timeout = setTimeout(() => fn.apply(this, args), delay);
                 };
             }
-
-            async connectWallet() {
-                if (!window.ethereum) return displayStatus("Please install MetaMask!");
+            async loadCachedData() {
                 try {
+                    const cachedItems = await this.cache.getAllItems();
+                    this.state.newsItems = cachedItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    this.renderNewsFeed();
+                } catch (error) {
+                    console.error("Error loading cached data:", error);
+                }
+            }
+            async connectWallet() {
+                try {
+                    if (!window.ethereum) throw new Error("MetaMask not detected");
                     const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const network = await provider.getNetwork();
+                    if (network.chainId !== PULSE_CHAIN_ID) {
+                        await window.ethereum.request({
+                            method: "wallet_switchEthereumChain",
+                            params: [{ chainId: "0x171" }]
+                        });
+                    }
                     await provider.send("eth_requestAccounts", []);
                     this.signer = provider.getSigner();
                     const address = await this.signer.getAddress();
-                    this.elements.walletAddress.textContent = sh(address);
+                    this.elements.walletAddress.textContent = shortenAddress(address);
                     this.elements.walletInfo.style.display = "block";
-                    this.elements.connectWallet.textContent = "Disconnect";
-                    displayStatus("Wallet connected!");
-                } catch (e) {
-                    console.error("Wallet connection failed:", e);
-                    displayStatus("Failed to connect wallet");
+                    this.elements.connectWallet.textContent = "Disconnect Wallet";
+                    showStatus("Wallet connected successfully");
+                } catch (error) {
+                    showStatus("Wallet connection failed: " + (error.message || "Unknown error"));
                 }
             }
-
             disconnectWallet() {
                 this.signer = null;
                 this.elements.walletInfo.style.display = "none";
                 this.elements.connectWallet.textContent = "Connect Wallet";
-                displayStatus("Wallet disconnected");
+                showStatus("Wallet disconnected");
             }
-
             async publishStory() {
-                if (!this.signer) return displayStatus("Connect wallet first!");
+                if (!this.signer) {
+                    showStatus("Please connect your wallet first");
+                    return;
+                }
                 const content = this.elements.reportContent.value.trim();
-                if (!content) return displayStatus("Enter a story!");
-                toggleLoading(true, "Publishing story...");
+                if (!content) {
+                    showStatus("Story content cannot be empty");
+                    return;
+                }
                 try {
-                    const tx = await this.signer.sendTransaction({
-                        to: this.state.currentChannel,
+                    toggleLoading(true);
+                    const inputData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
+                    const tx = {
+                        to: POST_ADDRESS,
                         value: 0,
-                        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content))
-                    });
-                    await tx.wait();
-                    displayStatus("Story published!");
+                        data: inputData,
+                        gasLimit: 150000
+                    };
+                    const signedTx = await this.signer.sendTransaction(tx);
+                    const receipt = await signedTx.wait();
+                    const newItem = {
+                        content,
+                        reporter: await this.signer.getAddress(),
+                        timestamp: new Date().toISOString(),
+                        txHash: receipt.transactionHash
+                    };
+                    this.state.newsItems.unshift(newItem);
+                    await this.cache.saveItems([newItem]);
+                    this.renderNewsFeed();
                     this.elements.reportContent.value = "";
-                    this.fetch();
-                } catch (e) {
-                    console.error("Publish error:", e);
-                    displayStatus("Failed to publish story");
+                    showStatus("Story published: " + shortenAddress(receipt.transactionHash));
+                } catch (error) {
+                    showStatus("Publishing failed: " + (error.message || "Unknown error"));
                 } finally {
                     toggleLoading(false);
                 }
             }
-
-            async fetchTransactions(pageParams) {
-                const url = pageParams ? `https://scan.pulsechain.com/api/v2/transactions?${new URLSearchParams(pageParams)}` : 
-                    `https://scan.pulsechain.com/api/v2/address/${this.state.currentChannel}/transactions`;
-                const response = await fetch(url);
-                return response.json();
-            }
-
-            async parseTransactions(b) {
-                if (!b?.items?.length) {
-                    console.log("No transactions found");
-                    this.state.noMore = true;
-                    return [];
-                }
-                const posts = [];
-                for (const tx of b.items) {
-                    const toAddress = tx.to?.hash?.toLowerCase() || tx.to?.toLowerCase();
-                    if (toAddress !== this.state.currentChannel) continue;
-
-                    console.log(`Parsing tx ${tx.hash}, input:`, tx.input);
-                    if (!tx.input || typeof tx.input !== "string" || tx.input === "0x" || !tx.input.startsWith("0x")) {
-                        console.warn(`Skipping tx ${tx.hash}: invalid input`);
-                        continue;
+            async fetchNews() {
+                if (this.state.isLoading || !this.state.hasMore) return;
+                this.state.isLoading = true;
+                toggleLoading(true);
+                try {
+                    const url = `https://api.scan.pulsechain.com/api/v2/addresses/${POST_ADDRESS}/transactions?limit=50${this.state.nextPageParams ? "&" + new URLSearchParams(this.state.nextPageParams).toString() : ""}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`API error: ${response.status}`);
+                    const data = await response.json();
+                    const newItems = this.parseTransactions(data.items);
+                    if (newItems.length) {
+                        this.state.newsItems = [...newItems, ...this.state.newsItems]
+                            .filter((item, index, self) => index === self.findIndex(i => i.txHash === item.txHash))
+                            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        await this.cache.saveItems(newItems);
                     }
-
+                    this.state.nextPageParams = data.next_page_params;
+                    this.state.hasMore = !!data.next_page_params;
+                    this.elements.loadMoreButton.style.display = this.state.hasMore ? "block" : "none";
+                    this.renderNewsFeed();
+                } catch (error) {
+                    console.error("Fetch error:", error);
+                    showStatus("Failed to load news: " + (error.message || "Unknown error"));
+                } finally {
+                    this.state.isLoading = false;
+                    toggleLoading(false);
+                }
+            }
+            parseTransactions(transactions) {
+                const items = [];
+                for (const tx of transactions) {
+                    if (!tx.raw_input || items.some(item => item.txHash === tx.hash)) continue;
                     try {
-                        const content = ethers.utils.toUtf8String(tx.input).trim();
-                        if (/[\x20-\x7E\n]/.test(content) && !this.state.seenTxHashes.has(tx.hash)) {
-                            posts.push({
+                        const content = ethers.utils.toUtf8String(tx.raw_input).trim();
+                        if (content) {
+                            items.push({
                                 content,
                                 reporter: tx.from.hash,
                                 timestamp: tx.timestamp,
                                 txHash: tx.hash
                             });
-                            this.state.seenTxHashes.add(tx.hash);
                         }
                     } catch (e) {
-                        console.warn(`Failed to parse tx ${tx.hash}:`, e);
+                        console.warn("Invalid transaction input:", tx.hash, e);
                     }
                 }
-                return posts;
+                return items;
             }
-
-            updateDisplay() {
-                const filtered = this.state.items.filter(item => 
-                    !this.state.filterTerm || item.content.toLowerCase().includes(this.state.filterTerm)
-                );
-                this.elements.newsFeed.innerHTML = filtered.map(item => `
-                    <div class="news-item">
+            loadMore() {
+                if (!this.state.isLoading && this.state.hasMore) {
+                    this.fetchNews();
+                }
+            }
+            renderNewsFeed() {
+                const filteredItems = this.state.searchTerm
+                    ? this.state.newsItems.filter(item =>
+                        item.content.toLowerCase().includes(this.state.searchTerm) ||
+                        item.reporter.toLowerCase().includes(this.state.searchTerm))
+                    : this.state.newsItems;
+                this.elements.newsFeed.innerHTML = "";
+                if (!filteredItems.length) {
+                    this.elements.newsFeed.textContent = "No news items available.";
+                    return;
+                }
+                const fragment = document.createDocumentFragment();
+                filteredItems.forEach(item => {
+                    const div = document.createElement("div");
+                    div.className = "news-item";
+                    div.innerHTML = `
                         <div class="reporter-info">
-                            <img src="image1.jpeg" alt="Reporter Avatar" class="avatar">
+                            <img src="image1.jpeg" alt="Reporter" class="avatar">
                             <div class="reporter-details">
-                                <div class="reporter-name">${sh(item.reporter)}</div>
-                                <div>${dt(item.timestamp)}</div>
+                                <span class="reporter-name">${shortenAddress(item.reporter)}</span> · ${formatDate(item.timestamp)}
                             </div>
                         </div>
-                        <div class="report-content">${item.content}</div>
-                    </div>
-                `).join("");
-                this.elements.newsFeed.style.visibility = "visible";
-            }
-
-            async fetch(initial = false) {
-                if (this.state.loading) return;
-                this.state.loading = true;
-                toggleLoading(true, "Loading news feed...");
-                try {
-                    const txData = await this.fetchTransactions(this.state.page);
-                    const newPosts = await this.parseTransactions(txData);
-                    if (newPosts.length) {
-                        this.state.items = [...newPosts, ...this.state.items]
-                            .filter((item, i, arr) => arr.findIndex(t => t.txHash === item.txHash) === i)
-                            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                        await this.cache.saveNews(newPosts);
-                        this.updateDisplay();
-                    }
-                    this.state.page = txData.next_page_params || null;
-                    this.state.noMore = !this.state.page;
-                    this.elements.loadMoreButton.style.display = this.state.noMore ? "none" : "block";
-                } catch (e) {
-                    console.error("Fetch error:", e);
-                    displayStatus("Failed to load news feed");
-                } finally {
-                    this.state.loading = false;
-                    toggleLoading(false);
-                }
-            }
-
-            loadMore() { this.fetch(); }
-
-            setChannel(address) {
-                this.state.currentChannel = address;
-                this.state.items = [];
-                this.state.page = null;
-                this.state.noMore = false;
-                this.state.seenTxHashes.clear();
-                this.elements.currentChannelDisplay.textContent = sh(address);
-                this.fetch();
+                        <div class="report-content">${item.content.replace(/\n/g, "<br>")}</div>
+                    `;
+                    fragment.appendChild(div);
+                });
+                this.elements.newsFeed.appendChild(fragment);
             }
         }
 
-        new App();
+        // Start the application
+        const app = new PulseUnderground();
     </script>
 </body>
 </html>
